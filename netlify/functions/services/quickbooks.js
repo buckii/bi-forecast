@@ -100,7 +100,6 @@ class QuickBooksService {
       // If we get 401 or 403 (authentication errors) and haven't retried yet, 
       // try to refresh the token and retry the request
       if ((response.status === 401 || response.status === 403) && retryCount === 0) {
-        console.log('[QBO] Authentication error detected, attempting token refresh and retry...')
         
         try {
           // Force refresh the token by getting a new one
@@ -113,7 +112,6 @@ class QuickBooksService {
           if (tokenDoc) {
             // Force refresh by calling refreshToken directly
             const refreshedAuth = await this.refreshToken(tokenDoc)
-            console.log('[QBO] Token refreshed successfully, retrying request...')
             
             // Retry the request with the new token
             return await this.makeRequest(endpoint, refreshedAuth.realmId, refreshedAuth.accessToken, retryCount + 1)
@@ -151,7 +149,6 @@ class QuickBooksService {
   async getDelayedCharges(startDate, endDate) {
     const { accessToken, realmId } = await this.getAccessToken()
     
-    console.log(`[QBO] Fetching delayed charges using Transaction List Report for date range: ${startDate} to ${endDate}`)
     
     try {
       // Use Transaction List Report to get all transactions, then filter for charges
@@ -169,24 +166,17 @@ class QuickBooksService {
           'txn_type',
       ];
       const reportUrl = `reports/TransactionList?start_date=${startDate}&end_date=${endDate}&transaction_list=Charge&columns=` + columns.join(',')
-      console.log(`[QBO] Using Transaction List Report: ${reportUrl}`)
       
       const reportData = await this.makeRequest(reportUrl, realmId, accessToken)
-      console.log(`[QBO] Transaction List Report response structure:`, Object.keys(reportData))
       
       if (reportData.Header) {
-        console.log(`[QBO] Report period: ${reportData.Header.StartPeriod} to ${reportData.Header.EndPeriod}`)
-        console.log(`[QBO] Report time: ${reportData.Header.Time}`)
       }
       
       // Log the full structure for debugging (first few rows)
       if (reportData.Rows && reportData.Rows.length > 0) {
-        console.log(`[QBO] Sample row structure:`, JSON.stringify(reportData.Rows[0], null, 2))
         
         // Also log column headers if available
         if (reportData.Columns) {
-          console.log(`[QBO] Report columns:`, reportData.Columns.map(col => col.ColTitle || col.ColType))
-          console.log(`[QBO] Full column structure:`, JSON.stringify(reportData.Columns, null, 2))
         }
       }
       
@@ -195,9 +185,7 @@ class QuickBooksService {
         for (let i = 0; i < Math.min(3, reportData.Rows.length); i++) {
           const row = reportData.Rows[i]
           if (row.type === 'Data' && row.ColData) {
-            console.log(`[QBO] Row ${i} detailed mapping:`)
             row.ColData.forEach((col, index) => {
-              console.log(`[QBO]   Column ${index}: "${col.value}" (id: ${col.id})`)
             })
           }
         }
@@ -205,10 +193,8 @@ class QuickBooksService {
       
       // Parse the report data to extract delayed charges
       const delayedCharges = this.parseChargeReport(reportData)
-      console.log(`[QBO] Found ${delayedCharges.length} delayed charges from Transaction List Report`)
       
       if (delayedCharges.length > 0) {
-        console.log('[QBO] Sample delayed charges from report:', delayedCharges.slice(0, 2))
       }
       
       return delayedCharges
@@ -220,7 +206,6 @@ class QuickBooksService {
       }
       
       // Return empty array instead of failing
-      console.log('[QBO] Returning empty delayed charges array due to error')
       return []
     }
   }
@@ -299,31 +284,26 @@ class QuickBooksService {
   }
 
   parseChargeReport(reportData) {
-    console.log(`[QBO] Parsing Transaction List Report for charges and delayed charges`)
     
     // Initialize array to collect delayed charges
     const delayedCharges = []
     
     try {
       // Debug: Log the full report structure
-      console.log(`[QBO] Report data keys:`, Object.keys(reportData))
       
       // QuickBooks reports have a complex nested structure
       // The actual data is in reportData.Rows.Row
       const rows = reportData.Rows?.Row || []
       const rowCount = rows ? rows.length : 'undefined'
-      console.log(`[QBO] Report has ${rowCount} data rows`)
       
       // Recursive function to process all rows and sub-rows
       const processRows = (rowsToProcess, depth = 0) => {
         if (!Array.isArray(rowsToProcess)) {
-          console.log(`[QBO] rowsToProcess is not an array:`, typeof rowsToProcess, rowsToProcess)
           return
         }
         
         for (const row of rowsToProcess) {
           if (row.type === 'Section' && row.Rows) {
-            console.log(`[QBO] Processing section at depth ${depth} with ${row.Rows.length} sub-rows`)
             processRows(row.Rows, depth + 1)
           } else if (row.type === 'Data' && row.ColData) {
             // This is a data row containing transaction details
@@ -366,7 +346,6 @@ class QuickBooksService {
                 }
                 
                 delayedCharges.push(delayedCharge)
-                console.log(`[QBO] Added delayed charge: ${docNumber} (${date}) - ${customerName} - $${amount}`)
               }
             }
           }
@@ -375,7 +354,6 @@ class QuickBooksService {
       
       processRows(rows)
       
-      console.log(`[QBO] Extracted ${delayedCharges.length} uninvoiced delayed charges from report`)
       return delayedCharges
       
     } catch (error) {
@@ -417,13 +395,10 @@ class QuickBooksService {
       
       // Log first few rows for debugging
       if (rows.length > 0) {
-        console.log('[QBO] Sample row structure:', JSON.stringify(rows[0], null, 2))
         for (let i = 0; i < Math.min(3, rows.length); i++) {
           const row = rows[i]
           if (row.type === 'Data' && row.ColData) {
-            console.log(`[QBO] Row ${i} detailed mapping:`)
             row.ColData.forEach((col, index) => {
-              console.log(`[QBO]   Column ${index}: "${col.value}" (id: ${col.id})`)
             })
           }
         }
@@ -434,33 +409,26 @@ class QuickBooksService {
       
       if (reportData.Rows) {
         arRows = reportData.Rows
-        console.log(`[QBO] Found ${arRows.length} rows in reportData.Rows`)
       } else if (reportData.report?.Rows) {
         arRows = reportData.report.Rows
-        console.log(`[QBO] Found ${arRows.length} rows in reportData.report.Rows`)
       } else {
-        console.log(`[QBO] No rows found in expected locations. Available keys:`, Object.keys(reportData))
         
         // Try to find any array that might contain data
         for (const [key, value] of Object.entries(reportData)) {
           if (Array.isArray(value) && value.length > 0) {
-            console.log(`[QBO] Found potential data array in ${key} with ${value.length} items`)
             arRows = value
             break
           }
         }
       }
       
-      console.log(`[QBO] Processing ${arRows.length} rows in aged receivables report`)
       
       if (arRows.length > 0) {
         // Process each row in the report
         this.processAgedReceivablesRows(arRows, summary, 0)
       } else {
-        console.log(`[QBO] No data rows found - returning empty summary`)
       }
       
-      console.log('[QBO] Aged receivables totals:', {
         current: summary.current,
         days_1_15: summary.days_1_15,
         days_16_30: summary.days_16_30,
@@ -480,23 +448,18 @@ class QuickBooksService {
   
   processAgedReceivablesRows(rows, summary, depth = 0) {
     if (!Array.isArray(rows)) {
-      console.log(`[QBO] Rows is not an array at depth ${depth}:`, typeof rows)
       return
     }
     
     for (const row of rows) {
-      console.log(`[QBO] Processing row at depth ${depth}:`, row.type, row.group || '(no group)')
       
       if (row.type === 'Section' && row.Rows) {
-        console.log(`[QBO] Processing section at depth ${depth}:`, row.group || 'Unnamed section')
         this.processAgedReceivablesRows(row.Rows, summary, depth + 1)
       } else if (row.type === 'Data' && row.ColData) {
         // This is a data row - extract customer receivables data
         const colData = row.ColData || []
         
-        console.log(`[QBO] Data row has ${colData.length} columns:`)
         colData.forEach((col, index) => {
-          console.log(`[QBO]   Column ${index}: "${col.value}" (id: ${col.id || 'no-id'})`)
         })
         
         // Handle variable column structures - QB reports can vary
@@ -534,11 +497,9 @@ class QuickBooksService {
         
         // Skip empty rows or total rows
         if (!customerName || customerName.toLowerCase().includes('total') || total === 0) {
-          console.log(`[QBO] Skipping row: customer="${customerName}", total=${total}`)
           continue
         }
         
-        console.log(`[QBO] Adding customer: ${customerName}, Total: $${total}, Current: $${current}, 1-30: $${days1_30}`)
         
         // Add to summary totals
         summary.current += current
@@ -563,7 +524,6 @@ class QuickBooksService {
   }
 
   async getAgedReceivablesFromInvoices() {
-    console.log(`[QBO] Calculating aged receivables from invoices`)
     
     const { accessToken, realmId } = await this.getAccessToken()
     
@@ -572,7 +532,6 @@ class QuickBooksService {
     const data = await this.makeRequest(`query?query=${encodeURIComponent(query)}`, realmId, accessToken)
     const invoices = data.QueryResponse?.Invoice || []
     
-    console.log(`[QBO] Found ${invoices.length} unpaid invoices`)
     
     const summary = {
       current: 0,
@@ -626,7 +585,6 @@ class QuickBooksService {
       customerTotals[customerName].total += balance
       summary.total += balance
       
-      console.log(`[QBO] Invoice ${invoice.DocNumber}: Customer=${customerName}, Balance=$${balance}, DaysOverdue=${daysDiff}`)
     }
     
     // Convert customer totals to details array
@@ -637,7 +595,6 @@ class QuickBooksService {
         ...data
       }))
     
-    console.log(`[QBO] Invoice-based aged receivables: Total=$${summary.total}, Customers=${summary.details.length}`)
     return summary
   }
 

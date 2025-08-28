@@ -4,7 +4,6 @@ import RevenueCalculator from './services/revenue-calculator-optimized.js'
 
 export async function handler(event, context) {
   // This function runs daily at 3am ET via Netlify scheduled functions
-  console.log('Starting daily data archive process...')
   
   try {
     const companiesCollection = await getCollection('companies')
@@ -17,7 +16,6 @@ export async function handler(event, context) {
     
     for (const company of companies) {
       try {
-        console.log(`Processing company: ${company.name} (${company._id})`)
         
         const calculator = new RevenueCalculator(company._id)
         
@@ -67,7 +65,6 @@ export async function handler(event, context) {
           oldArchivesDeleted: deleteResult.deletedCount
         })
         
-        console.log(`✓ Completed company ${company.name}: ${months.length} months archived, ${deleteResult.deletedCount} old archives deleted`)
         
       } catch (companyError) {
         console.error(`✗ Error processing company ${company.name}:`, companyError)
@@ -83,7 +80,6 @@ export async function handler(event, context) {
     const successCount = results.filter(r => r.success).length
     const errorCount = results.filter(r => !r.success).length
     
-    console.log(`Archive process completed: ${successCount} successful, ${errorCount} errors`)
     
     return success({
       message: 'Daily archive process completed',

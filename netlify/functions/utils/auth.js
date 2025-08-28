@@ -27,9 +27,6 @@ export function verifyToken(token) {
 
 export async function verifyGoogleToken(token) {
   try {
-    console.log('Attempting to verify Google token...')
-    console.log('Google Client ID configured:', !!GOOGLE_CLIENT_ID)
-    console.log('Token format check - starts with eyJ:', token.startsWith('eyJ'))
     
     // Decode JWT without verification first to get header
     const decoded = jwt.decode(token, { complete: true })
@@ -37,9 +34,6 @@ export async function verifyGoogleToken(token) {
       throw new Error('Invalid JWT format')
     }
     
-    console.log('Token header:', decoded.header)
-    console.log('Token issuer:', decoded.payload.iss)
-    console.log('Token audience:', decoded.payload.aud)
     
     // Verify this is a Google-issued token
     if (decoded.payload.iss !== 'https://accounts.google.com') {
@@ -59,7 +53,6 @@ export async function verifyGoogleToken(token) {
     
     // For production compatibility, we'll trust Google's signature verification
     // since the token comes directly from Google's servers
-    console.log('Google token verified successfully for:', decoded.payload.email)
     
     return {
       googleId: decoded.payload.sub,
@@ -162,7 +155,6 @@ export async function getCurrentUser(event) {
   const token = getAuthorizationToken(event)
   const decoded = verifyToken(token)
   
-  console.log('Decoded token:', decoded)
   
   const usersCollection = await getCollection('users')
   const companiesCollection = await getCollection('companies')
@@ -171,9 +163,7 @@ export async function getCurrentUser(event) {
   const { ObjectId } = await import('mongodb')
   const userId = typeof decoded.userId === 'string' ? new ObjectId(decoded.userId) : decoded.userId
   
-  console.log('Looking for user with ID:', userId)
   const user = await usersCollection.findOne({ _id: userId })
-  console.log('Found user:', user ? 'yes' : 'no')
   
   if (!user) {
     throw new Error('User not found')

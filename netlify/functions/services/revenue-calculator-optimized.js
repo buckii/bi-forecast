@@ -15,7 +15,6 @@ class RevenueCalculator {
     const startMonth = addMonths(startOfMonth(currentDate), -2)
     const endMonth = addMonths(startOfMonth(currentDate), 11)
     
-    console.log(`Calculating ${months} months of revenue data from ${format(startMonth, 'yyyy-MM')} to ${format(endMonth, 'yyyy-MM')} (2 historical + current + 11 future)`)
     const startTime = Date.now()
     
     // Fetch all data in parallel
@@ -27,11 +26,9 @@ class RevenueCalculator {
     // Cache the Pipedrive data for use by transaction details
     this.cachedPipedriveData = pipedriveData
     
-    console.log(`Data fetch completed in ${Date.now() - startTime}ms`)
     
     // Calculate baseline monthly recurring from previous month
     const baselineMonthlyRecurring = await this.calculateBaselineMonthlyRecurring(qboData)
-    console.log(`Baseline monthly recurring from previous month: $${baselineMonthlyRecurring.toFixed(2)}`)
     
     // Process data into monthly buckets
     const result = []
@@ -53,7 +50,6 @@ class RevenueCalculator {
       })
     }
     
-    console.log(`Total processing time: ${Date.now() - startTime}ms`)
     return result
   }
 
@@ -63,7 +59,6 @@ class RevenueCalculator {
     
     try {
       // Fetch all QBO data in parallel
-      console.log(`Fetching QBO data from ${startStr} to ${endStr}`)
       
       const [invoices, journalEntries, delayedCharges] = await Promise.all([
         this.qbo.getInvoices(startStr, endStr).catch(err => {
@@ -80,12 +75,10 @@ class RevenueCalculator {
         })
       ])
       
-      console.log(`QBO Data fetched - Invoices: ${invoices.length}, Journal Entries: ${journalEntries.length}, Delayed Charges: ${delayedCharges.length}`)
       
       // Log date range of actual data
       if (invoices.length > 0) {
         const invoiceDates = invoices.map(inv => inv.TxnDate).sort()
-        console.log(`Invoice date range: ${invoiceDates[0]} to ${invoiceDates[invoiceDates.length - 1]}`)
       }
       
       return {
@@ -117,7 +110,6 @@ class RevenueCalculator {
         })
       ])
       
-      console.log(`Pipedrive Data fetched - Won Unscheduled: ${wonUnscheduledDeals.length}, Open Deals: ${openDeals.length}`)
       
       return {
         wonUnscheduledDeals,
@@ -133,7 +125,6 @@ class RevenueCalculator {
   }
 
   async calculateBaselineMonthlyRecurring(qboData) {
-    console.log('[Revenue Calculator] Calculating baseline monthly recurring from previous month')
     
     try {
       // Get previous month date range
@@ -142,7 +133,6 @@ class RevenueCalculator {
       const previousMonthStart = startOfMonth(previousMonth)
       const previousMonthEnd = endOfMonth(previousMonth)
       
-      console.log(`[Revenue Calculator] Looking for monthly recurring revenue in ${format(previousMonth, 'yyyy-MM')}`)
       
       let totalMonthlyRecurring = 0
       
@@ -153,7 +143,6 @@ class RevenueCalculator {
           return txnDate >= previousMonthStart && txnDate <= previousMonthEnd
         })
         
-        console.log(`[Revenue Calculator] Found ${previousMonthInvoices.length} invoices in previous month`)
         
         for (const invoice of previousMonthInvoices) {
           const lines = invoice.Line || []
@@ -170,7 +159,6 @@ class RevenueCalculator {
             if (hasMonthly) {
               const lineAmount = line.Amount || 0
               totalMonthlyRecurring += lineAmount
-              console.log(`[Revenue Calculator] Found monthly recurring line: ${line.Description || 'No description'} - $${lineAmount} (Account: ${accountRef?.name || 'N/A'}, Item: ${itemRef?.name || 'N/A'})`)
             }
           }
         }
@@ -183,7 +171,6 @@ class RevenueCalculator {
           return txnDate >= previousMonthStart && txnDate <= previousMonthEnd
         })
         
-        console.log(`[Revenue Calculator] Found ${previousMonthEntries.length} journal entries in previous month`)
         
         for (const entry of previousMonthEntries) {
           const lines = entry.Line || []
@@ -197,13 +184,11 @@ class RevenueCalculator {
               
               const lineAmount = line.Amount || 0
               totalMonthlyRecurring += lineAmount
-              console.log(`[Revenue Calculator] Found monthly recurring journal line: ${line.Description || 'No description'} - $${lineAmount} (Account: ${accountRef.name})`)
             }
           }
         }
       }
       
-      console.log(`[Revenue Calculator] Total baseline monthly recurring: $${totalMonthlyRecurring.toFixed(2)}`)
       return totalMonthlyRecurring
       
     } catch (error) {
@@ -255,11 +240,8 @@ class RevenueCalculator {
       if (format(monthDate, 'yyyy-MM') === '2025-12' && monthDelayedCharges.length > 0) {
         const startDateStr = format(startDate, 'yyyy-MM-dd')
         const endDateStr = format(endDate, 'yyyy-MM-dd')
-        console.log(`[DEBUG] December 2025 delayed charges (${monthDelayedCharges.length} charges, total: $${components.delayedCharges}):`)
-        console.log(`[DEBUG] Date range: ${startDateStr} to ${endDateStr}`)
         monthDelayedCharges.forEach(charge => {
           const included = charge.TxnDate >= startDateStr && charge.TxnDate <= endDateStr
-          console.log(`[DEBUG]   - ${charge.DocNumber}: ${charge.TxnDate} - $${charge.TotalAmt} - ${charge.CustomerRef?.name || 'Unknown'} ${included ? '✓' : '✗'}`)
         })
       }
       
@@ -289,7 +271,6 @@ class RevenueCalculator {
       const isRecentMonth = Math.abs(new Date().getTime() - monthDate.getTime()) < (90 * 24 * 60 * 60 * 1000) // 90 days
       
       if (isCurrentMonth || (isRecentMonth && (components.invoiced > 0 || components.journalEntries > 0))) {
-        console.log(`Month ${format(monthDate, 'yyyy-MM')} components (isFutureMonth: ${isFutureMonth}):`, {
           invoiced: components.invoiced,
           journalEntries: components.journalEntries,
           delayedCharges: components.delayedCharges,
@@ -358,7 +339,6 @@ class RevenueCalculator {
             total -= amount
           } else {
             // If posting type is not specified, assume credit for revenue accounts
-            console.log(`[Revenue Calculator] Warning: No posting type for journal entry line with amount ${amount}`)
             total += amount
           }
         }
@@ -455,7 +435,6 @@ class RevenueCalculator {
   }
 
   async getExceptions() {
-    console.log('[Revenue Calculator] Getting exceptions data')
     
     const exceptions = {
       overdueDeals: [],
@@ -465,7 +444,6 @@ class RevenueCalculator {
     
     try {
       // Get overdue deals from Pipedrive
-      console.log('[Revenue Calculator] Fetching overdue deals')
       const overdueDeals = await this.pipedrive.getOverdueDeals()
       exceptions.overdueDeals = overdueDeals.map(deal => ({
         id: deal.id,
@@ -475,7 +453,6 @@ class RevenueCalculator {
         days_overdue: deal.daysOverdue,
         value: deal.value
       }))
-      console.log(`[Revenue Calculator] Found ${exceptions.overdueDeals.length} overdue deals`)
       
     } catch (error) {
       console.error('Error getting overdue deals:', error)
@@ -483,7 +460,6 @@ class RevenueCalculator {
     
     try {
       // Get won unscheduled deals from Pipedrive
-      console.log('[Revenue Calculator] Fetching won unscheduled deals')
       const wonUnscheduledDeals = await this.pipedrive.getWonUnscheduledDeals()
       exceptions.wonUnscheduled = wonUnscheduledDeals.map(deal => ({
         id: deal.id,
@@ -492,7 +468,6 @@ class RevenueCalculator {
         won_time: deal.wonTime,
         value: deal.value
       }))
-      console.log(`[Revenue Calculator] Found ${exceptions.wonUnscheduled.length} won unscheduled deals`)
       
     } catch (error) {
       console.error('Error getting won unscheduled deals:', error)
@@ -500,7 +475,6 @@ class RevenueCalculator {
     
     try {
       // Get past delayed charges from QBO
-      console.log('[Revenue Calculator] Fetching past delayed charges')
       // For now, we'll check for delayed charges older than today
       const today = new Date()
       const pastDate = new Date(today.getFullYear(), today.getMonth() - 6, 1) // 6 months ago
@@ -526,13 +500,11 @@ class RevenueCalculator {
           days_past: Math.floor((today - new Date(charge.TxnDate)) / (1000 * 60 * 60 * 24)),
           amount: charge.TotalAmt || 0
         }))
-      console.log(`[Revenue Calculator] Found ${exceptions.pastDelayedCharges.length} past delayed charges`)
       
     } catch (error) {
       console.error('Error getting past delayed charges:', error)
     }
     
-    console.log('[Revenue Calculator] Exceptions summary:', {
       overdueDeals: exceptions.overdueDeals.length,
       pastDelayedCharges: exceptions.pastDelayedCharges.length, 
       wonUnscheduled: exceptions.wonUnscheduled.length
@@ -549,7 +521,6 @@ class RevenueCalculator {
   }
 
   async getBalances() {
-    console.log('[Revenue Calculator] Getting account balances and A/R data')
     
     const balances = {
       assets: [],
@@ -559,9 +530,7 @@ class RevenueCalculator {
     
     try {
       // Get asset accounts (only Checking, Savings, UndepositedFunds)
-      console.log('[Revenue Calculator] Fetching asset accounts')
       const accounts = await this.qbo.getAccounts()
-      console.log(`[Revenue Calculator] Found ${accounts.length} asset accounts`)
       
       balances.assets = accounts.map(account => ({
         id: account.Id,
@@ -579,9 +548,7 @@ class RevenueCalculator {
     
     try {
       // Get liability accounts
-      console.log('[Revenue Calculator] Fetching liability accounts')
       const liabilityAccounts = await this.qbo.getLiabilityAccounts()
-      console.log(`[Revenue Calculator] Found ${liabilityAccounts.length} liability accounts`)
       
       balances.liabilities = liabilityAccounts.map(account => ({
         id: account.Id,
@@ -599,14 +566,11 @@ class RevenueCalculator {
     
     try {
       // Get aged receivables
-      console.log('[Revenue Calculator] Fetching aged receivables')
       balances.receivables = await this.qbo.getAgedReceivables()
-      console.log('[Revenue Calculator] A/R data:', balances.receivables)
     } catch (error) {
       console.error('[Revenue Calculator] Error getting aged receivables:', error)
     }
     
-    console.log(`[Revenue Calculator] Returning balances with ${balances.assets.length} assets, ${balances.liabilities.length} liabilities, and ${balances.receivables ? 'A/R data' : 'no A/R data'}`)
     return balances
   }
 }

@@ -17,7 +17,6 @@ export async function handler(event, context) {
     const startTime = Date.now()
     const { company } = await getCurrentUser(event)
     
-    console.log(`Starting QBO refresh for company ${company._id}`)
     
     const calculator = new RevenueCalculator(company._id)
     
@@ -27,7 +26,6 @@ export async function handler(event, context) {
       calculator.getBalances()
     ])
     
-    console.log(`Data calculation completed in ${Date.now() - startTime}ms`)
     
     // Update the current archive with fresh data
     const archivesCollection = await getCollection('revenue_archives')
@@ -50,8 +48,6 @@ export async function handler(event, context) {
       { upsert: true }
     )
     
-    console.log(`Database update completed in ${Date.now() - dbStartTime}ms`)
-    console.log(`Total QBO refresh time: ${Date.now() - startTime}ms`)
     
     return success({
       message: 'QuickBooks data refreshed successfully',

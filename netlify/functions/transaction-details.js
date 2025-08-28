@@ -24,7 +24,6 @@ export async function handler(event, context) {
       return error('Missing required parameters: month and component', 400)
     }
     
-    console.log(`Getting transaction details for ${company._id} - Month: ${month}, Component: ${component}`)
     
     const calculator = new RevenueCalculator(company._id)
     
@@ -34,10 +33,6 @@ export async function handler(event, context) {
     const startDate = format(startOfMonth(monthDate), 'yyyy-MM-dd')
     const endDate = format(endOfMonth(monthDate), 'yyyy-MM-dd')
     
-    console.log(`[Transaction Details] Input month: ${month}`)
-    console.log(`[Transaction Details] Parsed monthDate: ${monthDate.toISOString()}`)
-    console.log(`[Transaction Details] Calculated date range: ${startDate} to ${endDate}`)
-    console.log(`[Transaction Details] Month for pipedrive filtering: ${format(monthDate, 'yyyy-MM')}`)
     
     let transactions = []
     let totalAmount = 0
@@ -94,7 +89,6 @@ async function getInvoicedTransactions(calculator, startDate, endDate) {
     return txnDate >= startDateObj && txnDate <= endDateObj
   })
   
-  console.log(`[Transaction Details] Invoices: ${invoices.length} total, ${filteredInvoices.length} in date range ${startDate} to ${endDate}`)
   
   return filteredInvoices.map(invoice => ({
     id: invoice.Id,
@@ -148,7 +142,6 @@ async function getJournalEntryTransactions(calculator, startDate, endDate) {
     return txnDate >= startDateObj && txnDate <= endDateObj
   })
   
-  console.log(`[Transaction Details] Journal entries: ${journalEntries.length} total, ${filteredEntries.length} in date range ${startDate} to ${endDate}`)
   
   const transactions = []
   
@@ -220,17 +213,13 @@ async function getDelayedChargeTransactions(calculator, startDate, endDate) {
     return txnDate >= startDateObj && txnDate <= endDateObj
   })
   
-  console.log(`[Transaction Details] Delayed charges: ${delayedCharges.length} total, ${filteredCharges.length} in date range ${startDate} to ${endDate}`)
   
   // Debug logging for December delayed charges
   if (startDate.includes('2025-12')) {
-    console.log(`[DEBUG Transaction Details] December 2025 delayed charges breakdown:`)
-    console.log(`[DEBUG]   Date range filter: ${startDate} to ${endDate}`)
     
     delayedCharges.forEach(charge => {
       const txnDate = new Date(charge.TxnDate + 'T00:00:00.000Z')
       const included = txnDate >= startDateObj && txnDate <= endDateObj
-      console.log(`[DEBUG]   ${included ? 'INCLUDED' : 'EXCLUDED'}: ${charge.DocNumber} - ${charge.TxnDate} - $${charge.TotalAmt} - ${charge.CustomerRef?.name || 'Unknown'}`)
     })
   }
   
@@ -257,7 +246,6 @@ async function getMonthlyRecurringTransactions(calculator, startDate, endDate, m
     return [] // No monthly recurring for current/past months
   }
   
-  console.log('Getting monthly recurring transactions for future month:', format(monthDate, 'yyyy-MM'))
   
   const transactions = []
   
@@ -333,7 +321,6 @@ async function getMonthlyRecurringTransactions(calculator, startDate, endDate, m
     }
   }
   
-  console.log(`Found ${transactions.length} monthly recurring transactions (${baselineAmount > 0 ? 'including baseline' : 'no baseline'})`)
   return transactions
 }
 
@@ -454,33 +441,25 @@ async function getWeightedSalesTransactions(calculator, monthDate) {
     try {
       const pipedriveData = await calculator.getCachedPipedriveData()
       openDeals = pipedriveData?.openDeals || []
-      console.log(`[Weighted Sales] Using cached Pipedrive data: ${openDeals.length} deals`)
     } catch (cacheError) {
-      console.log(`[Weighted Sales] Cache failed, falling back to fresh API call:`, cacheError.message)
       openDeals = await calculator.pipedrive.getOpenDeals()
-      console.log(`[Weighted Sales] Fresh API call returned: ${openDeals.length} deals`)
     }
     
     const monthStr = format(monthDate, 'yyyy-MM')
     const transactions = []
     
-    console.log(`[Weighted Sales] Looking for deals in month: ${monthStr}`)
-    console.log(`[Weighted Sales] Total open deals: ${openDeals.length}`)
     
     let dealsForMonth = 0
     for (const deal of openDeals) {
       if (!deal.expectedCloseDate) {
-        console.log(`[Weighted Sales] Skipping deal ${deal.id}: no expected close date`)
         continue
       }
       
       // Use string-based comparison to avoid timezone issues
       const dealMonthStr = deal.expectedCloseDate.substring(0, 7) // Get YYYY-MM part
-      console.log(`[Weighted Sales] Deal ${deal.id}: expected close ${dealMonthStr}, looking for ${monthStr}`)
       
       if (dealMonthStr === monthStr) {
         dealsForMonth++
-        console.log(`[Weighted Sales] Found deal for ${monthStr}: ${deal.title} (${deal.expectedCloseDate})`)
       }
       
       if (dealMonthStr !== monthStr) continue
@@ -518,7 +497,6 @@ async function getWeightedSalesTransactions(calculator, monthDate) {
     // Sort by weighted value descending (highest value first)
     transactions.sort((a, b) => b.amount - a.amount)
     
-    console.log(`[Weighted Sales] Found ${dealsForMonth} deals for month ${monthStr}, returning ${transactions.length} transactions`)
     return transactions
   } catch (error) {
     console.error('Error getting weighted sales transactions:', error)

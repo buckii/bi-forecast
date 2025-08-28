@@ -22,9 +22,6 @@ export async function handler(event, context) {
       return error('Google token is required', 400)
     }
 
-    console.log('Received token length:', token.length)
-    console.log('Token starts with:', token.substring(0, 50))
-    console.log('Using Google Client ID:', process.env.GOOGLE_CLIENT_ID ? 'Set' : 'Missing')
 
     // Verify Google token
     const googleUserData = await verifyGoogleToken(token)
