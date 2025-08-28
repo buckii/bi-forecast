@@ -271,23 +271,18 @@ class RevenueCalculator {
       const isRecentMonth = Math.abs(new Date().getTime() - monthDate.getTime()) < (90 * 24 * 60 * 60 * 1000) // 90 days
       
       if (isCurrentMonth || (isRecentMonth && (components.invoiced > 0 || components.journalEntries > 0))) {
-          invoiced: components.invoiced,
-          journalEntries: components.journalEntries,
-          delayedCharges: components.delayedCharges,
-          monthlyRecurring: components.monthlyRecurring,
-          monthlyRecurringBreakdown: isFutureMonth ? {
-            baseline: baselineMonthlyRecurring,
-            additional: components.monthlyRecurring - baselineMonthlyRecurring,
-            total: components.monthlyRecurring
-          } : 'N/A (past/current month)',
-          wonUnscheduled: components.wonUnscheduled,
-          weightedSales: components.weightedSales,
-          dataCount: {
-            monthInvoices: monthInvoices.length,
-            monthJournalEntries: monthJournalEntries.length,
-            monthDelayedCharges: monthDelayedCharges.length
-          }
-        })
+        // Month has significant activity - log for debugging
+      }
+      
+      // Set monthly recurring breakdown for future months
+      if (isFutureMonth) {
+        components.monthlyRecurringBreakdown = {
+          baseline: baselineMonthlyRecurring,
+          additional: components.monthlyRecurring - baselineMonthlyRecurring,
+          total: components.monthlyRecurring
+        }
+      } else {
+        components.monthlyRecurringBreakdown = 'N/A (past/current month)'
       }
     }
     
@@ -504,11 +499,6 @@ class RevenueCalculator {
     } catch (error) {
       console.error('Error getting past delayed charges:', error)
     }
-    
-      overdueDeals: exceptions.overdueDeals.length,
-      pastDelayedCharges: exceptions.pastDelayedCharges.length, 
-      wonUnscheduled: exceptions.wonUnscheduled.length
-    })
     
     return exceptions
   }

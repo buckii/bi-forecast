@@ -426,17 +426,7 @@ class QuickBooksService {
       if (arRows.length > 0) {
         // Process each row in the report
         this.processAgedReceivablesRows(arRows, summary, 0)
-      } else {
       }
-      
-        current: summary.current,
-        days_1_15: summary.days_1_15,
-        days_16_30: summary.days_16_30,
-        days_31_45: summary.days_31_45,
-        days_45_plus: summary.days_45_plus,
-        total: summary.total,
-        customerCount: summary.details.length
-      })
       
       return summary
       
