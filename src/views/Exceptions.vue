@@ -6,9 +6,13 @@
       <!-- Overdue Deals -->
       <div class="card">
         <h2 class="text-lg font-semibold text-gray-900 mb-4">
-          Overdue Pipedrive Deals ({{ exceptions.overdueDeals.length }})
+          Overdue Pipedrive Deals ({{ exceptions?.overdueDeals?.length || 0 }})
         </h2>
-        <div v-if="exceptions.overdueDeals.length > 0" class="overflow-x-auto">
+        <div v-if="revenueStore.loading" class="flex items-center justify-center py-8">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          <span class="ml-3 text-gray-600">Loading overdue deals...</span>
+        </div>
+        <div v-else-if="exceptions?.overdueDeals?.length > 0" class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200">
             <thead>
               <tr>
@@ -29,10 +33,14 @@
                 </th>
               </tr>
             </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="deal in exceptions.overdueDeals" :key="deal.id">
+            <tbody class="divide-y divide-gray-200">
+              <tr v-for="deal in exceptions?.overdueDeals || []" :key="deal.id">
                 <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {{ deal.title }}
+                  <a :href="`https://buckeyeinnovation.pipedrive.com/deal/${deal.id}`" 
+                     target="_blank" 
+                     class="text-blue-600 hover:text-blue-800 hover:underline">
+                    {{ deal.title }}
+                  </a>
                 </td>
                 <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
                   {{ deal.org_name }}
@@ -56,9 +64,13 @@
       <!-- Past Delayed Charges -->
       <div class="card">
         <h2 class="text-lg font-semibold text-gray-900 mb-4">
-          Past Delayed Charges ({{ exceptions.pastDelayedCharges.length }})
+          Past Delayed Charges ({{ exceptions?.pastDelayedCharges?.length || 0 }})
         </h2>
-        <div v-if="exceptions.pastDelayedCharges.length > 0" class="overflow-x-auto">
+        <div v-if="revenueStore.loading" class="flex items-center justify-center py-8">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          <span class="ml-3 text-gray-600">Loading past delayed charges...</span>
+        </div>
+        <div v-else-if="exceptions?.pastDelayedCharges?.length > 0" class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200">
             <thead>
               <tr>
@@ -79,8 +91,8 @@
                 </th>
               </tr>
             </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="charge in exceptions.pastDelayedCharges" :key="charge.id">
+            <tbody class="divide-y divide-gray-200">
+              <tr v-for="charge in exceptions?.pastDelayedCharges || []" :key="charge.id">
                 <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
                   {{ charge.customer_name }}
                 </td>
@@ -106,9 +118,13 @@
       <!-- Won Unscheduled Deals -->
       <div class="card">
         <h2 class="text-lg font-semibold text-gray-900 mb-4">
-          Won Unscheduled Deals ({{ exceptions.wonUnscheduled.length }})
+          Won Unscheduled Deals ({{ exceptions?.wonUnscheduled?.length || 0 }})
         </h2>
-        <div v-if="exceptions.wonUnscheduled.length > 0" class="overflow-x-auto">
+        <div v-if="revenueStore.loading" class="flex items-center justify-center py-8">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          <span class="ml-3 text-gray-600">Loading won unscheduled deals...</span>
+        </div>
+        <div v-else-if="exceptions?.wonUnscheduled?.length > 0" class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200">
             <thead>
               <tr>
@@ -126,10 +142,14 @@
                 </th>
               </tr>
             </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="deal in exceptions.wonUnscheduled" :key="deal.id">
+            <tbody class="divide-y divide-gray-200">
+              <tr v-for="deal in exceptions?.wonUnscheduled || []" :key="deal.id">
                 <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {{ deal.title }}
+                  <a :href="`https://buckeyeinnovation.pipedrive.com/deal/${deal.id}`" 
+                     target="_blank" 
+                     class="text-blue-600 hover:text-blue-800 hover:underline">
+                    {{ deal.title }}
+                  </a>
                 </td>
                 <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
                   {{ deal.org_name }}

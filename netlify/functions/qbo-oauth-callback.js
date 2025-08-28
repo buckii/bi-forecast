@@ -9,7 +9,12 @@ export async function handler(event, context) {
   }
 
   try {
-    const { code, realmId, state } = event.queryStringParameters || {}
+    const { code, realmId, state, error: oauthError, error_description } = event.queryStringParameters || {}
+    
+    // Check for OAuth errors first
+    if (oauthError) {
+      throw new Error(`QuickBooks OAuth error: ${oauthError} - ${error_description || 'Unknown error'}`)
+    }
     
     if (!code || !realmId) {
       return error('Missing required OAuth parameters', 400)
@@ -47,8 +52,8 @@ export async function handler(event, context) {
     // Store encrypted tokens in database
     const tokensCollection = await getCollection('oauth_tokens')
     
-    // For now, we'll associate with the first company found
-    // In production, you'd want to properly associate with the correct company
+    // Get the company ID from the state parameter or use first company as fallback
+    // In a production app, you'd pass the user's company ID in the state parameter
     const companiesCollection = await getCollection('companies')
     const company = await companiesCollection.findOne({})
     

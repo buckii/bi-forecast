@@ -75,7 +75,10 @@ class PipedriveService {
       sort: 'expected_close_date'
     }
     
-    return await this.makeRequest('deals', params)
+    const deals = await this.makeRequest('deals', params)
+    
+    // Apply field filtering to ensure we have consistent structure
+    return deals.map(deal => this.filterDealFields(deal))
   }
 
   async getWonDeals(startDate, endDate) {
@@ -146,8 +149,25 @@ class PipedriveService {
     
     const wonDeals = await this.makeRequest('deals', params)
     
+    // Won unscheduled deals have invoices_scheduled != '44' (44 means scheduled)
+    // and should be relatively recent (within last 6 months to avoid old deals)
+    const sixMonthsAgo = new Date()
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+    
     return wonDeals
-      .filter(deal => !deal[this.customFields.invoicesScheduled] || deal[this.customFields.invoicesScheduled] !== '44')
+      .filter(deal => {
+        const scheduled = deal[this.customFields.invoicesScheduled]
+        const isUnscheduled = !scheduled || scheduled !== '44'
+        
+        // Check if deal was won recently (within last 6 months)
+        let isRecent = true
+        if (deal.won_time) {
+          const wonDate = new Date(deal.won_time)
+          isRecent = wonDate >= sixMonthsAgo
+        }
+        
+        return isUnscheduled && isRecent
+      })
       .map(deal => this.filterDealFields(deal))
   }
 

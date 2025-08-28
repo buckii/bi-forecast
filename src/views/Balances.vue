@@ -6,7 +6,11 @@
       <!-- Asset Accounts -->
       <div class="card">
         <h2 class="text-lg font-semibold text-gray-900 mb-4">Asset Accounts</h2>
-        <div v-if="balances.assets.length > 0" class="overflow-x-auto">
+        <div v-if="revenueStore.loading" class="flex items-center justify-center py-8">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          <span class="ml-3 text-gray-600">Loading asset accounts...</span>
+        </div>
+        <div v-else-if="balances?.assets?.length > 0" class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200">
             <thead>
               <tr>
@@ -24,8 +28,8 @@
                 </th>
               </tr>
             </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="account in balances.assets" :key="account.id">
+            <tbody class="divide-y divide-gray-200">
+              <tr v-for="account in balances?.assets || []" :key="account.id">
                 <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
                   {{ account.name }}
                 </td>
@@ -42,14 +46,84 @@
               </tr>
             </tbody>
           </table>
+          
+          <!-- Asset Total -->
+          <div class="mt-4 pt-4 border-t border-gray-200">
+            <div class="flex justify-between items-center">
+              <span class="text-lg font-semibold text-gray-900">Total Assets:</span>
+              <span class="text-xl font-bold text-primary-600">
+                {{ formatCurrency(assetTotal) }}
+              </span>
+            </div>
+          </div>
         </div>
         <p v-else class="text-gray-500">No asset accounts found</p>
+      </div>
+
+      <!-- Liability Accounts -->
+      <div class="card">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Liability Accounts</h2>
+        <div v-if="revenueStore.loading" class="flex items-center justify-center py-8">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          <span class="ml-3 text-gray-600">Loading liability accounts...</span>
+        </div>
+        <div v-else-if="filteredLiabilities?.length > 0" class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead>
+              <tr>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Account Name
+                </th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Type
+                </th>
+                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Balance
+                </th>
+                <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Last Updated
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+              <tr v-for="account in filteredLiabilities" :key="account.id">
+                <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                  {{ account.name }}
+                </td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                  {{ account.subType }}
+                </td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-right text-red-600">
+                  {{ formatCurrency(account.balance) }}
+                </td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500 text-center">
+                  {{ formatDate(account.last_updated) }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <!-- Liability Total -->
+          <div class="mt-4 pt-4 border-t border-gray-200">
+            <div class="flex justify-between items-center">
+              <span class="text-lg font-semibold text-gray-900">Total Liabilities:</span>
+              <span class="text-xl font-bold text-red-600">
+                {{ formatCurrency(liabilityTotal) }}
+              </span>
+            </div>
+          </div>
+        </div>
+        <p v-else class="text-gray-500">No NotesPayable or Unearned Revenue accounts with non-zero balance found</p>
       </div>
       
       <!-- Aged Accounts Receivable -->
       <div class="card">
         <h2 class="text-lg font-semibold text-gray-900 mb-4">Aged Accounts Receivable</h2>
-        <div v-if="balances.receivables" class="space-y-4">
+        <div v-if="revenueStore.loading" class="flex items-center justify-center py-8">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          <span class="ml-3 text-gray-600">Loading aged receivables...</span>
+        </div>
+        <div v-else-if="balances?.receivables && balances.receivables.total > 0" class="space-y-4">
           <!-- Summary -->
           <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
             <div class="text-center">
@@ -122,35 +196,64 @@
                   </th>
                 </tr>
               </thead>
-              <tbody class="bg-white divide-y divide-gray-200">
+              <tbody class="divide-y divide-gray-200">
                 <tr v-for="customer in balances.receivables.details" :key="customer.id">
                   <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {{ customer.name }}
+                    {{ customer.customer }}
                   </td>
                   <td class="px-4 py-2 whitespace-nowrap text-sm text-right text-green-600">
-                    {{ formatCurrency(customer.current) }}
+                    {{ customer.current > 0 ? formatCurrency(customer.current) : '' }}
                   </td>
                   <td class="px-4 py-2 whitespace-nowrap text-sm text-right text-yellow-600">
-                    {{ formatCurrency(customer.days_1_15) }}
+                    {{ customer.days_1_15 > 0 ? formatCurrency(customer.days_1_15) : '' }}
                   </td>
                   <td class="px-4 py-2 whitespace-nowrap text-sm text-right text-orange-600">
-                    {{ formatCurrency(customer.days_16_30) }}
+                    {{ customer.days_16_30 > 0 ? formatCurrency(customer.days_16_30) : '' }}
                   </td>
                   <td class="px-4 py-2 whitespace-nowrap text-sm text-right text-red-600">
-                    {{ formatCurrency(customer.days_31_45) }}
+                    {{ customer.days_31_45 > 0 ? formatCurrency(customer.days_31_45) : '' }}
                   </td>
                   <td class="px-4 py-2 whitespace-nowrap text-sm text-right text-red-800">
-                    {{ formatCurrency(customer.days_45_plus) }}
+                    {{ customer.days_45_plus > 0 ? formatCurrency(customer.days_45_plus) : '' }}
                   </td>
                   <td class="px-4 py-2 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
                     {{ formatCurrency(customer.total) }}
                   </td>
                 </tr>
               </tbody>
+              <!-- Total row -->
+              <tfoot class="bg-gray-50">
+                <tr class="border-t-2 border-gray-300">
+                  <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900">
+                    TOTAL
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-green-600">
+                    {{ balances.receivables.current > 0 ? formatCurrency(balances.receivables.current) : '' }}
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-yellow-600">
+                    {{ balances.receivables.days_1_15 > 0 ? formatCurrency(balances.receivables.days_1_15) : '' }}
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-orange-600">
+                    {{ balances.receivables.days_16_30 > 0 ? formatCurrency(balances.receivables.days_16_30) : '' }}
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-red-600">
+                    {{ balances.receivables.days_31_45 > 0 ? formatCurrency(balances.receivables.days_31_45) : '' }}
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-red-800">
+                    {{ balances.receivables.days_45_plus > 0 ? formatCurrency(balances.receivables.days_45_plus) : '' }}
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-primary-600">
+                    {{ formatCurrency(balances.receivables.total) }}
+                  </td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         </div>
-        <p v-else class="text-gray-500">No A/R data available</p>
+        <div v-else class="text-gray-500">
+          <p v-if="!balances.receivables">No A/R data available - unable to fetch receivables information</p>
+          <p v-else>No outstanding receivables found - all invoices are paid</p>
+        </div>
       </div>
     </div>
   </AppLayout>
@@ -166,6 +269,38 @@ const revenueStore = useRevenueStore()
 
 const balances = computed(() => revenueStore.balances)
 
+const assetTotal = computed(() => {
+  if (!balances.value?.assets) return 0
+  return balances.value.assets.reduce((sum, account) => sum + (account.balance || 0), 0)
+})
+
+const filteredLiabilities = computed(() => {
+  if (!balances.value?.liabilities) return []
+  
+  return balances.value.liabilities.filter(account => {
+    // Only show accounts with non-zero balance
+    if (!account.balance || account.balance === 0) return false
+    
+    // Show NotesPayable accounts
+    if (account.subType === 'NotesPayable') return true
+    
+    // Show Credit Card accounts
+    if (account.subType === 'CreditCard') return true
+    
+    // Show Line of Credit accounts
+    if (account.subType === 'LineOfCredit') return true
+    
+    // Show accounts with "Unearned Revenue" in the name (case insensitive)
+    if (account.name && account.name.toLowerCase().includes('unearned revenue')) return true
+    
+    return false
+  })
+})
+
+const liabilityTotal = computed(() => {
+  return filteredLiabilities.value.reduce((sum, account) => sum - Math.abs(account.balance || 0), 0)
+})
+
 function formatCurrency(value) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -179,6 +314,7 @@ function formatDate(date) {
   if (!date) return ''
   return format(parseISO(date), 'MMM dd, yyyy')
 }
+
 
 onMounted(() => {
   if (!revenueStore.revenueData.length) {

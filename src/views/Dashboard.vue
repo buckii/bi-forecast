@@ -18,11 +18,11 @@
           </div>
           
           <div class="flex space-x-2">
-            <button @click="refreshQBO" :disabled="revenueStore.loading" class="btn-secondary">
-              Refresh QBO
+            <button @click="refreshQBO" :disabled="refreshingQBO" class="btn-secondary">
+              {{ refreshingQBO ? 'Refreshing...' : 'Refresh QBO' }}
             </button>
-            <button @click="refreshPipedrive" :disabled="revenueStore.loading" class="btn-secondary">
-              Refresh Pipedrive
+            <button @click="refreshPipedrive" :disabled="refreshingPipedrive" class="btn-secondary">
+              {{ refreshingPipedrive ? 'Refreshing...' : 'Refresh Pipedrive' }}
             </button>
           </div>
         </div>
@@ -67,14 +67,14 @@
       <!-- Revenue Chart -->
       <div class="card">
         <h2 class="text-xl font-bold text-gray-900 mb-4">Monthly Revenue Forecast</h2>
-        <div class="h-96">
+        <div class="h-96 relative">
+          <!-- Loading State inside chart area -->
+          <div v-if="revenueStore.loading" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          </div>
+          <!-- Chart content -->
           <RevenueChart :data="chartData" @bar-click="handleBarClick" />
         </div>
-      </div>
-      
-      <!-- Loading State -->
-      <div v-if="revenueStore.loading" class="flex justify-center py-8">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
       
       <!-- Error State -->
@@ -82,6 +82,14 @@
         <p class="text-red-600">{{ revenueStore.error }}</p>
       </div>
     </div>
+
+    <!-- Transaction Details Modal -->
+    <TransactionDetailsModal
+      :is-open="showTransactionModal"
+      :month="selectedTransaction.month"
+      :component="selectedTransaction.component"
+      @close="closeTransactionModal"
+    />
   </AppLayout>
 </template>
 
@@ -90,17 +98,31 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRevenueStore } from '../stores/revenue'
 import AppLayout from '../components/AppLayout.vue'
 import RevenueChart from '../components/RevenueChart.vue'
+import TransactionDetailsModal from '../components/TransactionDetailsModal.vue'
 import { format, parse } from 'date-fns'
 
 const revenueStore = useRevenueStore()
 
 const selectedDateStr = ref(format(new Date(), 'yyyy-MM-dd'))
+const refreshingQBO = ref(false)
+const refreshingPipedrive = ref(false)
+const showTransactionModal = ref(false)
+const selectedTransaction = ref({ month: '', component: '' })
 
 const chartData = computed(() => {
-  return revenueStore.revenueData.map(month => ({
-    month: month.month,
-    ...month.components
-  }))
+  return revenueStore.revenueData.map(month => {
+    const data = {
+      month: month.month,
+      ...month.components
+    }
+    
+    // Conditionally exclude weighted sales based on setting
+    if (!revenueStore.includeWeightedSales) {
+      data.weightedSales = 0
+    }
+    
+    return data
+  })
 })
 
 function formatCurrency(value) {
@@ -123,20 +145,58 @@ function handleDateChange() {
   }
 }
 
-function refreshQBO() {
-  revenueStore.refreshQuickbooks()
+async function refreshQBO() {
+  refreshingQBO.value = true
+  try {
+    await revenueStore.refreshQuickbooks()
+  } finally {
+    refreshingQBO.value = false
+  }
 }
 
-function refreshPipedrive() {
-  revenueStore.refreshPipedrive()
+async function refreshPipedrive() {
+  refreshingPipedrive.value = true
+  try {
+    await revenueStore.refreshPipedrive()
+  } finally {
+    refreshingPipedrive.value = false
+  }
 }
 
 function handleBarClick(data) {
   console.log('Bar clicked:', data)
-  // TODO: Show drill-down modal
+  selectedTransaction.value = {
+    month: data.month,
+    component: data.component
+  }
+  showTransactionModal.value = true
 }
 
-onMounted(() => {
-  revenueStore.loadRevenueData()
+function closeTransactionModal() {
+  showTransactionModal.value = false
+  selectedTransaction.value = { month: '', component: '' }
+}
+
+onMounted(async () => {
+  try {
+    await revenueStore.loadRevenueData()
+    
+    // Debug: Log chart data to see what components have values
+    console.log('Chart data for debugging:', chartData.value.slice(0, 5).map(month => ({
+      month: month.month,
+      invoiced: month.invoiced,
+      journalEntries: month.journalEntries,
+      delayedCharges: month.delayedCharges,
+      monthlyRecurring: month.monthlyRecurring,
+      wonUnscheduled: month.wonUnscheduled,
+      weightedSales: month.weightedSales,
+      totals: {
+        nonInvoiced: (month.journalEntries || 0) + (month.delayedCharges || 0) + (month.monthlyRecurring || 0) + (month.wonUnscheduled || 0) + (month.weightedSales || 0)
+      }
+    })))
+  } catch (err) {
+    console.error('Failed to load initial data:', err)
+    // Don't block the UI if initial load fails
+  }
 })
 </script>

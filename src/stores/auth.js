@@ -9,7 +9,28 @@ export const useAuthStore = defineStore('auth', () => {
   
   const isAuthenticated = computed(() => !!token.value)
   
-  async function login(googleToken) {
+  async function login(jwtToken) {
+    try {
+      // If we receive a JWT token directly, use it
+      if (jwtToken) {
+        token.value = jwtToken
+        localStorage.setItem('token', jwtToken)
+        
+        // Fetch user data with the token
+        const response = await authService.getCurrentUser()
+        user.value = response.user
+        company.value = response.company
+        return response
+      } else {
+        throw new Error('No token provided')
+      }
+    } catch (error) {
+      console.error('Login failed:', error)
+      throw error
+    }
+  }
+  
+  async function loginWithGoogle(googleToken) {
     try {
       const response = await authService.googleLogin(googleToken)
       token.value = response.token
@@ -18,7 +39,7 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('token', response.token)
       return response
     } catch (error) {
-      console.error('Login failed:', error)
+      console.error('Google login failed:', error)
       throw error
     }
   }
@@ -51,6 +72,7 @@ export const useAuthStore = defineStore('auth', () => {
     company,
     isAuthenticated,
     login,
+    loginWithGoogle,
     logout,
     fetchCurrentUser
   }

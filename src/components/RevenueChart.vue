@@ -30,6 +30,56 @@ const chartColors = {
   weightedSales: '#64748b'    // slate
 }
 
+// Custom plugin to display total values above bar stacks
+const totalLabelPlugin = {
+  id: 'totalLabel',
+  afterDatasetsDraw: function(chart) {
+    const ctx = chart.ctx
+    
+    chart.data.labels.forEach((label, index) => {
+      const meta = chart.getDatasetMeta(0)
+      const dataPoint = meta.data[index]
+      
+      // Calculate total for this bar stack
+      let total = 0
+      chart.data.datasets.forEach((dataset, datasetIndex) => {
+        const value = dataset.data[index] || 0
+        total += value
+      })
+      
+      if (total > 0) {
+        // Get the top of the stack
+        let stackTop = 0
+        chart.data.datasets.forEach((dataset, datasetIndex) => {
+          const value = dataset.data[index] || 0
+          stackTop += value
+        })
+        
+        // Position the text
+        const x = dataPoint.x
+        const y = chart.scales.y.getPixelForValue(stackTop) - 10
+        
+        // Format the total value
+        const formattedTotal = new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0
+        }).format(total)
+        
+        // Draw the total
+        ctx.save()
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'bottom'
+        ctx.font = '12px sans-serif'
+        ctx.fillStyle = '#374151'
+        ctx.fillText(formattedTotal, x, y)
+        ctx.restore()
+      }
+    })
+  }
+}
+
 function createChart() {
   if (chartInstance) {
     chartInstance.destroy()
@@ -44,6 +94,7 @@ function createChart() {
   
   chartInstance = new Chart(ctx, {
     type: 'bar',
+    plugins: [totalLabelPlugin],
     data: {
       labels,
       datasets: [

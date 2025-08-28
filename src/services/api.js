@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const isDevelopment = import.meta.env.DEV
-const baseURL = isDevelopment ? 'http://localhost:8888/.netlify/functions' : '/.netlify/functions'
+const baseURL = '/.netlify/functions'
 
 const api = axios.create({
   baseURL,
@@ -25,7 +25,19 @@ api.interceptors.request.use(
 )
 
 api.interceptors.response.use(
-  response => response.data,
+  response => {
+    // If the response has a data wrapper with success flag, unwrap it
+    if (response.data && typeof response.data === 'object' && 'success' in response.data) {
+      if (response.data.success && response.data.data !== undefined) {
+        return response.data.data
+      }
+      // If success is false, throw the error
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Request failed')
+      }
+    }
+    return response.data
+  },
   error => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token')

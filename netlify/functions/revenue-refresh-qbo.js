@@ -1,6 +1,6 @@
 import { success, error, cors } from './utils/response.js'
 import { getCurrentUser } from './utils/auth.js'
-import RevenueCalculator from './services/revenue-calculator.js'
+import RevenueCalculator from './services/revenue-calculator-optimized.js'
 import { getCollection } from './utils/database.js'
 
 export async function handler(event, context) {
@@ -14,19 +14,27 @@ export async function handler(event, context) {
   }
 
   try {
+    const startTime = Date.now()
     const { company } = await getCurrentUser(event)
+    
+    console.log(`Starting QBO refresh for company ${company._id}`)
     
     const calculator = new RevenueCalculator(company._id)
     
-    // Force refresh of QuickBooks data by recalculating revenue
-    const months = await calculator.calculateMonthlyRevenue(24)
-    const balances = await calculator.getBalances()
+    // Use optimized parallel data fetching
+    const [months, balances] = await Promise.all([
+      calculator.calculateMonthlyRevenue(14),
+      calculator.getBalances()
+    ])
+    
+    console.log(`Data calculation completed in ${Date.now() - startTime}ms`)
     
     // Update the current archive with fresh data
     const archivesCollection = await getCollection('revenue_archives')
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     
+    const dbStartTime = Date.now()
     await archivesCollection.updateOne(
       { 
         companyId: company._id,
@@ -42,9 +50,17 @@ export async function handler(event, context) {
       { upsert: true }
     )
     
+    console.log(`Database update completed in ${Date.now() - dbStartTime}ms`)
+    console.log(`Total QBO refresh time: ${Date.now() - startTime}ms`)
+    
     return success({
       message: 'QuickBooks data refreshed successfully',
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
+      performanceStats: {
+        totalTime: Date.now() - startTime,
+        monthsCalculated: months.length,
+        balanceAccounts: balances.assets?.length || 0
+      }
     })
     
   } catch (err) {

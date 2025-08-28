@@ -12,9 +12,14 @@
       </div>
       
       <div class="card">
+        <!-- Google Sign-In Button -->
+        <div v-if="googleAuth.isLoaded" id="google-signin-button" class="mb-4"></div>
+        
+        <!-- Fallback button -->
         <button
+          v-if="!googleAuth.isLoaded"
           @click="handleGoogleLogin"
-          :disabled="loading"
+          :disabled="googleAuth.isLoading || !clientIdConfigured"
           class="w-full flex justify-center items-center px-4 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -23,11 +28,17 @@
             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
           </svg>
-          {{ loading ? 'Signing in...' : 'Sign in with Google' }}
+          {{ getButtonText() }}
         </button>
         
-        <div v-if="error" class="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-          <p class="text-sm text-red-600">{{ error }}</p>
+        <div v-if="displayError" class="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+          <p class="text-sm text-red-600">{{ displayError }}</p>
+        </div>
+        
+        <div v-if="!clientIdConfigured" class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+          <p class="text-sm text-yellow-600">
+            Google Client ID not configured. Please add VITE_GOOGLE_CLIENT_ID to your .env file.
+          </p>
         </div>
       </div>
       
@@ -39,29 +50,91 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useGoogleAuth } from '../composables/useGoogleAuth'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const googleAuth = useGoogleAuth()
 
-const loading = ref(false)
-const error = ref(null)
+const clientIdConfigured = computed(() => {
+  return !!import.meta.env.VITE_GOOGLE_CLIENT_ID
+})
+
+const displayError = computed(() => {
+  return googleAuth.error.value
+})
+
+function getButtonText() {
+  if (googleAuth.isLoading.value) return 'Signing in...'
+  if (!clientIdConfigured.value) return 'Google Client ID Not Configured'
+  if (!googleAuth.isLoaded.value) return 'Loading Google Sign-In...'
+  return 'Sign in with Google'
+}
 
 async function handleGoogleLogin() {
-  loading.value = true
-  error.value = null
-  
   try {
-    // This would integrate with Google Sign-In
-    // For now, we'll show a placeholder
-    error.value = 'Google Sign-In integration pending. Please configure OAuth2 credentials.'
+    await googleAuth.signIn()
   } catch (err) {
-    error.value = 'Failed to sign in. Please try again.'
     console.error('Login error:', err)
-  } finally {
-    loading.value = false
   }
 }
+
+// Handle successful authentication
+async function handleAuthSuccess(authData) {
+  try {
+    // Update auth store
+    await authStore.login(authData.token)
+    
+    // Redirect to dashboard
+    router.push('/')
+  } catch (err) {
+    console.error('Post-auth error:', err)
+    googleAuth.error.value = 'Login succeeded but failed to initialize app. Please try again.'
+  }
+}
+
+// Listen for successful authentication
+const handleGoogleAuthSuccess = async (event) => {
+  console.log('Received googleAuthSuccess event', event.detail)
+  await handleAuthSuccess(event.detail)
+}
+
+// Add event listener
+onMounted(() => {
+  window.addEventListener('googleAuthSuccess', handleGoogleAuthSuccess)
+})
+
+// Clean up event listener
+onUnmounted(() => {
+  window.removeEventListener('googleAuthSuccess', handleGoogleAuthSuccess)
+})
+
+// Render Google button when loaded
+watch(() => googleAuth.isLoaded.value, async (isLoaded) => {
+  if (isLoaded && clientIdConfigured.value) {
+    await nextTick()
+    try {
+      googleAuth.renderButton('google-signin-button', {
+        theme: 'outline',
+        size: 'large',
+        width: '100%',
+        text: 'signin_with'
+      })
+    } catch (err) {
+      console.error('Failed to render Google button:', err)
+    }
+  }
+})
+
+onMounted(() => {
+  // Disable One Tap for development to avoid origin issues
+  // if (clientIdConfigured.value) {
+  //   setTimeout(() => {
+  //     googleAuth.signInWithOneTap()
+  //   }, 1000)
+  // }
+})
 </script>

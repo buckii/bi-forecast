@@ -81,7 +81,8 @@ class RevenueCalculator {
       components.monthlyRecurring = await this.qbo.getMonthlyRecurringRevenue(monthDate)
       
     } catch (error) {
-      console.error('Error fetching QuickBooks data:', error)
+      console.error('Error fetching QuickBooks data:', error.message || error)
+      console.error('QBO Error details:', error.stack)
     }
     
     try {

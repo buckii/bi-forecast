@@ -19,3 +19,19 @@ onMounted(async () => {
 <template>
   <RouterView />
 </template>
+
+<style>
+/* Zebra striping for all tables */
+tbody tr:nth-child(even) {
+  background-color: #f9fafb; /* bg-gray-50 */
+}
+
+tbody tr:nth-child(odd) {
+  background-color: #ffffff; /* bg-white */
+}
+
+/* Ensure hover states work properly with zebra stripes */
+tbody tr:hover {
+  background-color: #f3f4f6; /* bg-gray-100 */
+}
+</style>

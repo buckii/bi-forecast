@@ -6,6 +6,12 @@
 [build.environment]
   NODE_VERSION = "20"
 
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cross-Origin-Opener-Policy = "same-origin-allow-popups"
+    Cross-Origin-Embedder-Policy = "unsafe-none"
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
@@ -16,13 +22,6 @@
   to = "/index.html"
   status = 200
 
-# Scheduled function for daily data archiving
-[[plugins]]
-  package = "@netlify/plugin-scheduled-functions"
-
-  [plugins.inputs]
-  [plugins.inputs.scheduled-archive]
-    schedule = "0 7 * * *"  # 3am ET (7am UTC)
 
 # Environment variables needed:
 # MONGODB_URI - MongoDB connection string

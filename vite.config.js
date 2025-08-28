@@ -8,7 +8,7 @@ export default defineConfig({
     vue(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      includeAssets: ['vite.svg'],
       manifest: {
         name: 'BI Forecast',
         short_name: 'BI Forecast',
@@ -19,19 +19,19 @@ export default defineConfig({
         orientation: 'portrait',
         icons: [
           {
-            src: '/pwa-192x192.png',
+            src: '/vite.svg',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/svg+xml'
           },
           {
-            src: '/pwa-512x512.png',
+            src: '/vite.svg',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/svg+xml'
           },
           {
-            src: '/pwa-512x512.png',
+            src: '/vite.svg',
             sizes: '512x512',
-            type: 'image/png',
+            type: 'image/svg+xml',
             purpose: 'any maskable'
           }
         ]
@@ -57,7 +57,20 @@ export default defineConfig({
     })
   ],
   server: {
-    port: 3000,
-    host: true
+    port: 5173,
+    host: true,
+    allowedHosts: [
+      'local.buckeye.dev',
+      '.buckeye.dev',
+      'localhost',
+      '.trycloudflare.com',
+      '.netlify.live'
+    ],
+    proxy: {
+      '/.netlify/functions': {
+        target: 'http://localhost:8888',
+        changeOrigin: true
+      }
+    }
   }
 })

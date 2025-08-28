@@ -11,6 +11,7 @@
     "functions:serve": "netlify functions:serve"
   },
   "dependencies": {
+    "@google-cloud/local-auth": "^3.0.1",
     "@netlify/functions": "^4.2.2",
     "@vueuse/core": "^13.7.0",
     "autoprefixer": "^10.4.21",
@@ -22,6 +23,7 @@
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.1",
     "google-auth-library": "^10.3.0",
+    "google-one-tap": "^1.0.6",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.18.0",
     "node-fetch": "^3.3.2",

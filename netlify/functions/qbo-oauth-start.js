@@ -19,16 +19,17 @@ export async function handler(event, context) {
     const scope = 'com.intuit.quickbooks.accounting'
     const state = Math.random().toString(36).substring(2, 15) // Simple state for CSRF protection
     
+    
     if (!clientId) {
       return error('QuickBooks OAuth not configured', 500)
     }
     
+    // QuickBooks OAuth2 URL - note: no access_type parameter for QuickBooks
     const authUrl = `https://appcenter.intuit.com/connect/oauth2?` +
       `client_id=${encodeURIComponent(clientId)}&` +
       `scope=${encodeURIComponent(scope)}&` +
       `redirect_uri=${encodeURIComponent(redirectUri)}&` +
       `response_type=code&` +
-      `access_type=offline&` +
       `state=${state}`
     
     return success({

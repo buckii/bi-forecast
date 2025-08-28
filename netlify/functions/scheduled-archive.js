@@ -1,6 +1,6 @@
 import { success, error } from './utils/response.js'
 import { getCollection } from './utils/database.js'
-import RevenueCalculator from './services/revenue-calculator.js'
+import RevenueCalculator from './services/revenue-calculator-optimized.js'
 
 export async function handler(event, context) {
   // This function runs daily at 3am ET via Netlify scheduled functions
@@ -22,7 +22,7 @@ export async function handler(event, context) {
         const calculator = new RevenueCalculator(company._id)
         
         // Calculate current revenue data
-        const months = await calculator.calculateMonthlyRevenue(24)
+        const months = await calculator.calculateMonthlyRevenue(14)
         const exceptions = await calculator.getExceptions()
         const balances = await calculator.getBalances()
         

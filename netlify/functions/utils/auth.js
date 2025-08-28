@@ -126,10 +126,19 @@ export async function getCurrentUser(event) {
   const token = getAuthorizationToken(event)
   const decoded = verifyToken(token)
   
+  console.log('Decoded token:', decoded)
+  
   const usersCollection = await getCollection('users')
   const companiesCollection = await getCollection('companies')
   
-  const user = await usersCollection.findOne({ _id: decoded.userId })
+  // Try to find user with ObjectId conversion
+  const { ObjectId } = await import('mongodb')
+  const userId = typeof decoded.userId === 'string' ? new ObjectId(decoded.userId) : decoded.userId
+  
+  console.log('Looking for user with ID:', userId)
+  const user = await usersCollection.findOne({ _id: userId })
+  console.log('Found user:', user ? 'yes' : 'no')
+  
   if (!user) {
     throw new Error('User not found')
   }
