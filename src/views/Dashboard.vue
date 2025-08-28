@@ -164,7 +164,6 @@ async function refreshPipedrive() {
 }
 
 function handleBarClick(data) {
-  console.log('Bar clicked:', data)
   selectedTransaction.value = {
     month: data.month,
     component: data.component
@@ -181,21 +180,8 @@ onMounted(async () => {
   try {
     await revenueStore.loadRevenueData()
     
-    // Debug: Log chart data to see what components have values
-    console.log('Chart data for debugging:', chartData.value.slice(0, 5).map(month => ({
-      month: month.month,
-      invoiced: month.invoiced,
-      journalEntries: month.journalEntries,
-      delayedCharges: month.delayedCharges,
-      monthlyRecurring: month.monthlyRecurring,
-      wonUnscheduled: month.wonUnscheduled,
-      weightedSales: month.weightedSales,
-      totals: {
-        nonInvoiced: (month.journalEntries || 0) + (month.delayedCharges || 0) + (month.monthlyRecurring || 0) + (month.wonUnscheduled || 0) + (month.weightedSales || 0)
-      }
-    })))
+    // Initial data loaded successfully
   } catch (err) {
-    console.error('Failed to load initial data:', err)
     // Don't block the UI if initial load fails
   }
 })

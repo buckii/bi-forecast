@@ -55,7 +55,6 @@ export function useGoogleAuth() {
 
       isLoaded.value = true
     } catch (err) {
-      console.error('Google Sign-In initialization failed:', err)
       error.value = err.message
     }
   }
@@ -78,12 +77,8 @@ export function useGoogleAuth() {
         body: JSON.stringify({ token: googleToken }),
       })
 
-      console.log('Auth response status:', authResponse.status)
-      console.log('Auth response headers:', authResponse.headers)
-      
       if (!authResponse.ok) {
         const responseText = await authResponse.text()
-        console.log('Error response text:', responseText)
         try {
           const errorData = JSON.parse(responseText)
           throw new Error(errorData.error || 'Authentication failed')
@@ -93,7 +88,6 @@ export function useGoogleAuth() {
       }
 
       const responseText = await authResponse.text()
-      console.log('Success response text:', responseText)
       
       if (!responseText) {
         throw new Error('Empty response from server')
@@ -105,7 +99,6 @@ export function useGoogleAuth() {
       localStorage.setItem('token', data.token)
       
       // Trigger redirect by dispatching custom event
-      console.log('Dispatching googleAuthSuccess event', data)
       window.dispatchEvent(new CustomEvent('googleAuthSuccess', {
         detail: {
           user: data.user,
@@ -113,7 +106,6 @@ export function useGoogleAuth() {
           token: data.token
         }
       }))
-      console.log('Event dispatched')
       
       // Emit success event or return data
       return {
@@ -124,7 +116,6 @@ export function useGoogleAuth() {
       }
       
     } catch (err) {
-      console.error('Authentication error:', err)
       error.value = err.message
       throw err
     } finally {
@@ -145,7 +136,6 @@ export function useGoogleAuth() {
       window.google.accounts.id.prompt()
       
     } catch (err) {
-      console.error('Sign-in error:', err)
       error.value = err.message
       throw err
     }
@@ -161,15 +151,10 @@ export function useGoogleAuth() {
       // Only show One Tap on HTTPS origins or if explicitly configured
       if (window.location.protocol === 'https:' || window.location.hostname === 'localhost') {
         // Show One Tap if available
-        window.google.accounts.id.prompt((notification) => {
-          if (notification.isNotDisplayed()) {
-            console.log('One Tap not displayed:', notification.getNotDisplayedReason())
-          }
-        })
+        window.google.accounts.id.prompt()
       }
       
     } catch (err) {
-      console.error('One Tap error:', err)
       error.value = err.message
     }
   }

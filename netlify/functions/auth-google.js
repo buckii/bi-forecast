@@ -1,5 +1,6 @@
 import { success, error, cors } from './utils/response.js'
 import { verifyGoogleToken, getOrCreateUser, generateToken } from './utils/auth.js'
+import { validateFunctionEnv } from './utils/env-validation.js'
 
 export async function handler(event, context) {
   // Handle CORS preflight requests
@@ -12,6 +13,9 @@ export async function handler(event, context) {
   }
 
   try {
+    // Validate required environment variables
+    validateFunctionEnv(['GOOGLE_CLIENT_ID', 'JWT_SECRET', 'MONGODB_URI'])
+    
     const { token } = JSON.parse(event.body || '{}')
     
     if (!token) {
@@ -47,7 +51,6 @@ export async function handler(event, context) {
     })
     
   } catch (err) {
-    console.error('Google auth error:', err)
     return error(err.message || 'Authentication failed', 401)
   }
 }

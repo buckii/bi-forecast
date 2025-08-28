@@ -79,25 +79,28 @@ export async function handler(event, context) {
     )
     
     // Redirect to success page
-    const successUrl = process.env.URL || 'http://localhost:3000'
+    if (!process.env.URL) {
+      return error('URL environment variable not configured', 500)
+    }
     
     return {
       statusCode: 302,
       headers: {
-        Location: `${successUrl}/settings?qbo=connected`
+        Location: `${process.env.URL}/settings?qbo=connected`
       }
     }
     
   } catch (err) {
-    console.error('QBO OAuth callback error:', err)
     
     // Redirect to error page
-    const errorUrl = process.env.URL || 'http://localhost:3000'
+    if (!process.env.URL) {
+      return error('URL environment variable not configured', 500)
+    }
     
     return {
       statusCode: 302,
       headers: {
-        Location: `${errorUrl}/settings?qbo=error&message=${encodeURIComponent(err.message)}`
+        Location: `${process.env.URL}/settings?qbo=error&message=${encodeURIComponent(err.message)}`
       }
     }
   }

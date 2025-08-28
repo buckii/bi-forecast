@@ -5,13 +5,15 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 ## Features
 
 - **Multi-tenant SaaS**: Support multiple companies with domain-based access control
-- **Progressive Web App**: Installable on mobile devices with offline capabilities
-- **Revenue Forecasting**: 6 components of monthly revenue calculation
+- **Progressive Web App**: Installable on mobile devices with manifest and service worker
+- **Revenue Forecasting**: 6 components of monthly revenue calculation with real-time updates
 - **Historical Data**: Daily data archiving with date selector for historical views
-- **API Integrations**: QuickBooks Online and Pipedrive with OAuth2 flows
-- **Real-time Charts**: Chart.js visualizations with drill-down capabilities
-- **Mobile Responsive**: Optimized for mobile and desktop usage
-- **Automated Refresh**: Scheduled daily data refresh at 3am ET
+- **API Integrations**: QuickBooks Online OAuth2 and Pipedrive API key authentication
+- **Interactive Charts**: Chart.js visualizations with drill-down transaction details
+- **Exception Tracking**: Monitor overdue deals, past charges, and unscheduled items
+- **Balance Monitoring**: Asset accounts and aged A/R reporting
+- **Mobile Responsive**: Optimized for mobile and desktop with touch interactions
+- **Automated Refresh**: Scheduled daily data refresh at 3am ET via Netlify functions
 
 ## Revenue Components
 
@@ -96,6 +98,61 @@ The application calculates monthly revenue from 6 components:
 
    This starts both the Vite dev server and Netlify Functions locally.
 
+### Cloudflare Tunnel Setup (Optional)
+
+For secure external access during development (useful for webhook testing or mobile device testing):
+
+1. **Install cloudflared**
+   ```bash
+   # macOS
+   brew install cloudflare/cloudflare/cloudflared
+   
+   # Linux
+   wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+   sudo dpkg -i cloudflared-linux-amd64.deb
+   
+   # Windows
+   # Download from https://github.com/cloudflare/cloudflared/releases
+   ```
+
+2. **Authenticate with Cloudflare**
+   ```bash
+   cloudflared tunnel login
+   ```
+
+3. **Create and configure tunnel**
+   ```bash
+   # Create tunnel
+   cloudflared tunnel create bi-forecast-dev
+   
+   # Get tunnel ID (save this)
+   cloudflared tunnel list
+   ```
+
+4. **Create config file** (`~/.cloudflared/config.yml`)
+   ```yaml
+   tunnel: YOUR_TUNNEL_ID
+   credentials-file: /Users/YOUR_USERNAME/.cloudflared/YOUR_TUNNEL_ID.json
+   
+   ingress:
+     - hostname: your-subdomain.yourdomain.com
+       service: http://localhost:8888
+     - service: http_status:404
+   ```
+
+5. **Run tunnel**
+   ```bash
+   # In a separate terminal
+   cloudflared tunnel run bi-forecast-dev
+   ```
+
+6. **Update OAuth redirect URIs**
+   - Add your tunnel URL to Google OAuth authorized origins
+   - Update QBO redirect URI to use tunnel domain
+   - Update `.env` with tunnel URL for `URL` variable
+
+This allows secure HTTPS access to your local development server for webhook testing and mobile device debugging.
+
 ### Google OAuth Setup
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
@@ -148,44 +205,68 @@ The application calculates monthly revenue from 6 components:
    netlify deploy --prod
    ```
 
-## Usage
+## Current Implementation Status
 
-### Initial Setup
+### ✅ Fully Implemented Features
 
-1. **Admin creates company account**
-   - Sign in with Google (domain validation)
-   - Company automatically created from email domain
+#### Dashboard
+- Interactive 24-month revenue chart with Chart.js
+- Historical date selector for viewing past forecasts
+- Key metrics cards (current month, 3-month, 1-year totals)
+- Weighted sales toggle with real-time recalculation
+- Transaction details modal with drill-down functionality
+- Mobile-responsive design with touch interactions
 
-2. **Connect APIs**
-   - Navigate to Settings
-   - Connect QuickBooks Online via OAuth2 flow
-   - Add Pipedrive API key
+#### Revenue Calculation Engine
+- All 6 revenue components implemented and tested
+- Real-time calculations with QuickBooks and Pipedrive data
+- Historical archive system with daily snapshots
+- Manual refresh capabilities for both data sources
 
-3. **Data Refresh**
-   - Initial data load happens automatically
-   - Manual refresh buttons available
-   - Daily automatic refresh at 3am ET
+#### Authentication & Security
+- Google SSO with domain validation
+- JWT token management with secure storage
+- Encrypted OAuth tokens in MongoDB
+- Company-level data isolation
 
-### Daily Usage
+#### API Integrations
+- QuickBooks Online OAuth2 flow fully functional
+- Pipedrive API key authentication and validation
+- Automated daily data refresh via Netlify scheduled functions
+- Real-time API connection status monitoring
 
-1. **Dashboard View**
-   - Key metrics: This month, 3-month, 1-year forecasts
-   - 24-month revenue chart with historical data
-   - Toggle weighted sales inclusion
+#### Exception Management
+- Overdue deals tracking from Pipedrive
+- Past delayed charges identification
+- Won unscheduled deals monitoring
+- Exception resolution workflows
 
-2. **Historical Analysis**
-   - Use date selector to view past forecasts
-   - Compare historical vs actual performance
+#### Balance Monitoring
+- Asset account balances from QuickBooks
+- Aged A/R reporting with configurable buckets
+- Real-time balance updates with sync timestamps
 
-3. **Exception Management**
-   - Review overdue Pipedrive deals
-   - Monitor past delayed charges
-   - Track won deals needing invoice scheduling
+#### Progressive Web App
+- PWA manifest configured for installation
+- Service worker ready for implementation
+- Mobile-optimized interface
+- Responsive design across all screen sizes
 
-4. **Account Monitoring**
-   - View asset account balances
-   - Aged A/R reports with 15-day buckets
-   - Real-time balance updates
+### Usage
+
+1. **Initial Setup**
+   - Sign in with Google (creates company from email domain)
+   - Connect QuickBooks via OAuth2 in Settings
+   - Add Pipedrive API key in Settings
+   - System automatically refreshes data
+
+2. **Daily Operations**
+   - View real-time revenue dashboard
+   - Select historical dates to compare past forecasts
+   - Monitor exceptions for items needing attention
+   - Check asset balances and A/R aging
+   - Toggle weighted sales to see impact on forecasts
+   - Drill down into specific transactions via chart clicks
 
 ## Architecture
 
@@ -197,26 +278,36 @@ The application calculates monthly revenue from 6 components:
 - **revenue_archives** - Daily snapshots of all revenue data
 - **exceptions** - Tracked exception items
 
-### API Endpoints
+### Netlify Functions (API Endpoints)
 
 #### Authentication
-- `POST /auth-google` - Google OAuth login
-- `GET /auth-current` - Get current user info
-- `POST /auth-logout` - Logout (client-side token removal)
+- `auth-google.js` - Google OAuth login
+- `auth-current.js` - Get current user session
+- `auth-logout.js` - Logout (client-side token removal)
 
 #### Revenue Data  
-- `GET /revenue-current` - Current revenue forecast
-- `GET /revenue-historical` - Historical archived data
-- `POST /revenue-refresh-qbo` - Manual QBO refresh
-- `POST /revenue-refresh-pipedrive` - Manual Pipedrive refresh
+- `revenue-current.js` - Current revenue forecast calculations
+- `revenue-historical.js` - Historical archived data retrieval
+- `revenue-refresh-qbo.js` - Manual QuickBooks data refresh
+- `revenue-refresh-pipedrive.js` - Manual Pipedrive data refresh
+- `transaction-details.js` - Drill-down transaction data for chart interactions
 
-#### OAuth Flows
-- `GET /qbo-oauth-start` - Initiate QBO OAuth
-- `GET /qbo-oauth-callback` - Handle QBO OAuth callback
-- `POST /pipedrive-connect` - Save Pipedrive API key
+#### OAuth & API Management
+- `qbo-oauth-start.js` - Initiate QuickBooks OAuth flow
+- `qbo-oauth-callback.js` - Handle QuickBooks OAuth callback
+- `pipedrive-connect.js` - Save and validate Pipedrive API key
+
+#### Company & Settings
+- `company-update.js` - Company settings management
+- `settings-status.js` - API connection status checks
 
 #### Scheduled Tasks
-- `POST /scheduled-archive` - Daily data archiving (3am ET)
+- `scheduled-archive.js` - Daily data archiving (3am ET)
+
+#### Development & Testing
+- `qbo-test.js` - QuickBooks API testing
+- `qb-raw-data.js` - Raw QuickBooks data analysis
+- `test-september-data.js` - September data validation
 
 ## Security
 

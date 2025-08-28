@@ -78,7 +78,7 @@ async function handleGoogleLogin() {
   try {
     await googleAuth.signIn()
   } catch (err) {
-    console.error('Login error:', err)
+    googleAuth.error.value = 'Login failed. Please try again.'
   }
 }
 
@@ -91,14 +91,12 @@ async function handleAuthSuccess(authData) {
     // Redirect to dashboard
     router.push('/')
   } catch (err) {
-    console.error('Post-auth error:', err)
     googleAuth.error.value = 'Login succeeded but failed to initialize app. Please try again.'
   }
 }
 
 // Listen for successful authentication
 const handleGoogleAuthSuccess = async (event) => {
-  console.log('Received googleAuthSuccess event', event.detail)
   await handleAuthSuccess(event.detail)
 }
 
@@ -124,7 +122,7 @@ watch(() => googleAuth.isLoaded.value, async (isLoaded) => {
         text: 'signin_with'
       })
     } catch (err) {
-      console.error('Failed to render Google button:', err)
+      googleAuth.error.value = 'Failed to initialize Google Sign-In'
     }
   }
 })
