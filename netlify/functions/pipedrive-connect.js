@@ -2,7 +2,7 @@ import { success, error, cors } from './utils/response.js'
 import { getCurrentUser } from './utils/auth.js'
 import { getCollection } from './utils/database.js'
 import { encrypt } from './utils/encryption.js'
-import fetch from 'node-fetch'
+// Using built-in fetch API
 
 export async function handler(event, context) {
   // Handle CORS preflight requests

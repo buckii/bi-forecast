@@ -1,4 +1,4 @@
-import fetch from 'node-fetch'
+// Using built-in fetch API
 import { getCollection } from '../utils/database.js'
 import { decrypt, encrypt } from '../utils/encryption.js'
 
