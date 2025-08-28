@@ -1,7 +1,7 @@
-import { success, error, cors } from './utils/response.js'
-import { getCurrentUser } from './utils/auth.js'
+const { success, error, cors } = require('./utils/response.js')
+const { getCurrentUser } = require('./utils/auth.js')
 
-export async function handler(event, context) {
+exports.handler = async function(event, context) {
   // Handle CORS preflight requests
   if (event.httpMethod === 'OPTIONS') {
     return cors()

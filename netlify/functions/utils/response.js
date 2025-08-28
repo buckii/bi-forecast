@@ -1,4 +1,4 @@
-export function success(data, statusCode = 200) {
+function success(data, statusCode = 200) {
   return {
     statusCode,
     headers: {
@@ -14,7 +14,7 @@ export function success(data, statusCode = 200) {
   }
 }
 
-export function error(message, statusCode = 400, details = null) {
+function error(message, statusCode = 400, details = null) {
   console.error('API Error:', message, details)
   
   return {
@@ -28,12 +28,12 @@ export function error(message, statusCode = 400, details = null) {
     body: JSON.stringify({
       success: false,
       error: message,
-      details: process.env.NODE_ENV === 'development' ? details : undefined
+      details: details // Temporarily show details in all environments for debugging
     })
   }
 }
 
-export function cors() {
+function cors() {
   return {
     statusCode: 200,
     headers: {
@@ -44,3 +44,5 @@ export function cors() {
     body: ''
   }
 }
+
+module.exports = { success, error, cors }

@@ -1,5 +1,5 @@
-import jwt from 'jsonwebtoken'
-import { getCollection } from './database.js'
+const jwt = require('jsonwebtoken')
+const { getCollection } = require('./database.js')
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key'
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID
@@ -13,11 +13,11 @@ async function fetchGooglePublicKeys() {
   return response.json()
 }
 
-export function generateToken(payload) {
+function generateToken(payload) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' })
 }
 
-export function verifyToken(token) {
+function verifyToken(token) {
   try {
     return jwt.verify(token, JWT_SECRET)
   } catch (error) {
@@ -25,7 +25,7 @@ export function verifyToken(token) {
   }
 }
 
-export async function verifyGoogleToken(token) {
+async function verifyGoogleToken(token) {
   try {
     
     // Decode JWT without verification first to get header
@@ -68,7 +68,7 @@ export async function verifyGoogleToken(token) {
   }
 }
 
-export async function getOrCreateUser(googleUserData) {
+async function getOrCreateUser(googleUserData) {
   const usersCollection = await getCollection('users')
   const companiesCollection = await getCollection('companies')
   
@@ -141,7 +141,7 @@ export async function getOrCreateUser(googleUserData) {
   return { user, company }
 }
 
-export function getAuthorizationToken(event) {
+function getAuthorizationToken(event) {
   const authHeader = event.headers.authorization || event.headers.Authorization
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -151,7 +151,7 @@ export function getAuthorizationToken(event) {
   return authHeader.substring(7)
 }
 
-export async function getCurrentUser(event) {
+async function getCurrentUser(event) {
   const token = getAuthorizationToken(event)
   const decoded = verifyToken(token)
   
@@ -160,7 +160,7 @@ export async function getCurrentUser(event) {
   const companiesCollection = await getCollection('companies')
   
   // Try to find user with ObjectId conversion
-  const { ObjectId } = await import('mongodb')
+  const { ObjectId } = require('mongodb')
   const userId = typeof decoded.userId === 'string' ? new ObjectId(decoded.userId) : decoded.userId
   
   const user = await usersCollection.findOne({ _id: userId })
@@ -172,4 +172,13 @@ export async function getCurrentUser(event) {
   const company = await companiesCollection.findOne({ _id: user.companies[0] })
   
   return { user, company }
+}
+
+module.exports = {
+  generateToken,
+  verifyToken,
+  verifyGoogleToken,
+  getOrCreateUser,
+  getAuthorizationToken,
+  getCurrentUser
 }

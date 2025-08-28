@@ -1,10 +1,10 @@
-import { success, error, cors } from './utils/response.js'
-import { getCurrentUser } from './utils/auth.js'
-import { getCollection } from './utils/database.js'
-import { encrypt } from './utils/encryption.js'
+const { success, error, cors } = require('./utils/response.js')
+const { getCurrentUser } = require('./utils/auth.js')
+const { getCollection } = require('./utils/database.js')
+const { encrypt } = require('./utils/encryption.js')
 // Using built-in fetch API
 
-export async function handler(event, context) {
+exports.handler = async function(event, context) {
   // Handle CORS preflight requests
   if (event.httpMethod === 'OPTIONS') {
     return cors()

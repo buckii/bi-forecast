@@ -1,9 +1,9 @@
-import { success, error, cors } from './utils/response.js'
-import { getCurrentUser } from './utils/auth.js'
-import RevenueCalculator from './services/revenue-calculator.js'
-import { getCollection } from './utils/database.js'
+const { success, error, cors } = require('./utils/response.js')
+const { getCurrentUser } = require('./utils/auth.js')
+const RevenueCalculator = require('./services/revenue-calculator.js')
+const { getCollection } = require('./utils/database.js')
 
-export async function handler(event, context) {
+exports.handler = async function(event, context) {
   // Handle CORS preflight requests
   if (event.httpMethod === 'OPTIONS') {
     return cors()

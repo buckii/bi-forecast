@@ -1,9 +1,9 @@
 // Using built-in fetch API
-import { success, error } from './utils/response.js'
-import { getCollection } from './utils/database.js'
-import { encrypt } from './utils/encryption.js'
+const { success, error } = require('./utils/response.js')
+const { getCollection } = require('./utils/database.js')
+const { encrypt } = require('./utils/encryption.js')
 
-export async function handler(event, context) {
+exports.handler = async function(event, context) {
   if (event.httpMethod !== 'GET') {
     return error('Method not allowed', 405)
   }

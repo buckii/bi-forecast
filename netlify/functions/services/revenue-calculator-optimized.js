@@ -1,7 +1,7 @@
-import { startOfMonth, endOfMonth, addMonths, format, isWithinInterval } from 'date-fns'
-import QuickBooksService from './quickbooks.js'
-import PipedriveService from './pipedrive.js'
-import { getCollection } from '../utils/database.js'
+const { startOfMonth, endOfMonth, addMonths, format, isWithinInterval } = require('date-fns')
+const QuickBooksService = require('./quickbooks.js')
+const PipedriveService = require('./pipedrive.js')
+const { getCollection } = require('../utils/database.js')
 
 class RevenueCalculator {
   constructor(companyId) {
@@ -565,4 +565,4 @@ class RevenueCalculator {
   }
 }
 
-export default RevenueCalculator
+module.exports = RevenueCalculator

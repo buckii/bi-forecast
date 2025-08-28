@@ -1,8 +1,8 @@
-import { success, error } from './utils/response.js'
-import { getCollection } from './utils/database.js'
-import RevenueCalculator from './services/revenue-calculator-optimized.js'
+const { success, error } = require('./utils/response.js')
+const { getCollection } = require('./utils/database.js')
+const RevenueCalculator = require('./services/revenue-calculator-optimized.js')
 
-export async function handler(event, context) {
+exports.handler = async function(event, context) {
   // This function runs daily at 3am ET via Netlify scheduled functions
   
   try {

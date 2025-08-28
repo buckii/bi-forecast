@@ -12,7 +12,7 @@ const REQUIRED_ENV_VARS = [
   'URL'
 ]
 
-export function validateEnvironment() {
+function validateEnvironment() {
   const missing = []
   const weak = []
 
@@ -50,7 +50,7 @@ export function validateEnvironment() {
 }
 
 // Validate specific function requirements
-export function validateFunctionEnv(requiredVars = []) {
+function validateFunctionEnv(requiredVars = []) {
   const missing = requiredVars.filter(envVar => !process.env[envVar])
   
   if (missing.length > 0) {
@@ -59,3 +59,4 @@ export function validateFunctionEnv(requiredVars = []) {
   
   return true
 }
+module.exports = { validateEnvironment, validateFunctionEnv }

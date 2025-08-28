@@ -1,7 +1,7 @@
-import { success, error, cors } from './utils/response.js'
-import { getCurrentUser } from './utils/auth.js'
+const { success, error, cors } = require('./utils/response.js')
+const { getCurrentUser } = require('./utils/auth.js')
 
-export async function handler(event, context) {
+exports.handler = async function(event, context) {
   // Handle CORS preflight requests
   if (event.httpMethod === 'OPTIONS') {
     return cors()
@@ -14,8 +14,8 @@ export async function handler(event, context) {
   try {
     const { company } = await getCurrentUser(event)
     
-    // Dynamic import to handle ES module compatibility issues
-    const { default: RevenueCalculator } = await import('./services/revenue-calculator-optimized.js')
+    // Require the module directly
+    const RevenueCalculator = require('./services/revenue-calculator-optimized.js')
     const calculator = new RevenueCalculator(company._id)
     
     // Get revenue data for 14 months (3 previous + current + 10 future)
@@ -36,6 +36,11 @@ export async function handler(event, context) {
     
   } catch (err) {
     console.error('Revenue current error:', err)
-    return error(err.message || 'Failed to get current revenue data', 500)
+    return error(err.message || 'Failed to get current revenue data', 500, {
+      nodeVersion: process.version,
+      platform: process.platform,
+      moduleType: typeof module !== 'undefined' ? 'CommonJS' : 'ES Module',
+      errorStack: err.stack
+    })
   }
 }

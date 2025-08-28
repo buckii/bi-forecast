@@ -1,8 +1,8 @@
-import { success, error, cors } from './utils/response.js'
-import { verifyGoogleToken, getOrCreateUser, generateToken } from './utils/auth.js'
-import { validateFunctionEnv } from './utils/env-validation.js'
+const { success, error, cors } = require('./utils/response.js')
+const { verifyGoogleToken, getOrCreateUser, generateToken } = require('./utils/auth.js')
+const { validateFunctionEnv } = require('./utils/env-validation.js')
 
-export async function handler(event, context) {
+exports.handler = async function(event, context) {
   // Handle CORS preflight requests
   if (event.httpMethod === 'OPTIONS') {
     return cors()

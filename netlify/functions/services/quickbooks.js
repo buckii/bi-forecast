@@ -1,6 +1,6 @@
 // Using built-in fetch API
-import { getCollection } from '../utils/database.js'
-import { decrypt, encrypt } from '../utils/encryption.js'
+const { getCollection } = require('../utils/database.js')
+const { decrypt, encrypt } = require('../utils/encryption.js')
 
 class QuickBooksService {
   constructor(companyId) {
@@ -609,4 +609,4 @@ class QuickBooksService {
   }
 }
 
-export default QuickBooksService
+module.exports = QuickBooksService

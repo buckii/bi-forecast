@@ -1,6 +1,6 @@
 // Using built-in fetch API
-import { getCollection } from '../utils/database.js'
-import { decrypt } from '../utils/encryption.js'
+const { getCollection } = require('../utils/database.js')
+const { decrypt } = require('../utils/encryption.js')
 
 class PipedriveService {
   constructor(companyId) {
@@ -222,4 +222,4 @@ class PipedriveService {
   }
 }
 
-export default PipedriveService
+module.exports = PipedriveService

@@ -1,6 +1,6 @@
-import { success, cors } from './utils/response.js'
+const { success, cors } = require('./utils/response.js')
 
-export async function handler(event, context) {
+exports.handler = async function(event, context) {
   // Handle CORS preflight requests
   if (event.httpMethod === 'OPTIONS') {
     return cors()

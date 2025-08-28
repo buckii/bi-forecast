@@ -1,9 +1,9 @@
-import { MongoClient } from 'mongodb'
+const { MongoClient } = require('mongodb')
 
 let cachedClient = null
 let cachedDb = null
 
-export async function connectToDatabase() {
+async function connectToDatabase() {
   if (cachedClient && cachedDb) {
     return { client: cachedClient, db: cachedDb }
   }
@@ -28,7 +28,7 @@ export async function connectToDatabase() {
   return { client, db }
 }
 
-export async function closeConnection() {
+async function closeConnection() {
   if (cachedClient) {
     await cachedClient.close()
     cachedClient = null
@@ -37,13 +37,13 @@ export async function closeConnection() {
 }
 
 // Collection helpers
-export async function getCollection(collectionName) {
+async function getCollection(collectionName) {
   const { db } = await connectToDatabase()
   return db.collection(collectionName)
 }
 
 // Transaction helper for multi-document operations
-export async function withTransaction(operations) {
+async function withTransaction(operations) {
   const { client } = await connectToDatabase()
   const session = client.startSession()
   
@@ -55,4 +55,11 @@ export async function withTransaction(operations) {
   } finally {
     await session.endSession()
   }
+}
+
+module.exports = {
+  connectToDatabase,
+  closeConnection,
+  getCollection,
+  withTransaction
 }
