@@ -437,13 +437,13 @@ class QuickBooksService {
   }
   
   processAgedReceivablesRows(rows, summary, depth = 0) {
-    if (!Array.isArray(rows)) {
+    if (!Array.isArray(rows) || !rows || rows.length === 0) {
       return
     }
     
     for (const row of rows) {
       
-      if (row.type === 'Section' && row.Rows) {
+      if (row.type === 'Section' && row.Rows && Array.isArray(row.Rows)) {
         this.processAgedReceivablesRows(row.Rows, summary, depth + 1)
       } else if (row.type === 'Data' && row.ColData) {
         // This is a data row - extract customer receivables data
