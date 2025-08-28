@@ -19,8 +19,8 @@ exports.handler = async function(event, context) {
         
         const calculator = new RevenueCalculator(company._id)
         
-        // Calculate current revenue data
-        const months = await calculator.calculateMonthlyRevenue(14)
+        // Calculate current revenue data (6 months: 2 months ago to 3 months from now)
+        const months = await calculator.calculateMonthlyRevenue(6, -2)
         const exceptions = await calculator.getExceptions()
         const balances = await calculator.getBalances()
         

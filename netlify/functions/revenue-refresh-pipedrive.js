@@ -1,6 +1,6 @@
 const { success, error, cors } = require('./utils/response.js')
 const { getCurrentUser } = require('./utils/auth.js')
-const RevenueCalculator = require('./services/revenue-calculator.js')
+const RevenueCalculator = require('./services/revenue-calculator-optimized.js')
 const { getCollection } = require('./utils/database.js')
 
 exports.handler = async function(event, context) {
@@ -18,9 +18,12 @@ exports.handler = async function(event, context) {
     
     const calculator = new RevenueCalculator(company._id)
     
-    // Force refresh of Pipedrive data by recalculating revenue and exceptions
-    const months = await calculator.calculateMonthlyRevenue(24)
-    const exceptions = await calculator.getExceptions()
+    // Force refresh of Pipedrive data by recalculating revenue and exceptions (6 months: 2 months ago to 3 months from now)
+    const [months, exceptions, balances] = await Promise.all([
+      calculator.calculateMonthlyRevenue(6, -2),
+      calculator.getExceptions(),
+      calculator.getBalances()
+    ])
     
     // Update the current archive with fresh data
     const archivesCollection = await getCollection('revenue_archives')
@@ -36,6 +39,7 @@ exports.handler = async function(event, context) {
         $set: {
           months,
           exceptions,
+          balances,
           updatedAt: new Date()
         }
       },

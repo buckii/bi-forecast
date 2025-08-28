@@ -10,10 +10,10 @@ class RevenueCalculator {
     this.pipedrive = new PipedriveService(companyId)
   }
 
-  async calculateMonthlyRevenue(months = 14) {
+  async calculateMonthlyRevenue(months = 14, startOffset = -2) {
     const currentDate = new Date()
-    const startMonth = addMonths(startOfMonth(currentDate), -2)
-    const endMonth = addMonths(startOfMonth(currentDate), 11)
+    const startMonth = addMonths(startOfMonth(currentDate), startOffset)
+    const endMonth = addMonths(startOfMonth(currentDate), startOffset + months - 1)
     
     const startTime = Date.now()
     
