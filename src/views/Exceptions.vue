@@ -63,7 +63,7 @@
       
       <!-- Past Delayed Charges -->
       <div class="card">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
           Past Delayed Charges ({{ exceptions?.pastDelayedCharges?.length || 0 }})
         </h2>
         <div v-if="revenueStore.loading" class="flex items-center justify-center py-8">
@@ -117,7 +117,7 @@
       
       <!-- Won Unscheduled Deals -->
       <div class="card">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
           Won Unscheduled Deals ({{ exceptions?.wonUnscheduled?.length || 0 }})
         </h2>
         <div v-if="revenueStore.loading" class="flex items-center justify-center py-8">

@@ -160,7 +160,7 @@
           
           <div class="pt-4 border-t">
             <div class="flex justify-between items-center">
-              <span class="text-lg font-semibold text-gray-900">Total A/R:</span>
+              <span class="text-lg font-semibold text-gray-900 dark:text-gray-100">Total A/R:</span>
               <span class="text-xl font-bold text-primary-600">
                 {{ formatCurrency(balances.receivables.total) }}
               </span>
@@ -169,7 +169,7 @@
           
           <!-- Detailed breakdown -->
           <div v-if="balances.receivables.details && balances.receivables.details.length > 0" class="overflow-x-auto">
-            <h3 class="text-md font-semibold text-gray-900 mb-2">Customer Breakdown</h3>
+            <h3 class="text-md font-semibold text-gray-900 dark:text-gray-100 mb-2">Customer Breakdown</h3>
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
               <thead>
                 <tr>
