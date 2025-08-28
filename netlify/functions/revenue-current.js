@@ -1,6 +1,5 @@
 import { success, error, cors } from './utils/response.js'
 import { getCurrentUser } from './utils/auth.js'
-import RevenueCalculator from './services/revenue-calculator-optimized.js'
 
 export async function handler(event, context) {
   // Handle CORS preflight requests
@@ -15,6 +14,8 @@ export async function handler(event, context) {
   try {
     const { company } = await getCurrentUser(event)
     
+    // Dynamic import to handle ES module compatibility issues
+    const { default: RevenueCalculator } = await import('./services/revenue-calculator-optimized.js')
     const calculator = new RevenueCalculator(company._id)
     
     // Get revenue data for 14 months (3 previous + current + 10 future)
