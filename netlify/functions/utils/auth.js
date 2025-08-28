@@ -21,12 +21,18 @@ export function verifyToken(token) {
 
 export async function verifyGoogleToken(token) {
   try {
+    console.log('Attempting to verify Google token...')
+    console.log('Google Client ID configured:', !!GOOGLE_CLIENT_ID)
+    console.log('Token format check - starts with eyJ:', token.startsWith('eyJ'))
+    
     const ticket = await googleClient.verifyIdToken({
       idToken: token,
       audience: GOOGLE_CLIENT_ID,
     })
     
     const payload = ticket.getPayload()
+    console.log('Google token verified successfully for:', payload.email)
+    
     return {
       googleId: payload.sub,
       email: payload.email,
@@ -35,7 +41,9 @@ export async function verifyGoogleToken(token) {
       domain: payload.hd || payload.email.split('@')[1]
     }
   } catch (error) {
-    throw new Error('Invalid Google token')
+    console.error('Google token verification failed:', error.message)
+    console.error('Error details:', error)
+    throw new Error(`Invalid Google token: ${error.message}`)
   }
 }
 
