@@ -1,12 +1,12 @@
 <template>
   <AppLayout>
     <div class="space-y-6">
-      <h1 class="text-2xl font-bold text-gray-900">Settings</h1>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Settings</h1>
       
       <!-- Company Information -->
       <div class="card">
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold text-gray-900">Company Information</h2>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Company Information</h2>
           <button 
             @click="editingCompany = !editingCompany"
             class="btn-secondary text-sm"
@@ -51,16 +51,30 @@
           </div>
         </div>
       </div>
+
+      <!-- Appearance Settings -->
+      <div class="card">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Appearance</h2>
+        <label class="flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            v-model="isDarkMode"
+            @change="toggleDarkMode"
+            class="rounded border-gray-300 text-primary-600 shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 focus:ring-opacity-50"
+          />
+          <span class="ml-2 text-gray-700 dark:text-gray-300">Dark mode</span>
+        </label>
+      </div>
       
       <!-- API Connections -->
       <div class="card">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">API Connections</h2>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">API Connections</h2>
         <div class="space-y-4">
           <!-- QuickBooks Online -->
-          <div class="flex items-center justify-between p-4 border rounded-lg">
+          <div class="flex items-center justify-between p-4 border dark:border-gray-600 rounded-lg">
             <div>
-              <h3 class="font-medium text-gray-900">QuickBooks Online</h3>
-              <p class="text-sm text-gray-500">Connect to sync invoices, journal entries, and delayed charges</p>
+              <h3 class="font-medium text-gray-900 dark:text-gray-100">QuickBooks Online</h3>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Connect to sync invoices, journal entries, and delayed charges</p>
             </div>
             <div class="flex items-center space-x-3">
               <span class="text-sm" :class="qboConnected ? 'text-green-600' : 'text-gray-500'">
@@ -76,10 +90,10 @@
           </div>
           
           <!-- Pipedrive -->
-          <div class="flex items-center justify-between p-4 border rounded-lg">
+          <div class="flex items-center justify-between p-4 border dark:border-gray-600 rounded-lg">
             <div>
-              <h3 class="font-medium text-gray-900">Pipedrive</h3>
-              <p class="text-sm text-gray-500">Connect to sync deals and pipeline data</p>
+              <h3 class="font-medium text-gray-900 dark:text-gray-100">Pipedrive</h3>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Connect to sync deals and pipeline data</p>
             </div>
             <div class="flex items-center space-x-3">
               <span class="text-sm" :class="pipedriveConnected ? 'text-green-600' : 'text-gray-500'">
@@ -98,12 +112,12 @@
       
       <!-- Data Management -->
       <div class="card">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Data Management</h2>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Data Management</h2>
         <div class="space-y-4">
           <div class="flex items-center justify-between">
             <div>
-              <h3 class="font-medium text-gray-900">Archive Retention</h3>
-              <p class="text-sm text-gray-500">Number of days to keep historical data</p>
+              <h3 class="font-medium text-gray-900 dark:text-gray-100">Archive Retention</h3>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Number of days to keep historical data</p>
             </div>
             <input
               type="number"
@@ -149,10 +163,10 @@
     
     <!-- QBO Test Results Modal -->
     <div v-if="showQBOTestModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg p-6 w-96 max-w-full mx-4 max-h-screen overflow-y-auto">
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-96 max-w-full mx-4 max-h-screen overflow-y-auto">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold text-gray-900">QuickBooks Test Results</h3>
-          <button @click="showQBOTestModal = false" class="text-gray-400 hover:text-gray-600">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">QuickBooks Test Results</h3>
+          <button @click="showQBOTestModal = false" class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -234,10 +248,10 @@
     
     <!-- September Test Results Modal -->
     <div v-if="showSeptemberTestModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-screen overflow-y-auto">
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-4xl mx-4 max-h-screen overflow-y-auto">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold text-gray-900">September 2025 Data Test Results</h3>
-          <button @click="showSeptemberTestModal = false" class="text-gray-400 hover:text-gray-600">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">September 2025 Data Test Results</h3>
+          <button @click="showSeptemberTestModal = false" class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -572,11 +586,11 @@
     
     <!-- Pipedrive Modal -->
     <div v-if="showPipedriveModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg p-6 w-96">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Pipedrive API Key</h3>
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-96">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Pipedrive API Key</h3>
         <div class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">API Token</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">API Token</label>
             <input
               type="password"
               v-model="pipedriveApiKey"
@@ -601,9 +615,11 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import { useDarkMode } from '../composables/useDarkMode'
 import AppLayout from '../components/AppLayout.vue'
 
 const authStore = useAuthStore()
+const { isDarkMode, toggleDarkMode } = useDarkMode()
 
 const showPipedriveModal = ref(false)
 const pipedriveApiKey = ref('')

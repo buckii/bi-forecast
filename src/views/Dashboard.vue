@@ -5,7 +5,7 @@
       <div class="card">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">View as of</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">View as of</label>
             <input
               type="date"
               v-model="selectedDateStr"
@@ -31,21 +31,21 @@
       <!-- Key Metrics -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="card">
-          <h3 class="text-lg font-semibold text-gray-900">This Month</h3>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">This Month</h3>
           <p class="text-3xl font-bold text-primary-600 mt-2">
             {{ formatCurrency(revenueStore.currentMonthRevenue) }}
           </p>
         </div>
         
         <div class="card">
-          <h3 class="text-lg font-semibold text-gray-900">3-Month Forecast</h3>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">3-Month Forecast</h3>
           <p class="text-3xl font-bold text-primary-600 mt-2">
             {{ formatCurrency(revenueStore.threeMonthRevenue) }}
           </p>
         </div>
         
         <div class="card">
-          <h3 class="text-lg font-semibold text-gray-900">1-Year Unbilled</h3>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">1-Year Unbilled</h3>
           <p class="text-3xl font-bold text-primary-600 mt-2">
             {{ formatCurrency(revenueStore.yearUnbilledCharges) }}
           </p>
@@ -60,16 +60,16 @@
             v-model="revenueStore.includeWeightedSales"
             class="rounded border-gray-300 text-primary-600 shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 focus:ring-opacity-50"
           />
-          <span class="ml-2 text-gray-700">Include weighted sales in forecast</span>
+          <span class="ml-2 text-gray-700 dark:text-gray-300">Include weighted sales in forecast</span>
         </label>
       </div>
       
       <!-- Revenue Chart -->
       <div class="card">
-        <h2 class="text-xl font-bold text-gray-900 mb-4">Monthly Revenue Forecast</h2>
+        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Monthly Revenue Forecast</h2>
         <div class="h-96 relative">
           <!-- Loading State inside chart area -->
-          <div v-if="revenueStore.loading" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75">
+          <div v-if="revenueStore.loading" class="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75">
             <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
           </div>
           <!-- Chart content -->

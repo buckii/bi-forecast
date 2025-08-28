@@ -1,19 +1,19 @@
 <template>
   <AppLayout>
     <div class="space-y-6">
-      <h1 class="text-2xl font-bold text-gray-900">Exceptions</h1>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Exceptions</h1>
       
       <!-- Overdue Deals -->
       <div class="card">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
           Overdue Pipedrive Deals ({{ exceptions?.overdueDeals?.length || 0 }})
         </h2>
         <div v-if="revenueStore.loading" class="flex items-center justify-center py-8">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-          <span class="ml-3 text-gray-600">Loading overdue deals...</span>
+          <span class="ml-3 text-gray-600 dark:text-gray-400">Loading overdue deals...</span>
         </div>
         <div v-else-if="exceptions?.overdueDeals?.length > 0" class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
+          <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
             <thead>
               <tr>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -71,7 +71,7 @@
           <span class="ml-3 text-gray-600">Loading past delayed charges...</span>
         </div>
         <div v-else-if="exceptions?.pastDelayedCharges?.length > 0" class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
+          <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
             <thead>
               <tr>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -125,7 +125,7 @@
           <span class="ml-3 text-gray-600">Loading won unscheduled deals...</span>
         </div>
         <div v-else-if="exceptions?.wonUnscheduled?.length > 0" class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
+          <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
             <thead>
               <tr>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">

@@ -6,6 +6,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { Chart, registerables } from 'chart.js'
 import { format, parse } from 'date-fns'
+import { isDarkModeGlobal } from '../composables/useDarkMode'
 
 Chart.register(...registerables)
 
@@ -40,11 +41,16 @@ const totalLabelPlugin = {
       const meta = chart.getDatasetMeta(0)
       const dataPoint = meta.data[index]
       
-      // Calculate total for this bar stack
+      // Calculate total and get journal entries value
       let total = 0
+      let journalEntriesValue = 0
       chart.data.datasets.forEach((dataset, datasetIndex) => {
         const value = dataset.data[index] || 0
         total += value
+        // Get journal entries value (index 1 in the datasets array)
+        if (datasetIndex === 1) { // Journal Entries is the second dataset
+          journalEntriesValue = value
+        }
       })
       
       if (total > 0) {
@@ -55,9 +61,17 @@ const totalLabelPlugin = {
           stackTop += value
         })
         
+        // Adjust position if journal entries are negative
+        let yOffset = -10
+        if (journalEntriesValue < 0) {
+          // Move the label up by the height of the negative value
+          const negativePixelHeight = chart.scales.y.getPixelForValue(0) - chart.scales.y.getPixelForValue(Math.abs(journalEntriesValue))
+          yOffset -= negativePixelHeight
+        }
+        
         // Position the text
         const x = dataPoint.x
-        const y = chart.scales.y.getPixelForValue(stackTop) - 10
+        const y = chart.scales.y.getPixelForValue(stackTop) + yOffset
         
         // Format the total value
         const formattedTotal = new Intl.NumberFormat('en-US', {
@@ -67,12 +81,12 @@ const totalLabelPlugin = {
           maximumFractionDigits: 0
         }).format(total)
         
-        // Draw the total
+        // Draw the total with dynamic color based on dark mode
         ctx.save()
         ctx.textAlign = 'center'
         ctx.textBaseline = 'bottom'
         ctx.font = '12px sans-serif'
-        ctx.fillStyle = '#374151'
+        ctx.fillStyle = isDarkModeGlobal.value ? '#ffffff' : '#374151'
         ctx.fillText(formattedTotal, x, y)
         ctx.restore()
       }
@@ -138,11 +152,18 @@ function createChart() {
           stacked: true,
           grid: {
             display: false
+          },
+          ticks: {
+            color: isDarkModeGlobal.value ? '#ffffff' : '#374151'
           }
         },
         y: {
           stacked: true,
+          grid: {
+            color: isDarkModeGlobal.value ? '#374151' : '#e5e7eb'
+          },
           ticks: {
+            color: isDarkModeGlobal.value ? '#ffffff' : '#374151',
             callback: function(value) {
               return new Intl.NumberFormat('en-US', {
                 style: 'currency',
@@ -159,7 +180,8 @@ function createChart() {
           position: 'bottom',
           labels: {
             padding: 10,
-            usePointStyle: true
+            usePointStyle: true,
+            color: isDarkModeGlobal.value ? '#ffffff' : '#374151'
           }
         },
         tooltip: {
@@ -216,4 +238,11 @@ watch(() => props.data, () => {
     createChart()
   }
 }, { deep: true })
+
+// Watch for dark mode changes
+watch(isDarkModeGlobal, () => {
+  if (props.data.length > 0) {
+    createChart()
+  }
+})
 </script>

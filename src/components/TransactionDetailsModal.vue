@@ -1,12 +1,12 @@
 <template>
   <div v-if="isOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 w-full max-w-6xl mx-4 max-h-screen overflow-y-auto">
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-6xl mx-4 max-h-screen overflow-y-auto">
       <div class="flex items-center justify-between mb-4">
         <div>
-          <h3 class="text-lg font-semibold text-gray-900">Transaction Details</h3>
-          <p class="text-sm text-gray-600">{{ formatMonth(month) }} - {{ formatComponentName(component) }}</p>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Transaction Details</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400">{{ formatMonth(month) }} - {{ formatComponentName(component) }}</p>
         </div>
-        <button @click="closeModal" class="text-gray-400 hover:text-gray-600">
+        <button @click="closeModal" class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
@@ -19,26 +19,26 @@
       </div>
 
       <!-- Error State -->
-      <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p class="text-red-600">{{ error }}</p>
+      <div v-else-if="error" class="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg p-4">
+        <p class="text-red-600 dark:text-red-400">{{ error }}</p>
       </div>
 
       <!-- Transaction Data -->
       <div v-else-if="transactionData" class="space-y-6">
         <!-- Summary -->
-        <div class="bg-gray-50 rounded-lg p-4">
+        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="text-center">
-              <p class="text-sm text-gray-500">Total Amount</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Total Amount</p>
               <p class="text-2xl font-bold text-primary-600">{{ formatCurrency(transactionData.totalAmount) }}</p>
             </div>
             <div class="text-center">
-              <p class="text-sm text-gray-500">Transaction Count</p>
-              <p class="text-2xl font-bold text-gray-900">{{ transactionData.count }}</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Transaction Count</p>
+              <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ transactionData.count }}</p>
             </div>
             <div class="text-center">
-              <p class="text-sm text-gray-500">Date Range</p>
-              <p class="text-sm font-medium text-gray-900">
+              <p class="text-sm text-gray-500 dark:text-gray-400">Date Range</p>
+              <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
                 {{ formatDate(transactionData.dateRange.startDate) }} - {{ formatDate(transactionData.dateRange.endDate) }}
               </p>
             </div>
@@ -50,11 +50,11 @@
           <!-- Transaction Cards -->
           <div v-for="transaction in transactionData.transactions" 
                :key="transaction.id"
-               class="transaction-card bg-white border border-gray-200 rounded-lg overflow-hidden" 
+               class="transaction-card bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden" 
                :class="{ 'expanded': expandedTransactions.has(transaction.id) }">
                     <!-- Main Transaction Row -->
                     <div @click="toggleDetails(transaction.id)"
-                         class="flex items-center p-4 cursor-pointer hover:bg-gray-50 transition-colors duration-150">
+                         class="flex items-center p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150">
                       <div class="flex-shrink-0 mr-4">
                         <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
                               :class="getTypeColor(transaction.type)">
@@ -63,20 +63,20 @@
                       </div>
                       
                       <div class="flex-1 grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
-                        <div class="font-medium text-gray-900">
+                        <div class="font-medium text-gray-900 dark:text-gray-100">
                           {{ transaction.docNumber }}
                         </div>
-                        <div class="text-sm text-gray-500">
+                        <div class="text-sm text-gray-500 dark:text-gray-400">
                           {{ formatDate(transaction.date) }}
                         </div>
-                        <div class="text-sm text-gray-900">
+                        <div class="text-sm text-gray-900 dark:text-gray-100">
                           {{ transaction.customer }}
                         </div>
-                        <div class="text-sm text-gray-900 truncate">
+                        <div class="text-sm text-gray-900 dark:text-gray-100 truncate">
                           {{ transaction.description }}
                         </div>
                         <div class="text-right">
-                          <div class="font-medium text-gray-900">
+                          <div class="font-medium text-gray-900 dark:text-gray-100">
                             {{ formatCurrency(transaction.amount) }}
                           </div>
                         </div>
@@ -94,52 +94,52 @@
                     <!-- Expandable Details (Material Design) -->
                     <div class="expandable-content" 
                          v-show="expandedTransactions.has(transaction.id)">
-                      <div class="px-4 pb-4 pt-0 bg-gray-50 border-t border-gray-100">
+                      <div class="px-4 pb-4 pt-0 bg-gray-50 dark:bg-gray-700 border-t border-gray-100 dark:border-gray-600">
                         <div class="space-y-4">
-                          <h4 class="font-medium text-gray-900 mb-3">Transaction Details</h4>
+                          <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-3">Transaction Details</h4>
                           
                           <!-- Invoice Details -->
                           <div v-if="transaction.type === 'invoice' && transaction.details" class="space-y-3">
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                               <div>
-                                <span class="text-gray-500">Outstanding Balance:</span>
+                                <span class="text-gray-500 dark:text-gray-400">Outstanding Balance:</span>
                                 <span class="ml-2 font-medium">{{ formatCurrency(transaction.details.balance) }}</span>
                               </div>
                               <div v-if="transaction.details.dueDate">
-                                <span class="text-gray-500">Due Date:</span>
+                                <span class="text-gray-500 dark:text-gray-400">Due Date:</span>
                                 <span class="ml-2 font-medium">{{ formatDate(transaction.details.dueDate) }}</span>
                               </div>
                               <div>
-                                <span class="text-gray-500">Line Items:</span>
+                                <span class="text-gray-500 dark:text-gray-400">Line Items:</span>
                                 <span class="ml-2 font-medium">{{ transaction.details.lineCount }}</span>
                               </div>
                             </div>
                             
                             <!-- Invoice Line Items -->
-                            <div v-if="transaction.details.lines?.length > 0" class="bg-white rounded-lg p-3">
-                              <h5 class="text-sm font-medium text-gray-700 mb-3">Line Item Details:</h5>
+                            <div v-if="transaction.details.lines?.length > 0" class="bg-white dark:bg-gray-700 rounded-lg p-3">
+                              <h5 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Line Item Details:</h5>
                               <div class="overflow-x-auto">
                                 <table class="min-w-full text-xs">
                                   <thead class="bg-gray-50">
                                     <tr>
-                                      <th class="px-2 py-2 text-left font-medium text-gray-600">Description</th>
-                                      <th class="px-2 py-2 text-left font-medium text-gray-600">Revenue Account</th>
-                                      <th class="px-2 py-2 text-left font-medium text-gray-600">Item</th>
-                                      <th class="px-2 py-2 text-center font-medium text-gray-600">Qty</th>
-                                      <th class="px-2 py-2 text-right font-medium text-gray-600">Unit Price</th>
-                                      <th class="px-2 py-2 text-right font-medium text-gray-600">Amount</th>
-                                      <th class="px-2 py-2 text-center font-medium text-gray-600">Monthly?</th>
+                                      <th class="px-2 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Description</th>
+                                      <th class="px-2 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Revenue Account</th>
+                                      <th class="px-2 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Item</th>
+                                      <th class="px-2 py-2 text-center font-medium text-gray-600 dark:text-gray-400">Qty</th>
+                                      <th class="px-2 py-2 text-right font-medium text-gray-600 dark:text-gray-400">Unit Price</th>
+                                      <th class="px-2 py-2 text-right font-medium text-gray-600 dark:text-gray-400">Amount</th>
+                                      <th class="px-2 py-2 text-center font-medium text-gray-600 dark:text-gray-400">Monthly?</th>
                                     </tr>
                                   </thead>
                                   <tbody class="divide-y divide-gray-100">
                                     <tr v-for="line in transaction.details.lines" :key="line.lineNum">
                                       <td class="px-2 py-2">{{ line.description || 'N/A' }}</td>
                                       <td class="px-2 py-2">
-                                        <div v-if="line.revenueAccountName" class="text-gray-700">
+                                        <div v-if="line.revenueAccountName" class="text-gray-700 dark:text-gray-300">
                                           {{ line.revenueAccountName }}
-                                          <span v-if="line.revenueAccountNumber" class="text-gray-400">({{ line.revenueAccountNumber }})</span>
+                                          <span v-if="line.revenueAccountNumber" class="text-gray-400 dark:text-gray-500">({{ line.revenueAccountNumber }})</span>
                                         </div>
-                                        <span v-else class="text-gray-400">N/A</span>
+                                        <span v-else class="text-gray-400 dark:text-gray-500">N/A</span>
                                       </td>
                                       <td class="px-2 py-2">{{ line.itemName || 'N/A' }}</td>
                                       <td class="px-2 py-2 text-center">{{ line.qty || 'N/A' }}</td>
@@ -150,7 +150,7 @@
                                               class="inline-flex items-center px-1 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
                                           Yes
                                         </span>
-                                        <span v-else class="text-gray-400 text-xs">No</span>
+                                        <span v-else class="text-gray-400 dark:text-gray-500 text-xs">No</span>
                                       </td>
                                     </tr>
                                   </tbody>
@@ -160,17 +160,17 @@
                           </div>
                           
                           <!-- Journal Entry Details -->
-                          <div v-if="transaction.type === 'journalEntry' && transaction.details" class="bg-white rounded-lg p-3">
+                          <div v-if="transaction.type === 'journalEntry' && transaction.details" class="bg-white dark:bg-gray-700 rounded-lg p-3">
                             <div class="mb-3">
                               <span class="text-gray-500">Total Lines:</span>
                               <span class="ml-2 font-medium">{{ transaction.details.totalLines }}</span>
                             </div>
                             <div v-if="transaction.details.revenueLines?.length > 0">
-                              <h5 class="text-sm font-medium text-gray-700 mb-2">Revenue Lines:</h5>
+                              <h5 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Revenue Lines:</h5>
                               <div class="space-y-2">
                                 <div v-for="(line, idx) in transaction.details.revenueLines" 
                                      :key="idx" 
-                                     class="flex justify-between text-sm py-1 px-2 bg-gray-50 rounded">
+                                     class="flex justify-between text-sm py-1 px-2 bg-gray-50 dark:bg-gray-600 rounded">
                                   <span>{{ line.description }} ({{ line.accountName }})</span>
                                   <span class="font-medium">{{ formatCurrency(line.amount) }}</span>
                                 </div>
@@ -179,10 +179,10 @@
                           </div>
                           
                           <!-- Monthly Recurring Details -->
-                          <div v-if="transaction.type === 'monthlyRecurring' && transaction.details" class="bg-white rounded-lg p-3">
+                          <div v-if="transaction.type === 'monthlyRecurring' && transaction.details" class="bg-white dark:bg-gray-700 rounded-lg p-3">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-3">
                               <div>
-                                <span class="text-gray-500">Original Invoice Amount:</span>
+                                <span class="text-gray-500 dark:text-gray-400">Original Invoice Amount:</span>
                                 <span class="ml-2 font-medium">{{ formatCurrency(transaction.details.totalInvoiceAmount) }}</span>
                               </div>
                             </div>
@@ -190,11 +190,11 @@
                               <span class="font-medium">Note:</span> {{ transaction.details.note }}
                             </div>
                             <div v-if="transaction.details.monthlyLines?.length > 0">
-                              <h5 class="text-sm font-medium text-gray-700 mb-2">Monthly Line Items:</h5>
+                              <h5 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Monthly Line Items:</h5>
                               <div class="space-y-2">
                                 <div v-for="(line, idx) in transaction.details.monthlyLines" 
                                      :key="idx" 
-                                     class="flex justify-between text-sm py-1 px-2 bg-gray-50 rounded">
+                                     class="flex justify-between text-sm py-1 px-2 bg-gray-50 dark:bg-gray-600 rounded">
                                   <span>{{ line.description }} ({{ line.accountName || line.itemName }})</span>
                                   <span class="font-medium">{{ formatCurrency(line.amount) }}</span>
                                 </div>
@@ -203,36 +203,36 @@
                           </div>
                           
                           <!-- Won Unscheduled Details -->
-                          <div v-if="transaction.type === 'wonUnscheduled' && transaction.details" class="bg-white rounded-lg p-3">
+                          <div v-if="transaction.type === 'wonUnscheduled' && transaction.details" class="bg-white dark:bg-gray-700 rounded-lg p-3">
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                               <div>
-                                <span class="text-gray-500">Total Deal Value:</span>
+                                <span class="text-gray-500 dark:text-gray-400">Total Deal Value:</span>
                                 <span class="ml-2 font-medium">{{ formatCurrency(transaction.details.totalValue) }}</span>
                               </div>
                               <div>
-                                <span class="text-gray-500">Duration (months):</span>
+                                <span class="text-gray-500 dark:text-gray-400">Duration (months):</span>
                                 <span class="ml-2 font-medium">{{ transaction.details.duration }}</span>
                               </div>
                               <div>
-                                <span class="text-gray-500">Monthly Value:</span>
+                                <span class="text-gray-500 dark:text-gray-400">Monthly Value:</span>
                                 <span class="ml-2 font-medium">{{ formatCurrency(transaction.details.monthlyValue) }}</span>
                               </div>
                             </div>
                           </div>
                           
                           <!-- Weighted Sales Details -->
-                          <div v-if="transaction.type === 'weightedSales' && transaction.details" class="bg-white rounded-lg p-3">
+                          <div v-if="transaction.type === 'weightedSales' && transaction.details" class="bg-white dark:bg-gray-700 rounded-lg p-3">
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                               <div>
-                                <span class="text-gray-500">Deal Value:</span>
+                                <span class="text-gray-500 dark:text-gray-400">Deal Value:</span>
                                 <span class="ml-2 font-medium">{{ formatCurrency(transaction.details.totalValue) }}</span>
                               </div>
                               <div>
-                                <span class="text-gray-500">Probability:</span>
+                                <span class="text-gray-500 dark:text-gray-400">Probability:</span>
                                 <span class="ml-2 font-medium">{{ transaction.details.probability }}%</span>
                               </div>
                               <div>
-                                <span class="text-gray-500">Expected Close:</span>
+                                <span class="text-gray-500 dark:text-gray-400">Expected Close:</span>
                                 <span class="ml-2 font-medium">{{ formatDate(transaction.details.expectedCloseDate) }}</span>
                               </div>
                             </div>
@@ -245,7 +245,7 @@
 
         <!-- No Transactions -->
         <div v-else class="text-center py-8">
-          <p class="text-gray-500">No transactions found for this period and component.</p>
+          <p class="text-gray-500 dark:text-gray-400">No transactions found for this period and component.</p>
         </div>
       </div>
 

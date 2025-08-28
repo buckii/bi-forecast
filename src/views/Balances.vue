@@ -1,39 +1,39 @@
 <template>
   <AppLayout>
     <div class="space-y-6">
-      <h1 class="text-2xl font-bold text-gray-900">Account Balances</h1>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Account Balances</h1>
       
       <!-- Asset Accounts -->
       <div class="card">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Asset Accounts</h2>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Asset Accounts</h2>
         <div v-if="revenueStore.loading" class="flex items-center justify-center py-8">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-          <span class="ml-3 text-gray-600">Loading asset accounts...</span>
+          <span class="ml-3 text-gray-600 dark:text-gray-400">Loading asset accounts...</span>
         </div>
         <div v-else-if="balances?.assets?.length > 0" class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
+          <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
             <thead>
               <tr>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Account Name
                 </th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Type
                 </th>
-                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Balance
                 </th>
-                <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Last Updated
                 </th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
               <tr v-for="account in balances?.assets || []" :key="account.id">
-                <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                   {{ account.name }}
                 </td>
-                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   {{ account.subType }}
                 </td>
                 <td class="px-4 py-2 whitespace-nowrap text-sm text-right" 
@@ -62,35 +62,35 @@
 
       <!-- Liability Accounts -->
       <div class="card">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Liability Accounts</h2>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Liability Accounts</h2>
         <div v-if="revenueStore.loading" class="flex items-center justify-center py-8">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-          <span class="ml-3 text-gray-600">Loading liability accounts...</span>
+          <span class="ml-3 text-gray-600 dark:text-gray-400">Loading liability accounts...</span>
         </div>
         <div v-else-if="filteredLiabilities?.length > 0" class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
+          <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
             <thead>
               <tr>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Account Name
                 </th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Type
                 </th>
-                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Balance
                 </th>
-                <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Last Updated
                 </th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
               <tr v-for="account in filteredLiabilities" :key="account.id">
-                <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                   {{ account.name }}
                 </td>
-                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   {{ account.subType }}
                 </td>
                 <td class="px-4 py-2 whitespace-nowrap text-sm text-right text-red-600">
@@ -118,10 +118,10 @@
       
       <!-- Aged Accounts Receivable -->
       <div class="card">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Aged Accounts Receivable</h2>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Aged Accounts Receivable</h2>
         <div v-if="revenueStore.loading" class="flex items-center justify-center py-8">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-          <span class="ml-3 text-gray-600">Loading aged receivables...</span>
+          <span class="ml-3 text-gray-600 dark:text-gray-400">Loading aged receivables...</span>
         </div>
         <div v-else-if="balances?.receivables && balances.receivables.total > 0" class="space-y-4">
           <!-- Summary -->
@@ -170,35 +170,35 @@
           <!-- Detailed breakdown -->
           <div v-if="balances.receivables.details && balances.receivables.details.length > 0" class="overflow-x-auto">
             <h3 class="text-md font-semibold text-gray-900 mb-2">Customer Breakdown</h3>
-            <table class="min-w-full divide-y divide-gray-200">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
               <thead>
                 <tr>
-                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Customer
                   </th>
-                  <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Current
                   </th>
-                  <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     1-15 Days
                   </th>
-                  <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     16-30 Days
                   </th>
-                  <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     31-45 Days
                   </th>
-                  <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     45+ Days
                   </th>
-                  <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Total
                   </th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200">
                 <tr v-for="customer in balances.receivables.details" :key="customer.id">
-                  <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                     {{ customer.customer }}
                   </td>
                   <td class="px-4 py-2 whitespace-nowrap text-sm text-right text-green-600">
