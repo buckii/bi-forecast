@@ -28,7 +28,7 @@
                 </th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-200">
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
               <tr v-for="account in balances?.assets || []" :key="account.id">
                 <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                   {{ account.name }}
@@ -37,10 +37,10 @@
                   {{ account.subType }}
                 </td>
                 <td class="px-4 py-2 whitespace-nowrap text-sm text-right" 
-                    :class="account.balance >= 0 ? 'text-gray-900' : 'text-red-600'">
+                    :class="account.balance >= 0 ? 'text-gray-900 dark:text-gray-100' : 'text-red-600'">
                   {{ formatCurrency(account.balance) }}
                 </td>
-                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500 text-center">
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center">
                   {{ formatDate(account.last_updated) }}
                 </td>
               </tr>
@@ -48,16 +48,16 @@
           </table>
           
           <!-- Asset Total -->
-          <div class="mt-4 pt-4 border-t border-gray-200">
+          <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
             <div class="flex justify-between items-center">
-              <span class="text-lg font-semibold text-gray-900">Total Assets:</span>
+              <span class="text-lg font-semibold text-gray-900 dark:text-gray-100">Total Assets:</span>
               <span class="text-xl font-bold text-primary-600">
                 {{ formatCurrency(assetTotal) }}
               </span>
             </div>
           </div>
         </div>
-        <p v-else class="text-gray-500">No asset accounts found</p>
+        <p v-else class="text-gray-500 dark:text-gray-400">No asset accounts found</p>
       </div>
 
       <!-- Liability Accounts -->
@@ -85,7 +85,7 @@
                 </th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-200">
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
               <tr v-for="account in filteredLiabilities" :key="account.id">
                 <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                   {{ account.name }}
@@ -96,7 +96,7 @@
                 <td class="px-4 py-2 whitespace-nowrap text-sm text-right text-red-600">
                   {{ formatCurrency(account.balance) }}
                 </td>
-                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500 text-center">
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center">
                   {{ formatDate(account.last_updated) }}
                 </td>
               </tr>
@@ -104,16 +104,16 @@
           </table>
           
           <!-- Liability Total -->
-          <div class="mt-4 pt-4 border-t border-gray-200">
+          <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
             <div class="flex justify-between items-center">
-              <span class="text-lg font-semibold text-gray-900">Total Liabilities:</span>
+              <span class="text-lg font-semibold text-gray-900 dark:text-gray-100">Total Liabilities:</span>
               <span class="text-xl font-bold text-red-600">
                 {{ formatCurrency(liabilityTotal) }}
               </span>
             </div>
           </div>
         </div>
-        <p v-else class="text-gray-500">No NotesPayable or Unearned Revenue accounts with non-zero balance found</p>
+        <p v-else class="text-gray-500 dark:text-gray-400">No NotesPayable or Unearned Revenue accounts with non-zero balance found</p>
       </div>
       
       <!-- Aged Accounts Receivable -->
@@ -127,31 +127,31 @@
           <!-- Summary -->
           <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
             <div class="text-center">
-              <p class="text-sm text-gray-500">Current</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Current</p>
               <p class="text-lg font-semibold text-green-600">
                 {{ formatCurrency(balances.receivables.current) }}
               </p>
             </div>
             <div class="text-center">
-              <p class="text-sm text-gray-500">1-15 Days</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400">1-15 Days</p>
               <p class="text-lg font-semibold text-yellow-600">
                 {{ formatCurrency(balances.receivables.days_1_15) }}
               </p>
             </div>
             <div class="text-center">
-              <p class="text-sm text-gray-500">16-30 Days</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400">16-30 Days</p>
               <p class="text-lg font-semibold text-orange-600">
                 {{ formatCurrency(balances.receivables.days_16_30) }}
               </p>
             </div>
             <div class="text-center">
-              <p class="text-sm text-gray-500">31-45 Days</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400">31-45 Days</p>
               <p class="text-lg font-semibold text-red-600">
                 {{ formatCurrency(balances.receivables.days_31_45) }}
               </p>
             </div>
             <div class="text-center">
-              <p class="text-sm text-gray-500">45+ Days</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400">45+ Days</p>
               <p class="text-lg font-semibold text-red-800">
                 {{ formatCurrency(balances.receivables.days_45_plus) }}
               </p>
@@ -196,7 +196,7 @@
                   </th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-200">
+              <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                 <tr v-for="customer in balances.receivables.details" :key="customer.id">
                   <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                     {{ customer.customer }}
@@ -213,18 +213,18 @@
                   <td class="px-4 py-2 whitespace-nowrap text-sm text-right text-red-600">
                     {{ customer.days_31_45 > 0 ? formatCurrency(customer.days_31_45) : '' }}
                   </td>
-                  <td class="px-4 py-2 whitespace-nowrap text-sm text-right text-red-800">
+                  <td class="px-4 py-2 whitespace-nowrap text-sm text-right text-red-800 dark:text-red-400">
                     {{ customer.days_45_plus > 0 ? formatCurrency(customer.days_45_plus) : '' }}
                   </td>
-                  <td class="px-4 py-2 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
+                  <td class="px-4 py-2 whitespace-nowrap text-sm text-right font-semibold text-gray-900 dark:text-gray-100">
                     {{ formatCurrency(customer.total) }}
                   </td>
                 </tr>
               </tbody>
               <!-- Total row -->
-              <tfoot class="bg-gray-50">
-                <tr class="border-t-2 border-gray-300">
-                  <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900">
+              <tfoot class="bg-gray-50 dark:bg-gray-800">
+                <tr class="border-t-2 border-gray-300 dark:border-gray-600">
+                  <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-gray-100">
                     TOTAL
                   </td>
                   <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-green-600">
@@ -239,10 +239,10 @@
                   <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-red-600">
                     {{ balances.receivables.days_31_45 > 0 ? formatCurrency(balances.receivables.days_31_45) : '' }}
                   </td>
-                  <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-red-800">
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-red-800 dark:text-red-400">
                     {{ balances.receivables.days_45_plus > 0 ? formatCurrency(balances.receivables.days_45_plus) : '' }}
                   </td>
-                  <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-primary-600">
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-primary-600 dark:text-primary-400">
                     {{ formatCurrency(balances.receivables.total) }}
                   </td>
                 </tr>
@@ -250,7 +250,7 @@
             </table>
           </div>
         </div>
-        <div v-else class="text-gray-500">
+        <div v-else class="text-gray-500 dark:text-gray-400">
           <p v-if="!balances.receivables">No A/R data available - unable to fetch receivables information</p>
           <p v-else>No outstanding receivables found - all invoices are paid</p>
         </div>
