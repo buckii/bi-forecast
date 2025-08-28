@@ -202,7 +202,7 @@ This allows secure HTTPS access to your local development server for webhook tes
 
 4. **Deploy**
    ```bash
-   netlify deploy --prod
+   npm run deploy
    ```
 
 ## Current Implementation Status
