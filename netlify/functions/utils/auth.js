@@ -1,11 +1,19 @@
 import jwt from 'jsonwebtoken'
-import { OAuth2Client } from 'google-auth-library'
 import { getCollection } from './database.js'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key'
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID
 
-const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID)
+// Initialize Google client with dynamic import to handle runtime issues
+let googleClient = null
+
+async function getGoogleClient() {
+  if (!googleClient) {
+    const { OAuth2Client } = await import('google-auth-library')
+    googleClient = new OAuth2Client(GOOGLE_CLIENT_ID)
+  }
+  return googleClient
+}
 
 export function generateToken(payload) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' })
@@ -25,7 +33,8 @@ export async function verifyGoogleToken(token) {
     console.log('Google Client ID configured:', !!GOOGLE_CLIENT_ID)
     console.log('Token format check - starts with eyJ:', token.startsWith('eyJ'))
     
-    const ticket = await googleClient.verifyIdToken({
+    const client = await getGoogleClient()
+    const ticket = await client.verifyIdToken({
       idToken: token,
       audience: GOOGLE_CLIENT_ID,
     })
