@@ -50,33 +50,63 @@ class RevenueCalculator {
       })
     }
     
-    return result
+    return {
+      months: result,
+      dataSourceErrors: this.getDataSourceErrors()
+    }
+  }
+
+  getDataSourceErrors() {
+    const allErrors = []
+    
+    if (this.qboDataSourceErrors && this.qboDataSourceErrors.length > 0) {
+      allErrors.push(...this.qboDataSourceErrors.map(err => ({ ...err, provider: 'QuickBooks' })))
+    }
+    
+    if (this.pipedriveDataSourceErrors && this.pipedriveDataSourceErrors.length > 0) {
+      allErrors.push(...this.pipedriveDataSourceErrors.map(err => ({ ...err, provider: 'Pipedrive' })))
+    }
+    
+    return allErrors
   }
 
   async fetchAllQBOData(startDate, endDate) {
     const startStr = format(startDate, 'yyyy-MM-dd')
     const endStr = format(endOfMonth(endDate), 'yyyy-MM-dd')
     
+    // Track which data sources failed
+    this.qboDataSourceErrors = []
+    
     try {
-      // Fetch all QBO data in parallel
-      
-      const [invoices, journalEntries, delayedCharges] = await Promise.all([
-        this.qbo.getInvoices(startStr, endStr).catch(err => {
-          console.error('Error fetching invoices:', err.message)
-          return []
-        }),
-        this.qbo.getJournalEntries(startStr, endStr).catch(err => {
-          console.error('Error fetching journal entries:', err.message)
-          return []
-        }),
-        this.qbo.getDelayedCharges(startStr, endStr).catch(err => {
-          console.error('Error fetching delayed charges:', err.message)
-          return []
-        })
+      // Fetch all QBO data in parallel with individual error tracking
+      const results = await Promise.allSettled([
+        this.qbo.getInvoices(startStr, endStr),
+        this.qbo.getJournalEntries(startStr, endStr),
+        this.qbo.getDelayedCharges(startStr, endStr)
       ])
       
+      const [invoicesResult, journalEntriesResult, delayedChargesResult] = results
       
-      // Log date range of actual data
+      // Extract data and track failures
+      const invoices = invoicesResult.status === 'fulfilled' ? invoicesResult.value : []
+      if (invoicesResult.status === 'rejected') {
+        console.error('Error fetching invoices:', invoicesResult.reason.message)
+        this.qboDataSourceErrors.push({ source: 'invoices', error: invoicesResult.reason.message })
+      }
+      
+      const journalEntries = journalEntriesResult.status === 'fulfilled' ? journalEntriesResult.value : []
+      if (journalEntriesResult.status === 'rejected') {
+        console.error('Error fetching journal entries:', journalEntriesResult.reason.message)
+        this.qboDataSourceErrors.push({ source: 'journal entries', error: journalEntriesResult.reason.message })
+      }
+      
+      const delayedCharges = delayedChargesResult.status === 'fulfilled' ? delayedChargesResult.value : []
+      if (delayedChargesResult.status === 'rejected') {
+        console.error('Error fetching delayed charges:', delayedChargesResult.reason.message)
+        this.qboDataSourceErrors.push({ source: 'delayed charges', error: delayedChargesResult.reason.message })
+      }
+      
+      // Log successful data ranges
       if (invoices.length > 0) {
         const invoiceDates = invoices.map(inv => inv.TxnDate).sort()
       }
@@ -84,42 +114,63 @@ class RevenueCalculator {
       return {
         invoices,
         journalEntries,
-        delayedCharges
+        delayedCharges,
+        hasErrors: this.qboDataSourceErrors.length > 0,
+        errors: this.qboDataSourceErrors
       }
     } catch (error) {
       console.error('Error fetching QBO data:', error)
+      this.qboDataSourceErrors.push({ source: 'QuickBooks API', error: error.message })
       return {
         invoices: [],
         journalEntries: [],
-        delayedCharges: []
+        delayedCharges: [],
+        hasErrors: true,
+        errors: this.qboDataSourceErrors
       }
     }
   }
 
   async fetchAllPipedriveData() {
+    // Track which data sources failed
+    this.pipedriveDataSourceErrors = []
+    
     try {
-      // Fetch all Pipedrive data in parallel
-      const [wonUnscheduledDeals, openDeals] = await Promise.all([
-        this.pipedrive.getWonUnscheduledDeals().catch(err => {
-          console.error('Error fetching won unscheduled deals:', err.message)
-          return []
-        }),
-        this.pipedrive.getOpenDeals().catch(err => {
-          console.error('Error fetching open deals:', err.message)
-          return []
-        })
+      // Fetch all Pipedrive data in parallel with individual error tracking
+      const results = await Promise.allSettled([
+        this.pipedrive.getWonUnscheduledDeals(),
+        this.pipedrive.getOpenDeals()
       ])
       
+      const [wonUnscheduledResult, openDealsResult] = results
+      
+      // Extract data and track failures
+      const wonUnscheduledDeals = wonUnscheduledResult.status === 'fulfilled' ? wonUnscheduledResult.value : []
+      if (wonUnscheduledResult.status === 'rejected') {
+        console.error('Error fetching won unscheduled deals:', wonUnscheduledResult.reason.message)
+        this.pipedriveDataSourceErrors.push({ source: 'won unscheduled deals', error: wonUnscheduledResult.reason.message })
+      }
+      
+      const openDeals = openDealsResult.status === 'fulfilled' ? openDealsResult.value : []
+      if (openDealsResult.status === 'rejected') {
+        console.error('Error fetching open deals:', openDealsResult.reason.message)
+        this.pipedriveDataSourceErrors.push({ source: 'open deals', error: openDealsResult.reason.message })
+      }
       
       return {
         wonUnscheduledDeals,
-        openDeals
+        openDeals,
+        hasErrors: this.pipedriveDataSourceErrors.length > 0,
+        errors: this.pipedriveDataSourceErrors
       }
     } catch (error) {
       console.error('Error fetching Pipedrive data:', error)
+      this.pipedriveDataSourceErrors.push({ source: 'Pipedrive API', error: error.message })
       return {
         wonUnscheduledDeals: [],
-        openDeals: []
+        openDeals: [],
+        hasErrors: true,
+        errors: this.pipedriveDataSourceErrors
       }
     }
   }

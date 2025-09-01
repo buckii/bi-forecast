@@ -56,7 +56,8 @@ exports.handler = async function(event, context) {
     const calculator = new RevenueCalculator(company._id)
     
     // Get revenue data for 6 months (2 months ago to 3 months from now)
-    const months = await calculator.calculateMonthlyRevenue(6, -2)
+    const revenueResult = await calculator.calculateMonthlyRevenue(6, -2)
+    const months = revenueResult.months || revenueResult // Handle both old and new return format
     
     // Get exceptions
     const exceptions = await calculator.getExceptions()

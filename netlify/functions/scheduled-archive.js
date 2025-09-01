@@ -1,6 +1,7 @@
 const { success, error } = require('./utils/response.js')
 const { getCollection } = require('./utils/database.js')
 const RevenueCalculator = require('./services/revenue-calculator-optimized.js')
+const SlackService = require('./services/slack.js')
 
 exports.handler = async function(event, context) {
   // This function runs daily at 3am ET via Netlify scheduled functions
@@ -20,7 +21,10 @@ exports.handler = async function(event, context) {
         const calculator = new RevenueCalculator(company._id)
         
         // Calculate current revenue data (6 months: 2 months ago to 3 months from now)
-        const months = await calculator.calculateMonthlyRevenue(6, -2)
+        const revenueResult = await calculator.calculateMonthlyRevenue(6, -2)
+        const months = revenueResult.months || revenueResult // Handle both old and new return format
+        const dataSourceErrors = revenueResult.dataSourceErrors || []
+        
         const exceptions = await calculator.getExceptions()
         const balances = await calculator.getBalances()
         
@@ -34,7 +38,22 @@ exports.handler = async function(event, context) {
           months,
           exceptions,
           balances,
+          dataSourceErrors,
           createdAt: new Date()
+        }
+        
+        // Check if there were any data source errors
+        if (dataSourceErrors.length > 0) {
+          console.warn(`Data source errors for company ${company.name}:`, dataSourceErrors)
+          
+          // Send Slack notification for data source failures
+          try {
+            const slack = new SlackService()
+            const failedSources = dataSourceErrors.map(err => `${err.provider} ${err.source}`).join(', ')
+            await slack.sendNightlyJobFailure(company.name, failedSources, dataSourceErrors)
+          } catch (slackError) {
+            console.error('Failed to send Slack notification:', slackError.message)
+          }
         }
         
         // Upsert (update or insert) today's archive
@@ -61,13 +80,23 @@ exports.handler = async function(event, context) {
           companyId: company._id,
           companyName: company.name,
           success: true,
-          monthsArchived: months.length,
-          oldArchivesDeleted: deleteResult.deletedCount
+          monthsArchived: Array.isArray(months) ? months.length : 0,
+          oldArchivesDeleted: deleteResult.deletedCount,
+          dataSourceErrors: dataSourceErrors.length
         })
         
         
       } catch (companyError) {
         console.error(`✗ Error processing company ${company.name}:`, companyError)
+        
+        // Send Slack notification for complete failure
+        try {
+          const slack = new SlackService()
+          await slack.sendNightlyJobFailure(company.name, 'Complete system failure', [{ error: companyError.message }])
+        } catch (slackError) {
+          console.error('Failed to send Slack notification:', slackError.message)
+        }
+        
         results.push({
           companyId: company._id,
           companyName: company.name,
