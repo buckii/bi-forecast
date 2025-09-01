@@ -18,9 +18,9 @@ exports.handler = async function(event, context) {
     
     const calculator = new RevenueCalculator(company._id)
     
-    // Force refresh of Pipedrive data by recalculating revenue and exceptions (6 months: 2 months ago to 3 months from now)
-    const [months, exceptions, balances] = await Promise.all([
-      calculator.calculateMonthlyRevenue(6, -2),
+    // Force refresh of Pipedrive data by recalculating revenue and exceptions (18 months: 6 months ago to 12 months from now)
+    const [revenueResult, exceptions, balances] = await Promise.all([
+      calculator.calculateMonthlyRevenue(18, -6),
       calculator.getExceptions(),
       calculator.getBalances()
     ])
@@ -37,7 +37,7 @@ exports.handler = async function(event, context) {
       },
       {
         $set: {
-          months,
+          months: revenueResult.months || revenueResult,
           exceptions,
           balances,
           updatedAt: new Date()

@@ -55,8 +55,8 @@ exports.handler = async function(event, context) {
     const RevenueCalculator = require('./services/revenue-calculator-optimized.js')
     const calculator = new RevenueCalculator(company._id)
     
-    // Get revenue data for 6 months (2 months ago to 3 months from now)
-    const revenueResult = await calculator.calculateMonthlyRevenue(6, -2)
+    // Get revenue data for 18 months (6 months ago to 12 months from now)
+    const revenueResult = await calculator.calculateMonthlyRevenue(18, -6)
     const months = revenueResult.months || revenueResult // Handle both old and new return format
     
     // Get exceptions
