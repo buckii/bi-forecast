@@ -222,7 +222,7 @@
                           
                           <!-- Weighted Sales Details -->
                           <div v-if="transaction.type === 'weightedSales' && transaction.details" class="bg-white dark:bg-gray-700 rounded-lg p-3">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                               <div>
                                 <span class="text-gray-500 dark:text-gray-400">Deal Value:</span>
                                 <span class="ml-2 font-medium">{{ formatCurrency(transaction.details.totalValue) }}</span>
@@ -230,6 +230,10 @@
                               <div>
                                 <span class="text-gray-500 dark:text-gray-400">Probability:</span>
                                 <span class="ml-2 font-medium">{{ transaction.details.probability }}%</span>
+                              </div>
+                              <div>
+                                <span class="text-gray-500 dark:text-gray-400">Duration (months):</span>
+                                <span class="ml-2 font-medium">{{ transaction.details.duration || 'N/A' }}</span>
                               </div>
                               <div>
                                 <span class="text-gray-500 dark:text-gray-400">Expected Close:</span>
