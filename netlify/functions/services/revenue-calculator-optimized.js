@@ -566,7 +566,8 @@ class RevenueCalculator {
     const balances = {
       assets: [],
       liabilities: [],
-      receivables: null
+      receivables: null,
+      monthlyExpenses: 0
     }
     
     try {
@@ -610,6 +611,18 @@ class RevenueCalculator {
       balances.receivables = await this.qbo.getAgedReceivables()
     } catch (error) {
       console.error('[Revenue Calculator] Error getting aged receivables:', error)
+    }
+
+    try {
+      // Get previous month's expenses for cash flow calculations
+      const lastMonth = new Date()
+      lastMonth.setMonth(lastMonth.getMonth() - 1)
+      const year = lastMonth.getFullYear()
+      const month = lastMonth.getMonth() + 1
+      
+      balances.monthlyExpenses = await this.qbo.getMonthlyExpenses(year, month)
+    } catch (error) {
+      console.error('[Revenue Calculator] Error getting monthly expenses:', error)
     }
     
     return balances

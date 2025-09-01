@@ -219,6 +219,50 @@ class QuickBooksService {
     return this.parseReportData(data)
   }
 
+  async getMonthlyExpenses(year, month) {
+    const startDate = `${year}-${month.toString().padStart(2, '0')}-01`
+    const lastDay = new Date(year, month, 0).getDate()
+    const endDate = `${year}-${month.toString().padStart(2, '0')}-${lastDay}`
+    
+    const { accessToken, realmId } = await this.getAccessToken()
+    const endpoint = `reports/ProfitAndLoss?start_date=${startDate}&end_date=${endDate}`
+    const data = await this.makeRequest(endpoint, realmId, accessToken)
+    
+    return this.parseExpensesFromProfitLoss(data)
+  }
+
+  parseExpensesFromProfitLoss(reportData) {
+    let totalIncome = 0
+    let netOperatingIncome = 0
+    
+    try {
+      const rows = reportData.Rows?.Row || []
+      
+      for (const row of rows) {
+        // Extract Total Income from Income group Summary
+        if (row.group === 'Income' && row.Summary?.ColData) {
+          const amount = row.Summary.ColData[1]?.value || '0'
+          totalIncome = Math.abs(parseFloat(amount.replace(/[,$]/g, '')) || 0)
+        }
+        
+        // Extract Net Operating Income from NetOperatingIncome group Summary
+        if (row.group === 'NetOperatingIncome' && row.Summary?.ColData) {
+          const amount = row.Summary.ColData[1]?.value || '0'
+          netOperatingIncome = parseFloat(amount.replace(/[,$]/g, '')) || 0
+        }
+      }
+      
+      // Calculate expenses as the difference
+      const totalExpenses = totalIncome - netOperatingIncome
+      
+      return Math.max(0, totalExpenses)
+      
+    } catch (error) {
+      console.error('Error parsing expenses from P&L:', error)
+      return 0
+    }
+  }
+
   async getAgedReceivables() {
     const { accessToken, realmId } = await this.getAccessToken()
     
@@ -392,6 +436,7 @@ class QuickBooksService {
     }
     
     try {
+      const rows = reportData.Rows?.Row || []
       
       // Log first few rows for debugging
       if (rows.length > 0) {
