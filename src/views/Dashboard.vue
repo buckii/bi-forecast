@@ -4,17 +4,38 @@
       <!-- Date Selector -->
       <div class="card">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">View as of</label>
-            <input
-              type="date"
-              v-model="selectedDateStr"
-              @change="handleDateChange"
-              class="input"
-            />
-            <span v-if="revenueStore.isHistorical" class="ml-2 text-sm text-amber-600">
-              Viewing historical data
-            </span>
+          <div class="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-6">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">View as of</label>
+              <input
+                type="date"
+                v-model="selectedDateStr"
+                @change="handleDateChange"
+                class="input"
+              />
+              <span v-if="revenueStore.isHistorical" class="ml-2 text-sm text-amber-600">
+                Viewing historical data
+              </span>
+            </div>
+            
+            <div class="flex items-center">
+              <label class="flex items-center cursor-pointer">
+                <div class="relative">
+                  <input
+                    type="checkbox"
+                    v-model="revenueStore.includeWeightedSales"
+                    class="sr-only"
+                  />
+                  <div class="w-12 h-6 rounded-full shadow-inner transition-colors duration-200 relative flex items-center"
+                       :class="revenueStore.includeWeightedSales ? 'bg-green-500' : 'bg-red-500'">
+                    <div class="w-5 h-5 bg-white rounded-full shadow-lg transition-transform duration-200 absolute"
+                         :class="revenueStore.includeWeightedSales ? 'translate-x-6' : 'translate-x-0.5'">
+                    </div>
+                  </div>
+                </div>
+                <span class="ml-3 text-sm text-gray-700 dark:text-gray-300">Include weighted sales</span>
+              </label>
+            </div>
           </div>
           
           <div class="flex space-x-2">
@@ -52,36 +73,55 @@
         </div>
       </div>
       
-      <!-- Toggle Weighted Sales -->
-      <div class="card">
-        <label class="flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            v-model="revenueStore.includeWeightedSales"
-            class="rounded border-gray-300 text-primary-600 shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 focus:ring-opacity-50"
-          />
-          <span class="ml-2 text-gray-700 dark:text-gray-300">Include weighted sales in forecast</span>
-        </label>
-      </div>
-      
       <!-- Revenue Chart -->
       <div class="card">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Monthly Revenue Forecast</h2>
-          <button 
-            @click="shareChartToSlack"
-            :disabled="sharingToSlack || revenueStore.loading"
-            class="btn-secondary inline-flex items-center"
-          >
-            <svg v-if="sharingToSlack" class="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <svg v-else class="-ml-1 mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 10.12h6.481v2.522H5.042a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 7.597h6.481V5.074c0-1.393 1.135-2.523 2.52-2.523a2.528 2.528 0 0 1 2.52 2.523v2.523h2.515c1.393 0 2.52 1.135 2.52 2.523a2.528 2.528 0 0 1-2.52 2.523h-2.515v2.522h2.515a2.528 2.528 0 0 1 2.52 2.523A2.528 2.528 0 0 1 16.558 18.88h-2.515v2.523c0 1.393-1.135 2.523-2.52 2.523a2.528 2.528 0 0 1-2.52-2.523V18.88H5.042a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 15.835h6.481v-2.522H5.042z"/>
-            </svg>
-            {{ sharingToSlack ? 'Sending...' : 'Send to Slack' }}
-          </button>
+        <div class="flex flex-col space-y-4 mb-4">
+          <!-- Title and Send button -->
+          <div class="flex justify-between items-center">
+            <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Monthly Revenue Forecast</h2>
+            <button 
+              @click="shareChartToSlack"
+              :disabled="sharingToSlack || revenueStore.loading"
+              class="btn-secondary inline-flex items-center"
+            >
+              <svg v-if="sharingToSlack" class="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <svg v-else class="-ml-1 mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 10.12h6.481v2.522H5.042a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 7.597h6.481V5.074c0-1.393 1.135-2.523 2.52-2.523a2.528 2.528 0 0 1 2.52 2.523v2.523h2.515c1.393 0 2.52 1.135 2.52 2.523a2.528 2.528 0 0 1-2.52 2.523h-2.515v2.522h2.515a2.528 2.528 0 0 1 2.52 2.523A2.528 2.528 0 0 1 16.558 18.88h-2.515v2.523c0 1.393-1.135 2.523-2.52 2.523a2.528 2.528 0 0 1-2.52-2.523V18.88H5.042a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 15.835h6.481v-2.522H5.042z"/>
+              </svg>
+              {{ sharingToSlack ? 'Sending...' : 'Send to Slack' }}
+            </button>
+          </div>
+          
+          <!-- Date Range Selector -->
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Date Range:</label>
+              <div class="flex items-center space-x-2">
+                <input
+                  type="date"
+                  v-model="chartStartDateStr"
+                  @change="handleStartDateChange"
+                  class="input text-sm"
+                />
+                <span class="text-gray-500 dark:text-gray-400">to</span>
+                <input
+                  type="date"
+                  v-model="chartEndDateStr"
+                  @change="handleEndDateChange"
+                  class="input text-sm"
+                />
+              </div>
+            </div>
+            <button 
+              @click="resetDateRange"
+              class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              Reset to Default
+            </button>
+          </div>
         </div>
         <div class="h-96 relative" ref="chartContainer">
           <!-- Loading State inside chart area -->
@@ -132,12 +172,17 @@ import AppLayout from '../components/AppLayout.vue'
 import RevenueChart from '../components/RevenueChart.vue'
 import TransactionDetailsModal from '../components/TransactionDetailsModal.vue'
 import StatusModal from '../components/StatusModal.vue'
-import { format, parse } from 'date-fns'
+import { format, parse, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns'
 
 const revenueStore = useRevenueStore()
 const authStore = useAuthStore()
 
 const selectedDateStr = ref(format(new Date(), 'yyyy-MM-dd'))
+
+// Date range for chart display (default to first day of last month to last day 4 months from now)
+const chartStartDateStr = ref(format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'))
+const chartEndDateStr = ref(format(endOfMonth(addMonths(new Date(), 4)), 'yyyy-MM-dd'))
+
 const refreshingQBO = ref(false)
 const refreshingPipedrive = ref(false)
 const showTransactionModal = ref(false)
@@ -151,19 +196,24 @@ const shareModalError = ref('')
 const shareModalErrorDetails = ref('')
 
 const chartData = computed(() => {
-  return revenueStore.revenueData.map(month => {
-    const data = {
-      month: month.month,
-      ...month.components
-    }
-    
-    // Conditionally exclude weighted sales based on setting
-    if (!revenueStore.includeWeightedSales) {
-      data.weightedSales = 0
-    }
-    
-    return data
-  })
+  // Filter revenue data based on selected date range
+  return revenueStore.revenueData
+    .filter(month => {
+      return month.month >= chartStartDateStr.value && month.month <= chartEndDateStr.value
+    })
+    .map(month => {
+      const data = {
+        month: month.month,
+        ...month.components
+      }
+      
+      // Conditionally exclude weighted sales based on setting
+      if (!revenueStore.includeWeightedSales) {
+        data.weightedSales = 0
+      }
+      
+      return data
+    })
 })
 
 function formatCurrency(value) {
@@ -184,6 +234,33 @@ function handleDateChange() {
   } else {
     revenueStore.loadRevenueData(date)
   }
+}
+
+function handleStartDateChange() {
+  // Force start date to be the first of the month
+  const selectedDate = parse(chartStartDateStr.value, 'yyyy-MM-dd', new Date())
+  const firstOfMonth = startOfMonth(selectedDate)
+  const correctedDateStr = format(firstOfMonth, 'yyyy-MM-dd')
+  
+  if (chartStartDateStr.value !== correctedDateStr) {
+    chartStartDateStr.value = correctedDateStr
+  }
+}
+
+function handleEndDateChange() {
+  // Force end date to be the last of the month
+  const selectedDate = parse(chartEndDateStr.value, 'yyyy-MM-dd', new Date())
+  const lastOfMonth = endOfMonth(selectedDate)
+  const correctedDateStr = format(lastOfMonth, 'yyyy-MM-dd')
+  
+  if (chartEndDateStr.value !== correctedDateStr) {
+    chartEndDateStr.value = correctedDateStr
+  }
+}
+
+function resetDateRange() {
+  chartStartDateStr.value = format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd')
+  chartEndDateStr.value = format(endOfMonth(addMonths(new Date(), 4)), 'yyyy-MM-dd')
 }
 
 async function refreshQBO() {
