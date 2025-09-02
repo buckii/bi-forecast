@@ -50,7 +50,7 @@
       </div>
       
       <!-- Key Metrics -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <div class="card">
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">This Month</h3>
           <p class="text-3xl font-bold text-primary-600 mt-2">
@@ -69,6 +69,39 @@
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">1-Year Unbilled</h3>
           <p class="text-3xl font-bold text-primary-600 mt-2">
             {{ formatCurrency(revenueStore.yearUnbilledCharges) }}
+          </p>
+        </div>
+
+        <div class="card">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">30-Days Unbilled</h3>
+          <p class="text-3xl font-bold text-primary-600 mt-2">
+            {{ formatCurrency(revenueStore.thirtyDaysUnbilled) }}
+          </p>
+        </div>
+
+        <div class="card">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Days Cash</h3>
+          <p class="text-3xl font-bold text-primary-600 mt-2">
+            {{ revenueStore.daysCash || '—' }}
+          </p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Cash: {{ formatCurrency(revenueStore.totalCashOnHand || 0) }}
+          </p>
+          <p class="text-xs text-gray-400 dark:text-gray-500">
+            Expenses: {{ formatCurrency(revenueStore.balances.monthlyExpenses || 0) }}/mo
+          </p>
+        </div>
+
+        <div class="card">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Days Cash + AR</h3>
+          <p class="text-3xl font-bold text-primary-600 mt-2">
+            {{ revenueStore.daysCashPlusAR || '—' }}
+          </p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Total: {{ formatCurrency((revenueStore.totalCashOnHand || 0) + (revenueStore.totalReceivables || 0)) }}
+          </p>
+          <p class="text-xs text-gray-400 dark:text-gray-500">
+            Expenses: {{ formatCurrency(revenueStore.balances.monthlyExpenses || 0) }}/mo
           </p>
         </div>
       </div>

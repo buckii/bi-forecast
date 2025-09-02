@@ -56,8 +56,9 @@ exports.handler = async function(event, context) {
       lastUpdated: new Date().toISOString(),
       performanceStats: {
         totalTime: Date.now() - startTime,
-        monthsCalculated: months.length,
-        balanceAccounts: balances.assets?.length || 0
+        monthsCalculated: (revenueResult.months || revenueResult).length,
+        balanceAccounts: balances.assets?.length || 0,
+        monthlyExpenses: balances.monthlyExpenses || 0
       }
     })
     

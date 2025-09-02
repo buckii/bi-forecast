@@ -17,7 +17,8 @@ export const useRevenueStore = defineStore('revenue', () => {
   })
   const balances = ref({
     assets: [],
-    receivables: null
+    receivables: null,
+    monthlyExpenses: 0
   })
   
   const includeWeightedSales = ref(true)
@@ -74,6 +75,71 @@ export const useRevenueStore = defineStore('revenue', () => {
     }
     
     return total
+  })
+
+  const thirtyDaysUnbilled = computed(() => {
+    const currentMonth = format(startOfMonth(new Date()), 'yyyy-MM-dd')
+    const monthData = revenueData.value.find(m => m.month === currentMonth)
+    if (!monthData) return 0
+    
+    return monthData.components.delayedCharges
+  })
+
+  const totalCashOnHand = computed(() => {
+    if (!balances.value.assets || !Array.isArray(balances.value.assets)) {
+      return 0
+    }
+    
+    return balances.value.assets.reduce((total, account) => {
+      if (['Checking', 'Savings', 'UndepositedFunds'].includes(account.subType)) {
+        const balance = parseFloat(account.balance) || 0
+        return total + balance
+      }
+      return total
+    }, 0)
+  })
+
+  const daysCash = computed(() => {
+    const monthlyExpenses = parseFloat(balances.value.monthlyExpenses) || 0
+    const dailyExpenses = monthlyExpenses / 30
+    const cashOnHand = totalCashOnHand.value
+    
+    
+    if (dailyExpenses === 0 || cashOnHand === 0) return 0
+    return Math.round(cashOnHand / dailyExpenses)
+  })
+
+  const totalReceivables = computed(() => {
+    if (!balances.value.receivables) return 0
+    
+    // Handle different receivables data structures
+    if (typeof balances.value.receivables === 'number') {
+      return balances.value.receivables
+    }
+    
+    if (balances.value.receivables.total !== undefined) {
+      return balances.value.receivables.total
+    }
+    
+    // If it's an object with aging buckets, sum them up
+    if (balances.value.receivables.current !== undefined) {
+      return (balances.value.receivables.current || 0) +
+             (balances.value.receivables.days1to30 || 0) +
+             (balances.value.receivables.days31to60 || 0) +
+             (balances.value.receivables.days61to90 || 0) +
+             (balances.value.receivables.over90 || 0)
+    }
+    
+    return 0
+  })
+
+  const daysCashPlusAR = computed(() => {
+    const monthlyExpenses = parseFloat(balances.value.monthlyExpenses) || 0
+    const dailyExpenses = monthlyExpenses / 30
+    if (dailyExpenses === 0) return 0
+    const totalLiquid = totalCashOnHand.value + totalReceivables.value
+    if (totalLiquid === 0) return 0
+    return Math.round(totalLiquid / dailyExpenses)
   })
   
   async function loadRevenueData(date = null) {
@@ -140,6 +206,11 @@ export const useRevenueStore = defineStore('revenue', () => {
     currentMonthRevenue,
     threeMonthRevenue,
     yearUnbilledCharges,
+    thirtyDaysUnbilled,
+    totalCashOnHand,
+    daysCash,
+    totalReceivables,
+    daysCashPlusAR,
     loadRevenueData,
     refreshQuickbooks,
     refreshPipedrive
