@@ -48,10 +48,13 @@
         <!-- Transactions List (Material Design Cards) -->
         <div v-if="transactionData.transactions.length > 0" class="space-y-2">
           <!-- Transaction Cards -->
-          <div v-for="transaction in transactionData.transactions" 
+          <div v-for="transaction in sortedTransactions" 
                :key="transaction.id"
                class="transaction-card bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden" 
-               :class="{ 'expanded': expandedTransactions.has(transaction.id) }">
+               :class="{ 
+                 'expanded': expandedTransactions.has(transaction.id),
+                 'annual-item': transaction.description?.toLowerCase().includes('annual')
+               }">
                     <!-- Main Transaction Row -->
                     <div @click="toggleDetails(transaction.id)"
                          class="flex items-center p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150">
@@ -264,7 +267,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { format, parse } from 'date-fns'
 import { useAuthStore } from '../stores/auth'
 
@@ -289,6 +292,19 @@ const loading = ref(false)
 const error = ref(null)
 const transactionData = ref(null)
 const expandedTransactions = ref(new Set())
+
+const sortedTransactions = computed(() => {
+  if (!transactionData.value?.transactions) return []
+  
+  return [...transactionData.value.transactions].sort((a, b) => {
+    const aIsAnnual = a.description?.toLowerCase().includes('annual') || false
+    const bIsAnnual = b.description?.toLowerCase().includes('annual') || false
+    
+    if (aIsAnnual && !bIsAnnual) return 1
+    if (!aIsAnnual && bIsAnnual) return -1
+    return 0
+  })
+})
 
 watch(() => props.isOpen, (isOpen) => {
   if (isOpen && props.month && props.component) {
@@ -440,5 +456,10 @@ function getTypeColor(type) {
 
 .transaction-card.expanded {
   @apply shadow-md;
+}
+
+/* Annual items styling - muted appearance */
+.transaction-card.annual-item {
+  @apply opacity-60 bg-gray-50 dark:bg-gray-700;
 }
 </style>
