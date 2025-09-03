@@ -27,6 +27,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/accounts-receivable',
+    name: 'AccountsReceivable',
+    component: () => import('../views/AccountsReceivable.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/settings',
     name: 'Settings',
     component: () => import('../views/Settings.vue'),
