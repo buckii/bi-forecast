@@ -1,6 +1,6 @@
 const { success, error } = require('./utils/response.js')
 const { getCollection } = require('./utils/database.js')
-const RevenueCalculator = require('./services/revenue-calculator-optimized.js')
+const RevenueCalculator = require('./services/revenue-calculator.js')
 const SlackService = require('./services/slack.js')
 
 exports.handler = async function(event, context) {

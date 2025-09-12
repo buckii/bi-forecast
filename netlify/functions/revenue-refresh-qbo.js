@@ -1,6 +1,6 @@
 const { success, error, cors } = require('./utils/response.js')
 const { getCurrentUser } = require('./utils/auth.js')
-const RevenueCalculator = require('./services/revenue-calculator-optimized.js')
+const RevenueCalculator = require('./services/revenue-calculator.js')
 const { getCollection } = require('./utils/database.js')
 
 exports.handler = async function(event, context) {

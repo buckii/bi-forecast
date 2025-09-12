@@ -52,7 +52,7 @@ exports.handler = async function(event, context) {
     }
     
     // No cache or stale cache, calculate fresh data
-    const RevenueCalculator = require('./services/revenue-calculator-optimized.js')
+    const RevenueCalculator = require('./services/revenue-calculator.js')
     const calculator = new RevenueCalculator(company._id)
     
     // Get revenue data for 18 months (6 months ago to 12 months from now)
