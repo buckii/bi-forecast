@@ -1,4 +1,4 @@
-const { startOfMonth, endOfMonth, addMonths, format } = require('date-fns')
+const { startOfMonth, endOfMonth, addMonths, format, isWithinInterval } = require('date-fns')
 const QuickBooksService = require('./quickbooks.js')
 const PipedriveService = require('./pipedrive.js')
 const { getCollection } = require('../utils/database.js')
@@ -10,50 +10,250 @@ class RevenueCalculator {
     this.pipedrive = new PipedriveService(companyId)
   }
 
-  async calculateMonthlyRevenue(months = 24) {
-    const result = []
+  async calculateMonthlyRevenue(months = 18, startOffset = -6) {
     const currentDate = new Date()
+    const startMonth = addMonths(startOfMonth(currentDate), startOffset)
+    const endMonth = addMonths(startOfMonth(currentDate), startOffset + months - 1)
     
-    // Calculate from 12 months ago to 12 months ahead
-    const startMonth = addMonths(startOfMonth(currentDate), -12)
+    const startTime = Date.now()
     
+    // Fetch all data in parallel
+    const [qboData, pipedriveData] = await Promise.all([
+      this.fetchAllQBOData(startMonth, endMonth),
+      this.fetchAllPipedriveData()
+    ])
+    
+    // Cache the Pipedrive data for use by transaction details
+    this.cachedPipedriveData = pipedriveData
+    
+    
+    // Calculate baseline monthly recurring from previous month
+    const baselineMonthlyRecurring = await this.calculateBaselineMonthlyRecurring(qboData)
+    
+    // Process data into monthly buckets
+    const result = []
     for (let i = 0; i < months; i++) {
       const monthDate = addMonths(startMonth, i)
       const monthStr = format(monthDate, 'yyyy-MM-dd')
       
-      try {
-        const components = await this.calculateMonthComponents(monthDate)
-        
-        result.push({
-          month: monthStr,
-          components,
-          transactions: [] // Will be populated with detailed breakdown
-        })
-      } catch (error) {
-        console.error(`Error calculating revenue for ${monthStr}:`, error)
-        
-        // Return empty components on error
-        result.push({
-          month: monthStr,
-          components: {
-            invoiced: 0,
-            journalEntries: 0,
-            delayedCharges: 0,
-            monthlyRecurring: 0,
-            wonUnscheduled: 0,
-            weightedSales: 0
-          },
-          transactions: []
-        })
-      }
+      const components = await this.calculateMonthComponentsFromCache(
+        monthDate,
+        qboData,
+        pipedriveData,
+        baselineMonthlyRecurring
+      )
+      
+      result.push({
+        month: monthStr,
+        components,
+        transactions: []
+      })
     }
     
-    return result
+    return {
+      months: result,
+      dataSourceErrors: this.getDataSourceErrors()
+    }
   }
 
-  async calculateMonthComponents(monthDate) {
-    const startDate = format(startOfMonth(monthDate), 'yyyy-MM-dd')
-    const endDate = format(endOfMonth(monthDate), 'yyyy-MM-dd')
+  getDataSourceErrors() {
+    const allErrors = []
+    
+    if (this.qboDataSourceErrors && this.qboDataSourceErrors.length > 0) {
+      allErrors.push(...this.qboDataSourceErrors.map(err => ({ ...err, provider: 'QuickBooks' })))
+    }
+    
+    if (this.pipedriveDataSourceErrors && this.pipedriveDataSourceErrors.length > 0) {
+      allErrors.push(...this.pipedriveDataSourceErrors.map(err => ({ ...err, provider: 'Pipedrive' })))
+    }
+    
+    return allErrors
+  }
+
+  async fetchAllQBOData(startDate, endDate) {
+    const startStr = format(startDate, 'yyyy-MM-dd')
+    const endStr = format(endOfMonth(endDate), 'yyyy-MM-dd')
+    
+    // Track which data sources failed
+    this.qboDataSourceErrors = []
+    
+    try {
+      // Fetch all QBO data in parallel with individual error tracking
+      const results = await Promise.allSettled([
+        this.qbo.getInvoices(startStr, endStr),
+        this.qbo.getJournalEntries(startStr, endStr),
+        this.qbo.getDelayedCharges(startStr, endStr)
+      ])
+      
+      const [invoicesResult, journalEntriesResult, delayedChargesResult] = results
+      
+      // Extract data and track failures
+      const invoices = invoicesResult.status === 'fulfilled' ? invoicesResult.value : []
+      if (invoicesResult.status === 'rejected') {
+        console.error('Error fetching invoices:', invoicesResult.reason.message)
+        this.qboDataSourceErrors.push({ source: 'invoices', error: invoicesResult.reason.message })
+      }
+      
+      const journalEntries = journalEntriesResult.status === 'fulfilled' ? journalEntriesResult.value : []
+      if (journalEntriesResult.status === 'rejected') {
+        console.error('Error fetching journal entries:', journalEntriesResult.reason.message)
+        this.qboDataSourceErrors.push({ source: 'journal entries', error: journalEntriesResult.reason.message })
+      }
+      
+      const delayedCharges = delayedChargesResult.status === 'fulfilled' ? delayedChargesResult.value : []
+      if (delayedChargesResult.status === 'rejected') {
+        console.error('Error fetching delayed charges:', delayedChargesResult.reason.message)
+        this.qboDataSourceErrors.push({ source: 'delayed charges', error: delayedChargesResult.reason.message })
+      }
+      
+      // Log successful data ranges
+      if (invoices.length > 0) {
+        const invoiceDates = invoices.map(inv => inv.TxnDate).sort()
+      }
+      
+      return {
+        invoices,
+        journalEntries,
+        delayedCharges,
+        hasErrors: this.qboDataSourceErrors.length > 0,
+        errors: this.qboDataSourceErrors
+      }
+    } catch (error) {
+      console.error('Error fetching QBO data:', error)
+      this.qboDataSourceErrors.push({ source: 'QuickBooks API', error: error.message })
+      return {
+        invoices: [],
+        journalEntries: [],
+        delayedCharges: [],
+        hasErrors: true,
+        errors: this.qboDataSourceErrors
+      }
+    }
+  }
+
+  async fetchAllPipedriveData() {
+    // Track which data sources failed
+    this.pipedriveDataSourceErrors = []
+    
+    try {
+      // Fetch all Pipedrive data in parallel with individual error tracking
+      const results = await Promise.allSettled([
+        this.pipedrive.getWonUnscheduledDeals(),
+        this.pipedrive.getOpenDeals()
+      ])
+      
+      const [wonUnscheduledResult, openDealsResult] = results
+      
+      // Extract data and track failures
+      const wonUnscheduledDeals = wonUnscheduledResult.status === 'fulfilled' ? wonUnscheduledResult.value : []
+      if (wonUnscheduledResult.status === 'rejected') {
+        console.error('Error fetching won unscheduled deals:', wonUnscheduledResult.reason.message)
+        this.pipedriveDataSourceErrors.push({ source: 'won unscheduled deals', error: wonUnscheduledResult.reason.message })
+      }
+      
+      const openDeals = openDealsResult.status === 'fulfilled' ? openDealsResult.value : []
+      if (openDealsResult.status === 'rejected') {
+        console.error('Error fetching open deals:', openDealsResult.reason.message)
+        this.pipedriveDataSourceErrors.push({ source: 'open deals', error: openDealsResult.reason.message })
+      }
+      
+      return {
+        wonUnscheduledDeals,
+        openDeals,
+        hasErrors: this.pipedriveDataSourceErrors.length > 0,
+        errors: this.pipedriveDataSourceErrors
+      }
+    } catch (error) {
+      console.error('Error fetching Pipedrive data:', error)
+      this.pipedriveDataSourceErrors.push({ source: 'Pipedrive API', error: error.message })
+      return {
+        wonUnscheduledDeals: [],
+        openDeals: [],
+        hasErrors: true,
+        errors: this.pipedriveDataSourceErrors
+      }
+    }
+  }
+
+  async calculateBaselineMonthlyRecurring(qboData) {
+    
+    try {
+      // Get previous month date range
+      const currentDate = new Date()
+      const previousMonth = addMonths(startOfMonth(currentDate), -1)
+      const previousMonthStart = startOfMonth(previousMonth)
+      const previousMonthEnd = endOfMonth(previousMonth)
+      
+      
+      let totalMonthlyRecurring = 0
+      
+      // Check invoices from previous month for monthly accounts
+      if (qboData && qboData.invoices) {
+        const previousMonthInvoices = qboData.invoices.filter(invoice => {
+          const txnDate = new Date(invoice.TxnDate)
+          return txnDate >= previousMonthStart && txnDate <= previousMonthEnd
+        })
+        
+        
+        for (const invoice of previousMonthInvoices) {
+          const lines = invoice.Line || []
+          for (const line of lines) {
+            const accountRef = line.SalesItemLineDetail?.AccountRef || line.AccountBasedExpenseLineDetail?.AccountRef
+            const itemRef = line.SalesItemLineDetail?.ItemRef
+            
+            // Check if account name or item name contains "monthly" (case insensitive)
+            const hasMonthly = 
+              accountRef?.name?.toLowerCase().includes('monthly') ||
+              itemRef?.name?.toLowerCase().includes('monthly') ||
+              line.Description?.toLowerCase().includes('monthly')
+            
+            if (hasMonthly) {
+              const lineAmount = line.Amount || 0
+              totalMonthlyRecurring += lineAmount
+            }
+          }
+        }
+      }
+      
+      // Also check journal entries from previous month for monthly accounts
+      if (qboData && qboData.journalEntries) {
+        const previousMonthEntries = qboData.journalEntries.filter(entry => {
+          const txnDate = new Date(entry.TxnDate)
+          return txnDate >= previousMonthStart && txnDate <= previousMonthEnd
+        })
+        
+        
+        for (const entry of previousMonthEntries) {
+          const lines = entry.Line || []
+          for (const line of lines) {
+            const accountRef = line.JournalEntryLineDetail?.AccountRef
+            
+            // Look for revenue accounts with "monthly" in the name
+            if (accountRef?.name?.match(/^4\d{3}|revenue|income/i) && 
+                accountRef?.name?.toLowerCase().includes('monthly') && 
+                !accountRef?.name?.toLowerCase().includes('unearned')) {
+              
+              const lineAmount = line.Amount || 0
+              totalMonthlyRecurring += lineAmount
+            }
+          }
+        }
+      }
+      
+      return totalMonthlyRecurring
+      
+    } catch (error) {
+      console.error('[Revenue Calculator] Error calculating baseline monthly recurring:', error)
+      return 0
+    }
+  }
+
+  async calculateMonthComponentsFromCache(monthDate, qboData, pipedriveData, baselineMonthlyRecurring = 0) {
+    const startDate = startOfMonth(monthDate)
+    const endDate = endOfMonth(monthDate)
+    const monthInterval = { start: startDate, end: endDate }
+    const currentMonth = startOfMonth(new Date())
+    const isFutureMonth = monthDate > currentMonth
     
     const components = {
       invoiced: 0,
@@ -64,38 +264,93 @@ class RevenueCalculator {
       weightedSales: 0
     }
     
-    try {
-      // Get invoiced revenue
-      const invoices = await this.qbo.getInvoices(startDate, endDate)
-      components.invoiced = this.sumInvoices(invoices)
+    // Process QBO data
+    if (qboData) {
+      // Filter and sum invoices for this month
+      const monthInvoices = (qboData.invoices || []).filter(invoice => {
+        const txnDateStr = invoice.TxnDate // Keep as string for comparison
+        return txnDateStr >= format(startDate, 'yyyy-MM-dd') && txnDateStr <= format(endDate, 'yyyy-MM-dd')
+      })
+      components.invoiced = this.sumInvoices(monthInvoices)
       
-      // Get journal entries affecting revenue
-      const journalEntries = await this.qbo.getJournalEntries(startDate, endDate)
-      components.journalEntries = this.sumRevenueJournalEntries(journalEntries)
+      // Filter and sum journal entries for this month
+      const monthJournalEntries = (qboData.journalEntries || []).filter(entry => {
+        const txnDateStr = entry.TxnDate // Keep as string for comparison
+        return txnDateStr >= format(startDate, 'yyyy-MM-dd') && txnDateStr <= format(endDate, 'yyyy-MM-dd')
+      })
+      components.journalEntries = this.sumRevenueJournalEntries(monthJournalEntries)
       
-      // Get delayed charges
-      const delayedCharges = await this.qbo.getDelayedCharges(startDate, endDate)
-      components.delayedCharges = this.sumDelayedCharges(delayedCharges)
+      // Filter and sum delayed charges for this month
+      const monthDelayedCharges = (qboData.delayedCharges || []).filter(charge => {
+        const txnDateStr = charge.TxnDate // Keep as string for comparison
+        return txnDateStr >= format(startDate, 'yyyy-MM-dd') && txnDateStr <= format(endDate, 'yyyy-MM-dd')
+      })
+      components.delayedCharges = this.sumDelayedCharges(monthDelayedCharges)
       
-      // Calculate monthly recurring revenue
-      components.monthlyRecurring = await this.qbo.getMonthlyRecurringRevenue(monthDate)
+      // Debug logging for December delayed charges
+      if (format(monthDate, 'yyyy-MM') === '2025-12' && monthDelayedCharges.length > 0) {
+        const startDateStr = format(startDate, 'yyyy-MM-dd')
+        const endDateStr = format(endDate, 'yyyy-MM-dd')
+        monthDelayedCharges.forEach(charge => {
+          const included = charge.TxnDate >= startDateStr && charge.TxnDate <= endDateStr
+        })
+      }
       
-    } catch (error) {
-      console.error('Error fetching QuickBooks data:', error.message || error)
-      console.error('QBO Error details:', error.stack)
+      // Calculate monthly recurring ONLY for future months (current/past months already have invoiced amounts)
+      if (isFutureMonth) {
+        // Start with baseline monthly recurring from previous month
+        components.monthlyRecurring = baselineMonthlyRecurring
+        
+        // Add any additional monthly recurring found in this month's data
+        const additionalMonthlyRecurring = this.calculateMonthlyRecurring(monthInvoices)
+        components.monthlyRecurring += additionalMonthlyRecurring
+        
+        // Also try to get monthly recurring revenue using QBO method for future months only
+        try {
+          const qboMRR = await this.qbo.getMonthlyRecurringRevenue(monthDate)
+          if (qboMRR > (components.monthlyRecurring - baselineMonthlyRecurring)) {
+            // Replace the additional amount but keep the baseline
+            components.monthlyRecurring = baselineMonthlyRecurring + qboMRR
+          }
+        } catch (err) {
+          console.error('Error getting QBO monthly recurring revenue:', err.message)
+        }
+      }
+      
+      // Debug logging for key months
+      const isCurrentMonth = format(monthDate, 'yyyy-MM') === format(new Date(), 'yyyy-MM')
+      const isRecentMonth = Math.abs(new Date().getTime() - monthDate.getTime()) < (90 * 24 * 60 * 60 * 1000) // 90 days
+      
+      if (isCurrentMonth || (isRecentMonth && (components.invoiced > 0 || components.journalEntries > 0))) {
+        // Month has significant activity - log for debugging
+      }
+      
+      // Set monthly recurring breakdown for future months
+      if (isFutureMonth) {
+        components.monthlyRecurringBreakdown = {
+          baseline: baselineMonthlyRecurring,
+          additional: components.monthlyRecurring - baselineMonthlyRecurring,
+          total: components.monthlyRecurring
+        }
+      } else {
+        components.monthlyRecurringBreakdown = 'N/A (past/current month)'
+      }
     }
     
-    try {
-      // Get won unscheduled deals
-      const wonUnscheduled = await this.getWonUnscheduledForMonth(monthDate)
-      components.wonUnscheduled = wonUnscheduled
+    // Process Pipedrive data
+    if (pipedriveData) {
+      // Calculate won unscheduled for this month
+      components.wonUnscheduled = this.calculateWonUnscheduledForMonth(
+        monthDate,
+        pipedriveData.wonUnscheduledDeals
+      )
       
-      // Get weighted sales
-      const weightedSales = await this.getWeightedSalesForMonth(monthDate)
-      components.weightedSales = weightedSales
+      // Calculate weighted sales for this month
+      components.weightedSales = this.calculateWeightedSalesForMonth(
+        monthDate,
+        pipedriveData.openDeals
+      )
       
-    } catch (error) {
-      console.error('Error fetching Pipedrive data:', error)
     }
     
     return components
@@ -103,81 +358,175 @@ class RevenueCalculator {
 
   sumInvoices(invoices) {
     return invoices.reduce((sum, invoice) => {
-      return sum + (parseFloat(invoice.TotalAmt) || 0)
+      return sum + (invoice.TotalAmt || 0)
     }, 0)
   }
 
-  sumRevenueJournalEntries(journalEntries) {
-    return journalEntries.reduce((sum, entry) => {
-      // Sum lines that affect revenue accounts
-      const revenueAmount = entry.Line?.reduce((lineSum, line) => {
-        if (line.JournalEntryLineDetail?.AccountRef) {
-          // This would check if the account is a revenue account
-          // For now, we'll assume positive amounts are revenue increases
-          const amount = parseFloat(line.Amount) || 0
-          return lineSum + (amount > 0 ? amount : 0)
-        }
-        return lineSum
-      }, 0) || 0
-      
-      return sum + revenueAmount
-    }, 0)
-  }
-
-  sumDelayedCharges(delayedCharges) {
-    return delayedCharges.reduce((sum, charge) => {
-      return sum + (parseFloat(charge.amount) || 0)
-    }, 0)
-  }
-
-  async getWonUnscheduledForMonth(monthDate) {
-    try {
-      const wonUnscheduledDeals = await this.pipedrive.getWonUnscheduledDeals()
-      
-      // Filter deals that should contribute revenue in this month
-      const monthStr = format(monthDate, 'yyyy-MM')
-      let total = 0
-      
-      for (const deal of wonUnscheduledDeals) {
-        const startDate = deal.projectStartDate ? 
-          new Date(deal.projectStartDate) : 
-          new Date(deal.expectedCloseDate || deal.wonTime)
+  sumRevenueJournalEntries(entries) {
+    if (!entries || entries.length === 0) return 0
+    
+    let total = 0
+    for (const entry of entries) {
+      const lines = entry.Line || []
+      for (const line of lines) {
+        const accountRef = line.JournalEntryLineDetail?.AccountRef
+        const postingType = line.JournalEntryLineDetail?.PostingType
         
-        if (!startDate) continue
-        
-        // Calculate which months this deal contributes to
-        for (let i = 0; i < deal.duration; i++) {
-          const revenueMonth = addMonths(startDate, i)
-          if (format(revenueMonth, 'yyyy-MM') === monthStr) {
-            total += deal.monthlyValue
-            break
+        // Look for revenue accounts (typically 4000 series) but exclude unearned revenue
+        if (accountRef?.name?.match(/^4\d{3}|revenue|income/i) && 
+            !accountRef?.name?.toLowerCase().includes('unearned')) {
+          
+          // IMPORTANT: In journal entries, Credits to revenue accounts increase revenue (positive)
+          // Debits to revenue accounts decrease revenue (negative)
+          const amount = line.Amount || 0
+          if (postingType === 'Credit') {
+            total += amount
+          } else if (postingType === 'Debit') {
+            total -= amount
+          } else {
+            // If posting type is not specified, assume credit for revenue accounts
+            total += amount
           }
         }
       }
-      
-      return total
-    } catch (error) {
-      console.error('Error calculating won unscheduled:', error)
-      return 0
     }
+    
+    return total
   }
 
-  async getWeightedSalesForMonth(monthDate) {
-    try {
-      const monthStr = format(monthDate, 'yyyy-MM-dd')
-      const startDate = format(startOfMonth(monthDate), 'yyyy-MM-dd')
-      const endDate = format(endOfMonth(monthDate), 'yyyy-MM-dd')
-      
-      const weightedSales = await this.pipedrive.getWeightedSalesForPeriod(startDate, endDate)
-      
-      return weightedSales[monthStr]?.weightedValue || 0
-    } catch (error) {
-      console.error('Error calculating weighted sales:', error)
-      return 0
+  sumDelayedCharges(charges) {
+    return charges.reduce((sum, charge) => {
+      return sum + (charge.TotalAmt || 0)
+    }, 0)
+  }
+
+  calculateMonthlyRecurring(invoices) {
+    if (!invoices || invoices.length === 0) return 0
+    
+    let total = 0
+    for (const invoice of invoices) {
+      const lines = invoice.Line || []
+      for (const line of lines) {
+        const accountRef = line.SalesItemLineDetail?.AccountRef || line.AccountBasedExpenseLineDetail?.AccountRef
+        const itemRef = line.SalesItemLineDetail?.ItemRef
+        
+        // Check if account name or item name contains "monthly"
+        const hasMonthly = 
+          accountRef?.name?.toLowerCase().includes('monthly') ||
+          itemRef?.name?.toLowerCase().includes('monthly') ||
+          line.Description?.toLowerCase().includes('monthly')
+        
+        if (hasMonthly) {
+          total += line.Amount || 0
+        }
+      }
     }
+    
+    return total
+  }
+
+  calculateWonUnscheduledForMonth(monthDate, wonUnscheduledDeals) {
+    if (!wonUnscheduledDeals || wonUnscheduledDeals.length === 0) return 0
+    
+    const monthStr = format(monthDate, 'yyyy-MM')
+    let total = 0
+    
+    for (const deal of wonUnscheduledDeals) {
+      // Use string-based date parsing to avoid timezone issues
+      const startDateStr = deal.projectStartDate || deal.wonTime || deal.expectedCloseDate
+      if (!startDateStr) continue
+      
+      // Parse date components to avoid timezone conversion
+      const [year, month, day] = startDateStr.split('T')[0].split('-').map(Number)
+      const startDate = new Date(year, month - 1, day) // Local time construction
+      
+      const duration = Math.max(1, deal.duration || 1)
+      const monthlyAmount = (deal.value || 0) / duration
+      
+      // Check if this month falls within the project duration
+      for (let i = 0; i < duration; i++) {
+        const projectMonth = addMonths(startDate, i)
+        if (format(projectMonth, 'yyyy-MM') === monthStr) {
+          total += monthlyAmount
+          break // Only count once per deal per month
+        }
+      }
+    }
+    
+    return Math.round(total)
+  }
+
+  calculateWeightedSalesForMonth(monthDate, openDeals) {
+    if (!openDeals || openDeals.length === 0) return 0
+    
+    const monthStr = format(monthDate, 'yyyy-MM')
+    let total = 0
+    
+    console.log(`Calculating weighted sales for ${monthStr}`)
+    
+    for (const deal of openDeals) {
+      if (!deal.expectedCloseDate) continue
+      
+      // Debug logging for deal 1858
+      if (deal.id === '1858' || deal.id === 1858) {
+        console.log(`*** FOUND DEAL 1858 in optimized calculator ***`, {
+          id: deal.id,
+          title: deal.title,
+          expectedCloseDate: deal.expectedCloseDate,
+          duration: deal.duration,
+          value: deal.value,
+          weightedValue: deal.weightedValue,
+          probability: deal.probability,
+          currentMonth: monthStr
+        })
+      }
+      
+      // Check if this deal should contribute to the current month
+      // For multi-month deals, distribute across all months starting from close month forward
+      const expectedCloseDate = new Date(deal.expectedCloseDate + 'T00:00:00')
+      const duration = Math.max(1, deal.duration || 1)
+      
+      let shouldIncludeDeal = false
+      
+      // Check if current month falls within the project duration
+      // Start from the close month and go forward for the duration
+      const closeMonthDate = new Date(expectedCloseDate.getFullYear(), expectedCloseDate.getMonth(), 1)
+      
+      for (let i = 0; i < duration; i++) {
+        const projectMonth = new Date(closeMonthDate)
+        projectMonth.setMonth(projectMonth.getMonth() + i)
+        const projectMonthStr = format(projectMonth, 'yyyy-MM')
+        
+        // Debug logging for deal 1858
+        if (deal.id === '1858' || deal.id === 1858) {
+          console.log(`Deal 1858 checking month ${projectMonthStr} against current ${monthStr} (iteration ${i})`)
+        }
+        
+        if (projectMonthStr === monthStr) {
+          shouldIncludeDeal = true
+          break
+        }
+      }
+      
+      if (!shouldIncludeDeal) continue
+      
+      // Calculate weighted value: total amount * probability / duration
+      const baseWeightedValue = deal.weightedValue || (deal.value * (deal.probability || 0) / 100)
+      const monthlyWeightedValue = baseWeightedValue / duration
+      
+      total += monthlyWeightedValue
+      
+      // Debug logging for deal 1858
+      if (deal.id === '1858' || deal.id === 1858) {
+        console.log(`Deal 1858 added $${monthlyWeightedValue} to month ${monthStr}`)
+      }
+    }
+    
+    return Math.round(total)
   }
 
   async getExceptions() {
+    
     const exceptions = {
       overdueDeals: [],
       pastDelayedCharges: [],
@@ -185,64 +534,130 @@ class RevenueCalculator {
     }
     
     try {
-      // Get overdue Pipedrive deals
-      exceptions.overdueDeals = await this.pipedrive.getOverdueDeals()
+      // Get overdue deals from Pipedrive
+      const overdueDeals = await this.pipedrive.getOverdueDeals()
+      exceptions.overdueDeals = overdueDeals.map(deal => ({
+        id: deal.id,
+        title: deal.title,
+        org_name: deal.orgName,
+        expected_close_date: deal.expectedCloseDate,
+        days_overdue: deal.daysOverdue,
+        value: deal.value
+      }))
+      
     } catch (error) {
       console.error('Error getting overdue deals:', error)
     }
     
     try {
-      // Get past delayed charges
-      const today = new Date().toISOString().split('T')[0]
-      const pastCharges = await this.qbo.getDelayedCharges('2020-01-01', today)
-      exceptions.pastDelayedCharges = pastCharges.filter(charge => {
-        return charge.date && new Date(charge.date) < new Date()
-      }).map(charge => ({
-        ...charge,
-        daysPast: Math.floor((new Date() - new Date(charge.date)) / (1000 * 60 * 60 * 24))
+      // Get won unscheduled deals from Pipedrive
+      const wonUnscheduledDeals = await this.pipedrive.getWonUnscheduledDeals()
+      exceptions.wonUnscheduled = wonUnscheduledDeals.map(deal => ({
+        id: deal.id,
+        title: deal.title,
+        org_name: deal.orgName,
+        won_time: deal.wonTime,
+        value: deal.value
       }))
+      
     } catch (error) {
-      console.error('Error getting past delayed charges:', error)
+      console.error('Error getting won unscheduled deals:', error)
     }
     
     try {
-      // Get won unscheduled deals
-      exceptions.wonUnscheduled = await this.pipedrive.getWonUnscheduledDeals()
+      // Get past delayed charges from QBO
+      // For now, we'll check for delayed charges older than today
+      const today = new Date()
+      const pastDate = new Date(today.getFullYear(), today.getMonth() - 6, 1) // 6 months ago
+      const endDate = new Date(today.getFullYear(), today.getMonth(), 0) // End of last month
+      
+      const delayedCharges = await this.qbo.getDelayedCharges(
+        pastDate.toISOString().split('T')[0],
+        endDate.toISOString().split('T')[0]
+      )
+      
+      // Filter for charges that are still unbilled and past due
+      exceptions.pastDelayedCharges = delayedCharges
+        .filter(charge => {
+          const chargeDate = new Date(charge.TxnDate)
+          const daysDiff = Math.floor((today - chargeDate) / (1000 * 60 * 60 * 24))
+          return daysDiff > 30 // Consider past due if older than 30 days
+        })
+        .map(charge => ({
+          id: charge.Id,
+          customer_name: charge.CustomerRef?.name || 'Unknown Customer',
+          description: charge.DocNumber || 'Unknown',
+          date: charge.TxnDate,
+          days_past: Math.floor((today - new Date(charge.TxnDate)) / (1000 * 60 * 60 * 24)),
+          amount: charge.TotalAmt || 0
+        }))
+      
     } catch (error) {
-      console.error('Error getting won unscheduled deals:', error)
+      console.error('Error getting past delayed charges:', error)
     }
     
     return exceptions
   }
 
+  async getCachedPipedriveData() {
+    if (!this.cachedPipedriveData) {
+      this.cachedPipedriveData = await this.fetchAllPipedriveData()
+    }
+    return this.cachedPipedriveData
+  }
+
   async getBalances() {
+    
     const balances = {
       assets: [],
+      liabilities: [],
       receivables: null,
       monthlyExpenses: 0
     }
     
     try {
-      // Get asset accounts
+      // Get asset accounts (only Checking, Savings, UndepositedFunds)
       const accounts = await this.qbo.getAccounts()
+      
       balances.assets = accounts.map(account => ({
         id: account.Id,
         name: account.Name,
+        type: account.AccountType,
         subType: account.AccountSubType,
-        balance: parseFloat(account.CurrentBalance) || 0,
-        lastUpdated: account.MetaData?.LastUpdatedTime || new Date().toISOString()
+        balance: account.CurrentBalance || 0,
+        accountNumber: account.AcctNum || null,
+        last_updated: new Date().toISOString()
       }))
+      
     } catch (error) {
-      console.error('Error getting asset accounts:', error)
+      console.error('[Revenue Calculator] Error getting asset accounts:', error)
+    }
+    
+    try {
+      // Get liability accounts
+      const liabilityAccounts = await this.qbo.getLiabilityAccounts()
+      
+      balances.liabilities = liabilityAccounts.map(account => ({
+        id: account.Id,
+        name: account.Name,
+        type: account.AccountType,
+        subType: account.AccountSubType,
+        balance: account.CurrentBalance || 0,
+        accountNumber: account.AcctNum || null,
+        last_updated: new Date().toISOString()
+      }))
+      
+    } catch (error) {
+      console.error('[Revenue Calculator] Error getting liability accounts:', error)
     }
     
     try {
       // Get aged receivables
       balances.receivables = await this.qbo.getAgedReceivables()
     } catch (error) {
-      console.error('Error getting aged receivables:', error)
+      console.error('[Revenue Calculator] Error getting aged receivables:', error)
     }
-    
+
     try {
       // Get previous month's expenses for cash flow calculations
       const lastMonth = new Date()
@@ -252,7 +667,7 @@ class RevenueCalculator {
       
       balances.monthlyExpenses = await this.qbo.getMonthlyExpenses(year, month)
     } catch (error) {
-      console.error('Error getting monthly expenses:', error)
+      console.error('[Revenue Calculator] Error getting monthly expenses:', error)
     }
     
     return balances

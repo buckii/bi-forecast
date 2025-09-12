@@ -1,6 +1,6 @@
 const { success, error, cors } = require('./utils/response.js')
 const { getCurrentUser } = require('./utils/auth.js')
-const RevenueCalculator = require('./services/revenue-calculator-optimized.js')
+const RevenueCalculator = require('./services/revenue-calculator.js')
 const { startOfMonth, endOfMonth, format, addMonths } = require('date-fns')
 
 exports.handler = async function(event, context) {
@@ -62,14 +62,41 @@ exports.handler = async function(event, context) {
     
     totalAmount = transactions.reduce((sum, txn) => sum + (txn.amount || 0), 0)
     
-    return success({
+    // For weighted sales, compare with the graph total to detect discrepancies
+    let graphTotal = null
+    let hasDiscrepancy = false
+    if (component === 'weightedSales') {
+      try {
+        // Calculate what the graph shows using the same logic as revenue calculator
+        graphTotal = calculator.calculateWeightedSalesForMonth(monthDate, await getOpenDealsForComparison(calculator))
+        const difference = Math.abs(graphTotal - totalAmount)
+        hasDiscrepancy = difference > 1 // Allow for small rounding differences
+      } catch (error) {
+        console.error('Error comparing with graph total:', error)
+      }
+    }
+    
+    const result = {
       month: month,
       component: component,
       transactions: transactions,
       totalAmount: totalAmount,
       count: transactions.length,
       dateRange: { startDate, endDate }
-    })
+    }
+    
+    // Add discrepancy warning if applicable
+    if (hasDiscrepancy && graphTotal !== null) {
+      result.warning = {
+        type: 'discrepancy',
+        message: `Transaction details total ($${totalAmount.toLocaleString()}) differs from graph total ($${graphTotal.toLocaleString()})`,
+        graphTotal: graphTotal,
+        transactionTotal: totalAmount,
+        difference: graphTotal - totalAmount
+      }
+    }
+    
+    return success(result)
     
   } catch (err) {
     console.error('Transaction details error:', err)
@@ -238,39 +265,37 @@ async function getDelayedChargeTransactions(calculator, startDate, endDate) {
 }
 
 async function getMonthlyRecurringTransactions(calculator, startDate, endDate, monthDate) {
-  // Monthly recurring only applies to future months
   const currentMonth = startOfMonth(new Date())
   const isFutureMonth = monthDate > currentMonth
+  const isCurrentMonth = format(monthDate, 'yyyy-MM') === format(currentMonth, 'yyyy-MM')
   
-  if (!isFutureMonth) {
-    return [] // No monthly recurring for current/past months
+  // For past months, show actual monthly recurring from invoices and journal entries
+  if (!isFutureMonth && !isCurrentMonth) {
+    return await getHistoricalMonthlyRecurringTransactions(calculator, startDate, endDate)
   }
   
   
   const transactions = []
   
-  // First, add baseline monthly recurring from previous month
+  // First, get detailed baseline monthly recurring from previous month
   const previousMonth = addMonths(startOfMonth(new Date()), -1)
-  const baselineAmount = await getBaselineMonthlyRecurringAmount(calculator)
+  const previousMonthStart = format(startOfMonth(previousMonth), 'yyyy-MM-dd')
+  const previousMonthEnd = format(endOfMonth(previousMonth), 'yyyy-MM-dd')
   
-  if (baselineAmount > 0) {
+  const baselineTransactions = await getHistoricalMonthlyRecurringTransactions(calculator, previousMonthStart, previousMonthEnd)
+  
+  // Add each baseline transaction with updated dates and descriptions for future projection
+  for (const baselineTxn of baselineTransactions) {
     transactions.push({
-      id: `baseline-mr-${format(monthDate, 'yyyy-MM')}`,
-      type: 'monthlyRecurring',
-      docNumber: 'BASELINE',
+      ...baselineTxn,
+      id: `projected-${baselineTxn.id}-${format(monthDate, 'yyyy-MM')}`,
       date: format(monthDate, 'yyyy-MM-dd'),
-      amount: baselineAmount,
-      customer: 'Automatic Recurring',
-      description: `Baseline Monthly Recurring (from ${format(previousMonth, 'MMM yyyy')})`,
+      description: `${baselineTxn.description} (Projected from ${format(previousMonth, 'MMM yyyy')})`,
       details: {
-        totalInvoiceAmount: baselineAmount,
-        monthlyLines: [{
-          description: `Baseline recurring revenue from previous month (${format(previousMonth, 'MMM yyyy')})`,
-          amount: baselineAmount,
-          accountName: 'Monthly Recurring Accounts',
-          itemName: 'Various Monthly Items'
-        }],
-        note: 'Baseline estimate based on previous month\'s monthly recurring revenue'
+        ...baselineTxn.details,
+        note: `Projected recurring revenue based on ${format(previousMonth, 'MMM yyyy')} actuals`,
+        originalDate: baselineTxn.date,
+        projectedFor: format(monthDate, 'MMM yyyy')
       }
     })
   }
@@ -321,6 +346,9 @@ async function getMonthlyRecurringTransactions(calculator, startDate, endDate, m
     }
   }
   
+  // Sort by amount descending (highest value first)
+  transactions.sort((a, b) => (b.amount || 0) - (a.amount || 0))
+  
   return transactions
 }
 
@@ -332,19 +360,32 @@ async function getBaselineMonthlyRecurringAmount(calculator) {
     const previousMonthStart = format(startOfMonth(previousMonth), 'yyyy-MM-dd')
     const previousMonthEnd = format(endOfMonth(previousMonth), 'yyyy-MM-dd')
     
-    // Get invoices and journal entries from previous month
+    const transactions = await getHistoricalMonthlyRecurringTransactions(calculator, previousMonthStart, previousMonthEnd)
+    return transactions.reduce((sum, txn) => sum + (txn.amount || 0), 0)
+  } catch (error) {
+    console.error('Error calculating baseline monthly recurring amount:', error)
+    return 0
+  }
+}
+
+async function getHistoricalMonthlyRecurringTransactions(calculator, startDate, endDate) {
+  try {
+    // Get invoices and journal entries from the specified period
     const [invoices, journalEntries] = await Promise.all([
-      calculator.qbo.getInvoices(previousMonthStart, previousMonthEnd),
-      calculator.qbo.getJournalEntries(previousMonthStart, previousMonthEnd)
+      calculator.qbo.getInvoices(startDate, endDate),
+      calculator.qbo.getJournalEntries(startDate, endDate)
     ])
     
-    let totalMonthlyRecurring = 0
+    const transactions = []
     
-    // Check invoices for monthly accounts
+    // Process invoices for monthly recurring items
     for (const invoice of invoices) {
       const lines = invoice.Line || []
+      let monthlyAmount = 0
+      let monthlyLines = []
+      
       for (const line of lines) {
-        const accountRef = line.SalesItemLineDetail?.AccountRef || line.AccountBasedExpenseLineDetail?.AccountRef
+        const accountRef = line.SalesItemLineDetail?.AccountRef
         const itemRef = line.SalesItemLineDetail?.ItemRef
         
         const hasMonthly = 
@@ -353,29 +394,89 @@ async function getBaselineMonthlyRecurringAmount(calculator) {
           line.Description?.toLowerCase().includes('monthly')
         
         if (hasMonthly) {
-          totalMonthlyRecurring += line.Amount || 0
+          monthlyAmount += line.Amount || 0
+          monthlyLines.push({
+            description: line.Description || 'No description',
+            amount: line.Amount || 0,
+            accountName: accountRef?.name,
+            itemName: itemRef?.name
+          })
         }
+      }
+      
+      if (monthlyAmount > 0) {
+        transactions.push({
+          id: `mr-${invoice.Id}`,
+          type: 'monthlyRecurring',
+          docNumber: invoice.DocNumber,
+          date: invoice.TxnDate,
+          amount: monthlyAmount,
+          customer: invoice.CustomerRef?.name || 'Unknown Customer',
+          description: `Monthly Recurring Items (Invoice ${invoice.DocNumber})`,
+          details: {
+            totalInvoiceAmount: invoice.TotalAmt || 0,
+            monthlyLines: monthlyLines,
+            source: 'QuickBooks Invoice'
+          }
+        })
       }
     }
     
-    // Check journal entries for monthly revenue accounts
+    // Process journal entries for monthly revenue accounts
     for (const entry of journalEntries) {
       const lines = entry.Line || []
+      let monthlyAmount = 0
+      let monthlyLines = []
+      
       for (const line of lines) {
         const accountRef = line.JournalEntryLineDetail?.AccountRef
+        const postingType = line.JournalEntryLineDetail?.PostingType
         
         if (accountRef?.name?.match(/^4\d{3}|revenue|income/i) && 
             accountRef?.name?.toLowerCase().includes('monthly') && 
             !accountRef?.name?.toLowerCase().includes('unearned')) {
-          totalMonthlyRecurring += line.Amount || 0
+          
+          const lineAmount = (line.Amount || 0) * (postingType === 'Credit' ? 1 : -1)
+          monthlyAmount += lineAmount
+          
+          monthlyLines.push({
+            description: line.Description || 'No description',
+            amount: lineAmount,
+            accountName: accountRef.name,
+            postingType: postingType
+          })
         }
+      }
+      
+      if (monthlyAmount > 0) {
+        const description = monthlyLines
+          .filter(line => line.description && line.description !== 'No description')
+          .map(line => line.description)
+          .join('; ') || `Journal Entry ${entry.DocNumber}`
+        
+        transactions.push({
+          id: `mr-je-${entry.Id}`,
+          type: 'monthlyRecurring',
+          docNumber: entry.DocNumber,
+          date: entry.TxnDate,
+          amount: monthlyAmount,
+          customer: 'N/A',
+          description: `Monthly Recurring Revenue (${description})`,
+          details: {
+            revenueLines: monthlyLines,
+            source: 'QuickBooks Journal Entry'
+          }
+        })
       }
     }
     
-    return totalMonthlyRecurring
+    // Sort by amount descending (highest value first)
+    transactions.sort((a, b) => (b.amount || 0) - (a.amount || 0))
+    
+    return transactions
   } catch (error) {
-    console.error('Error calculating baseline monthly recurring amount:', error)
-    return 0
+    console.error('Error getting historical monthly recurring transactions:', error)
+    return []
   }
 }
 
@@ -455,18 +556,33 @@ async function getWeightedSalesTransactions(calculator, monthDate) {
         continue
       }
       
-      // Use string-based comparison to avoid timezone issues
-      const dealMonthStr = deal.expectedCloseDate.substring(0, 7) // Get YYYY-MM part
+      // Check if this deal should contribute to the current month
+      // For multi-month deals, distribute across all months starting from close month forward
+      const expectedCloseDate = new Date(deal.expectedCloseDate + 'T00:00:00')
+      const duration = Math.max(1, deal.duration || 1)
       
-      if (dealMonthStr === monthStr) {
-        dealsForMonth++
+      let shouldIncludeDeal = false
+      
+      // Check if current month falls within the project duration
+      // Start from the close month and go forward for the duration
+      const closeMonthDate = new Date(expectedCloseDate.getFullYear(), expectedCloseDate.getMonth(), 1)
+      
+      for (let i = 0; i < duration; i++) {
+        const projectMonth = new Date(closeMonthDate)
+        projectMonth.setMonth(projectMonth.getMonth() + i)
+        const projectMonthStr = format(projectMonth, 'yyyy-MM')
+        
+        if (projectMonthStr === monthStr) {
+          shouldIncludeDeal = true
+          dealsForMonth++
+          break
+        }
       }
       
-      if (dealMonthStr !== monthStr) continue
+      if (!shouldIncludeDeal) continue
       
       // Calculate monthly weighted value: total weighted value / duration
       const baseWeightedValue = deal.weightedValue || (deal.value * (deal.probability || 0) / 100)
-      const duration = Math.max(1, deal.duration || 1)
       const monthlyWeightedValue = baseWeightedValue / duration
       
       transactions.push({
@@ -500,6 +616,23 @@ async function getWeightedSalesTransactions(calculator, monthDate) {
     return transactions
   } catch (error) {
     console.error('Error getting weighted sales transactions:', error)
+    return []
+  }
+}
+
+async function getOpenDealsForComparison(calculator) {
+  try {
+    // Try to use cached data first, fall back to fresh API call
+    let openDeals = []
+    try {
+      const pipedriveData = await calculator.getCachedPipedriveData()
+      openDeals = pipedriveData?.openDeals || []
+    } catch (cacheError) {
+      openDeals = await calculator.pipedrive.getOpenDeals()
+    }
+    return openDeals
+  } catch (error) {
+    console.error('Error getting open deals for comparison:', error)
     return []
   }
 }
