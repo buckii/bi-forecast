@@ -36,6 +36,11 @@ QBO_REDIRECT_URI=https://your-domain.com/.netlify/functions/qbo-oauth-callback
 # Site Configuration
 URL=https://your-domain.com
 NODE_ENV=production
+
+# Optional: Feature Flags (defaults work for most deployments)
+# ENABLE_DEBUG_LOGGING=false
+# DEFAULT_TARGET_NET_MARGIN=20
+# DEFAULT_ARCHIVE_RETENTION_DAYS=365
 ```
 
 ### Generating Secure Keys
@@ -166,10 +171,12 @@ Set up monitoring for:
 ### Performance Optimization
 
 - Enable MongoDB query optimization
-- Configure appropriate indexes
-- Monitor function execution times
-- Optimize chart rendering for large datasets
+- Configure appropriate indexes for companies, users, and revenue_archives collections
+- Monitor function execution times (especially revenue calculation functions)
+- Optimize chart rendering for large datasets with Chart.js performance settings
 - Consider CDN for static assets
+- Monitor multi-month deal distribution calculations for performance impact
+- Cache frequently accessed company settings
 
 ## Troubleshooting
 
@@ -179,6 +186,9 @@ Set up monitoring for:
 2. **MongoDB Connection**: Check IP whitelist and connection string
 3. **Environment Variables**: Verify all required variables are set
 4. **CORS Errors**: Check domain configuration in OAuth providers
+5. **Chart Reference Lines Not Showing**: Verify company financial settings are properly configured
+6. **Transaction Details Discrepancies**: Check that both chart and transaction detail calculations use the same multi-month distribution logic
+7. **Refresh Timestamps Not Updating**: Ensure useDataRefresh composable is properly initialized
 
 ### Debug Mode
 

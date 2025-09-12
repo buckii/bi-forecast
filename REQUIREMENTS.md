@@ -125,7 +125,9 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 #### From Pipedrive:
 - **Won Unscheduled**: Deals with 100% probability where `invoices_scheduled` = false
 - **Weighted Sales**: 
-  - Formula: `(deal_value × probability) ÷ project_duration`
+  - Formula: `(deal_value × probability) ÷ project_duration`  
+  - Distribution: Spread across project duration starting from expected close date
+  - Multi-month support: Properly distributes deals across multiple months
   - Start date: `project_start_date` (custom field) or `expected_close_date`
   - Exclude if `invoices_scheduled` = true
 
@@ -252,9 +254,40 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 - Support 100 concurrent users
 - 99.9% uptime SLA
 
+## Recent Major Enhancements (Phase 3 Completed)
+
+### Chart & Visualization Improvements
+- **Horizontal Reference Lines**: Added configurable reference lines showing monthly expense levels and target revenue based on net margin settings
+- **Chart Total Fixes**: Resolved duplicate calculation issues causing incorrect total labels above stacked bars
+- **Enhanced User Experience**: Added loading spinners, refresh timestamps, and tooltip enhancements
+
+### Multi-month Deal Distribution
+- **Accurate Weighted Sales Calculation**: Fixed critical bug where multi-month Pipedrive deals were only showing in one month instead of being distributed across their full project duration
+- **Consistent Logic**: Ensured transaction details modal uses the same distribution logic as the main chart
+- **Debug & Monitoring**: Added comprehensive logging and discrepancy detection between chart and transaction totals
+
+### Company Financial Settings
+- **Target Net Margin Configuration**: Added company-wide configurable target net margin (1-50%) used for reference line calculations
+- **Monthly Expenses Override**: Optional override for monthly expenses affecting cash flow and reference line calculations
+- **Settings Persistence**: Fixed settings not persisting across page reloads
+
+### Enhanced Transaction Details
+- **Monthly Recurring Breakdown**: Replaced generic "Baseline" entries with detailed individual invoice breakdowns showing actual source invoices
+- **Sorted Invoice Lists**: Monthly recurring invoices now sorted by dollar amount (highest first) for better visibility
+- **Historical vs Future Logic**: Different handling for past months (actual invoices) vs future months (projected from previous month)
+
+### Code Quality & Architecture
+- **Eliminated Code Duplication**: Consolidated duplicate revenue calculator implementations, removing 600+ lines of duplicate code
+- **Reusable Composables**: Created `useDataRefresh` Vue composable eliminating ~130 lines of duplicate refresh logic across Dashboard and Settings
+- **Improved Error Handling**: Standardized error handling and added user-friendly loading states
+
+### Payment & A/R Enhancements
+- **Payment Recording Protection**: Added loading spinner and disabled state to payment recording button to prevent double-clicks and duplicate payments
+- **Enhanced A/R Management**: Improved accounts receivable tracking with better payment workflows
+
 ## Future Enhancements
 
-### Phase 2
+### Phase 4 (Next)
 - **Journal Entry Tool**
   - Create revenue deferral entries
   - Debit: Project revenue → Credit: Unearned Revenue
@@ -299,13 +332,22 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 5. ✅ PWA functionality with manifest
 6. ✅ Mobile optimizations
 
-### 🚧 IN PROGRESS - Phase 3: Polish & Deploy
+### ✅ COMPLETED - Phase 3: Enhanced Features & Polish
 1. ✅ Core functionality testing
-2. 🚧 Performance optimization
-3. ✅ Security implementation (JWT, encryption)
-4. ✅ Documentation (updated)
-5. ✅ Deployment to Netlify ready
-6. 📋 User training (pending deployment)
+2. ✅ Multi-month deal distribution fixes
+3. ✅ Chart enhancements with reference lines  
+4. ✅ Company financial settings
+5. ✅ Enhanced transaction details with invoice breakdowns
+6. ✅ Real-time refresh status indicators
+7. ✅ Code quality improvements and deduplication
+8. ✅ Security implementation (JWT, encryption)
+9. ✅ Documentation (comprehensive updates)
+10. ✅ Deployment to Netlify ready
+
+### 🚧 IN PROGRESS - Phase 4: Final Polish & Deploy
+1. 🚧 Performance optimization
+2. 📋 User training (pending deployment)
+3. 📋 Production monitoring setup
 
 ## Current Implementation Details
 

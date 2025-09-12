@@ -9,11 +9,14 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 - **Revenue Forecasting**: 6 components of monthly revenue calculation with real-time updates
 - **Historical Data**: Daily data archiving with date selector for historical views
 - **API Integrations**: QuickBooks Online OAuth2 and Pipedrive API key authentication
-- **Interactive Charts**: Chart.js visualizations with drill-down transaction details
+- **Interactive Charts**: Chart.js visualizations with drill-down transaction details and reference lines
 - **Exception Tracking**: Monitor overdue deals, past charges, and unscheduled items
-- **Balance Monitoring**: Asset accounts and aged A/R reporting
+- **Balance Monitoring**: Asset accounts and aged A/R reporting with payment recording
 - **Mobile Responsive**: Optimized for mobile and desktop with touch interactions
 - **Automated Refresh**: Scheduled daily data refresh at 3am ET via Netlify functions
+- **Real-time Timestamps**: Live refresh status with tooltips showing exact refresh times
+- **Multi-month Deal Distribution**: Proper weighted sales calculation across project durations
+- **Enhanced Transaction Details**: Comprehensive breakdowns with invoice-level details
 
 ## Revenue Components
 
@@ -24,7 +27,7 @@ The application calculates monthly revenue from 6 components:
 3. **Delayed Charges** - Unbilled charges using QBO's delayed charge feature
 4. **Monthly Recurring** - Estimated recurring revenue from previous month
 5. **Won Unscheduled** - Pipedrive deals won but not yet scheduled for invoicing
-6. **Weighted Sales** - Open Pipedrive deals weighted by probability and duration
+6. **Weighted Sales** - Open Pipedrive deals weighted by probability and distributed across project duration
 
 ## Tech Stack
 
@@ -210,18 +213,22 @@ This allows secure HTTPS access to your local development server for webhook tes
 ### ✅ Fully Implemented Features
 
 #### Dashboard
-- Interactive 24-month revenue chart with Chart.js
+- Interactive 24-month revenue chart with Chart.js and horizontal reference lines
 - Historical date selector for viewing past forecasts
 - Key metrics cards (current month, 3-month, 1-year totals)
 - Weighted sales toggle with real-time recalculation
-- Transaction details modal with drill-down functionality
+- Transaction details modal with drill-down functionality and discrepancy detection
+- Real-time refresh timestamps with loading indicators and tooltips
 - Mobile-responsive design with touch interactions
+- Company financial settings (target net margin, monthly expenses override)
 
 #### Revenue Calculation Engine
 - All 6 revenue components implemented and tested
 - Real-time calculations with QuickBooks and Pipedrive data
+- Multi-month deal distribution for accurate weighted sales forecasting
 - Historical archive system with daily snapshots
-- Manual refresh capabilities for both data sources
+- Manual refresh capabilities with real-time status indicators
+- Enhanced transaction details with comprehensive invoice breakdowns
 
 #### Authentication & Security
 - Google SSO with domain validation
@@ -272,10 +279,10 @@ This allows secure HTTPS access to your local development server for webhook tes
 
 ### Database Collections
 
-- **companies** - Multi-tenant company data
+- **companies** - Multi-tenant company data with financial settings
 - **users** - User profiles with company associations  
 - **oauth_tokens** - Encrypted API credentials per company
-- **revenue_archives** - Daily snapshots of all revenue data
+- **revenue_archives** - Daily snapshots of all revenue data with enhanced calculations
 - **exceptions** - Tracked exception items
 
 ### Netlify Functions (API Endpoints)
@@ -317,6 +324,34 @@ This allows secure HTTPS access to your local development server for webhook tes
 - CORS protection on all endpoints
 - Input validation and sanitization
 - Rate limiting (handled by Netlify)
+
+## Recent Enhancements
+
+### Chart & Visualization Improvements
+- **Horizontal Reference Lines**: Chart now displays monthly expense levels and target revenue lines based on configured net margins
+- **Fixed Chart Totals**: Eliminated duplicate calculations that caused incorrect total labels above bars
+- **Enhanced Tooltips**: Absolute datetime tooltips on hover for refresh timestamps
+
+### Multi-month Deal Distribution
+- **Accurate Weighted Sales**: Fixed multi-month Pipedrive deals to properly distribute weighted sales across their full project duration
+- **Consistent Transaction Details**: Transaction details modal now uses the same multi-month logic as the main chart, eliminating discrepancies
+- **Debug Improvements**: Added comprehensive logging and discrepancy warnings
+
+### Company Financial Settings
+- **Target Net Margin**: Configurable company-wide target net margin percentage (1-50%)
+- **Monthly Expenses Override**: Optional override for monthly expenses used in cash flow calculations
+- **Reference Line Integration**: Chart reference lines automatically update based on company settings
+
+### User Experience Enhancements
+- **Real-time Refresh Status**: Live timestamps showing when data was last refreshed with relative time display
+- **Loading Indicators**: Spinner animations on refresh buttons and payment recording to prevent double-clicks
+- **Enhanced Transaction Details**: Monthly recurring breakdowns now show individual invoices instead of generic "Baseline" entries
+- **Sorted Invoice Lists**: Monthly recurring invoices sorted by dollar amount (highest first)
+
+### Code Quality & Architecture
+- **Eliminated Duplication**: Consolidated duplicate revenue calculator implementations
+- **Reusable Composables**: Created `useDataRefresh` composable to eliminate ~130 lines of duplicate refresh logic
+- **Consistent Error Handling**: Standardized error handling across refresh operations
 
 ## Future Enhancements
 
