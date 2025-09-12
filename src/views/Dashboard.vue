@@ -38,13 +38,21 @@
             </div>
           </div>
           
-          <div class="flex space-x-2">
-            <button @click="refreshQBO" :disabled="refreshingQBO" class="btn-secondary">
-              {{ refreshingQBO ? 'Refreshing...' : 'Refresh QBO' }}
-            </button>
-            <button @click="refreshPipedrive" :disabled="refreshingPipedrive" class="btn-secondary">
-              {{ refreshingPipedrive ? 'Refreshing...' : 'Refresh Pipedrive' }}
-            </button>
+          <div class="flex flex-col items-end">
+            <div class="flex space-x-2">
+              <button @click="refreshQBO" :disabled="refreshingQBO" class="btn-secondary flex items-center space-x-2">
+                <div v-if="refreshingQBO" class="animate-spin h-4 w-4 border-2 border-gray-600 border-t-transparent rounded-full"></div>
+                <span>{{ refreshingQBO ? 'Refreshing...' : 'Refresh QBO' }}</span>
+              </button>
+              <button @click="refreshPipedrive" :disabled="refreshingPipedrive" class="btn-secondary flex items-center space-x-2">
+                <div v-if="refreshingPipedrive" class="animate-spin h-4 w-4 border-2 border-gray-600 border-t-transparent rounded-full"></div>
+                <span>{{ refreshingPipedrive ? 'Refreshing...' : 'Refresh Pipedrive' }}</span>
+              </button>
+            </div>
+            <div class="flex space-x-6 mt-2 text-xs text-gray-500 dark:text-gray-400">
+              <span :title="formatRefreshTooltip(qboLastRefresh)">QBO: {{ formatLastRefresh(qboLastRefresh) }}</span>
+              <span :title="formatRefreshTooltip(pipedriveLastRefresh)">Pipedrive: {{ formatLastRefresh(pipedriveLastRefresh) }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -209,6 +217,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRevenueStore } from '../stores/revenue'
 import { useAuthStore } from '../stores/auth'
+import { useDataRefresh } from '../composables/useDataRefresh'
 import AppLayout from '../components/AppLayout.vue'
 import RevenueChart from '../components/RevenueChart.vue'
 import TransactionDetailsModal from '../components/TransactionDetailsModal.vue'
@@ -217,15 +226,22 @@ import { format, parse, startOfMonth, endOfMonth, addMonths, subMonths } from 'd
 
 const revenueStore = useRevenueStore()
 const authStore = useAuthStore()
+const { 
+  refreshingQBO, 
+  refreshingPipedrive, 
+  qboLastRefresh, 
+  pipedriveLastRefresh,
+  formatLastRefresh,
+  formatRefreshTooltip,
+  refreshQBO,
+  refreshPipedrive
+} = useDataRefresh()
 
 const selectedDateStr = ref(format(new Date(), 'yyyy-MM-dd'))
 
 // Date range for chart display (default to first day of last month to last day 4 months from now)
 const chartStartDateStr = ref(format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'))
 const chartEndDateStr = ref(format(endOfMonth(addMonths(new Date(), 4)), 'yyyy-MM-dd'))
-
-const refreshingQBO = ref(false)
-const refreshingPipedrive = ref(false)
 const showTransactionModal = ref(false)
 const selectedTransaction = ref({ month: '', component: '' })
 const sharingToSlack = ref(false)
@@ -343,23 +359,7 @@ function resetDateRange() {
   chartEndDateStr.value = format(endOfMonth(addMonths(new Date(), 4)), 'yyyy-MM-dd')
 }
 
-async function refreshQBO() {
-  refreshingQBO.value = true
-  try {
-    await revenueStore.refreshQuickbooks()
-  } finally {
-    refreshingQBO.value = false
-  }
-}
-
-async function refreshPipedrive() {
-  refreshingPipedrive.value = true
-  try {
-    await revenueStore.refreshPipedrive()
-  } finally {
-    refreshingPipedrive.value = false
-  }
-}
+// Refresh functions are now handled by useDataRefresh composable
 
 function handleBarClick(data) {
   selectedTransaction.value = {
@@ -456,6 +456,7 @@ function closeShareModal() {
 onMounted(async () => {
   try {
     await revenueStore.loadRevenueData()
+    // fetchLastRefreshTimes() is automatically called by useDataRefresh composable
     
     // Initial data loaded successfully
   } catch (err) {

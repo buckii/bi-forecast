@@ -208,11 +208,23 @@
           
           <div class="flex items-center justify-between">
             <div>
-              <h3 class="font-medium text-gray-900 dark:text-gray-100">Last Data Refresh</h3>
-              <p class="text-sm text-gray-500 dark:text-gray-400">{{ lastRefresh || 'Never' }}</p>
+              <h3 class="font-medium text-gray-900 dark:text-gray-100">Refresh QBO Data</h3>
+              <p class="text-sm text-gray-500 dark:text-gray-400" :title="formatRefreshTooltip(qboLastRefresh)">{{ formatLastRefresh(qboLastRefresh) }}</p>
             </div>
-            <button @click="triggerRefresh" :disabled="refreshing" class="btn-primary">
-              {{ refreshing ? 'Refreshing...' : 'Refresh Now' }}
+            <button @click="refreshQBO" :disabled="refreshingQBO" class="btn-primary flex items-center space-x-2">
+              <div v-if="refreshingQBO" class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+              <span>{{ refreshingQBO ? 'Refreshing...' : 'Refresh QBO' }}</span>
+            </button>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="font-medium text-gray-900 dark:text-gray-100">Refresh Pipedrive Data</h3>
+              <p class="text-sm text-gray-500 dark:text-gray-400" :title="formatRefreshTooltip(pipedriveLastRefresh)">{{ formatLastRefresh(pipedriveLastRefresh) }}</p>
+            </div>
+            <button @click="refreshPipedrive" :disabled="refreshingPipedrive" class="btn-primary flex items-center space-x-2">
+              <div v-if="refreshingPipedrive" class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+              <span>{{ refreshingPipedrive ? 'Refreshing...' : 'Refresh Pipedrive' }}</span>
             </button>
           </div>
         </div>
@@ -252,17 +264,26 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useRevenueStore } from '../stores/revenue'
 import { useDarkMode } from '../composables/useDarkMode'
+import { useDataRefresh } from '../composables/useDataRefresh'
 import AppLayout from '../components/AppLayout.vue'
 
 const authStore = useAuthStore()
 const revenueStore = useRevenueStore()
 const { isDarkMode, toggleDarkMode } = useDarkMode()
+const { 
+  refreshingQBO, 
+  refreshingPipedrive, 
+  qboLastRefresh, 
+  pipedriveLastRefresh,
+  formatLastRefresh,
+  formatRefreshTooltip,
+  refreshQBO: baseRefreshQBO,
+  refreshPipedrive: baseRefreshPipedrive
+} = useDataRefresh()
 
 const showPipedriveModal = ref(false)
 const pipedriveApiKey = ref('')
 const archiveRetentionDays = ref(365)
-const refreshing = ref(false)
-const lastRefresh = ref(null)
 
 const qboConnected = ref(false)
 const pipedriveConnected = ref(false)
@@ -404,14 +425,20 @@ async function saveFinancialSettings() {
   }
 }
 
-async function triggerRefresh() {
-  refreshing.value = true
+// Wrapper functions to add Settings-specific error handling
+async function refreshQBO() {
   try {
-    // This would trigger a data refresh
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    lastRefresh.value = new Date().toLocaleString()
-  } finally {
-    refreshing.value = false
+    await baseRefreshQBO()
+  } catch (error) {
+    alert('Failed to refresh QBO data: ' + error.message)
+  }
+}
+
+async function refreshPipedrive() {
+  try {
+    await baseRefreshPipedrive()
+  } catch (error) {
+    alert('Failed to refresh Pipedrive data: ' + error.message)
   }
 }
 
@@ -462,9 +489,8 @@ watch(() => company.value, (newCompany) => {
 }, { immediate: true })
 
 onMounted(async () => {
-  // Load current settings
-  lastRefresh.value = 'Today at 3:00 AM'
   await checkConnectionStatus()
+  // fetchLastRefreshTimes() is automatically called by useDataRefresh composable
   
   // Initialize financial settings from company data
   if (company.value?.settings) {
