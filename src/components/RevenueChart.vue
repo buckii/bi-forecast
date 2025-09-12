@@ -1,19 +1,48 @@
 <template>
-  <canvas ref="chartCanvas"></canvas>
+  <div class="space-y-3">
+    <div class="h-80">
+      <canvas ref="chartCanvas"></canvas>
+    </div>
+    
+    <!-- Reference Lines Legend -->
+    <div v-if="referenceLines" class="flex flex-wrap items-center justify-center gap-4 pt-2 border-t border-gray-200 dark:border-gray-700">
+      <div class="flex items-center space-x-2">
+        <div class="w-4 h-0.5 border-t-2 border-dashed border-red-500"></div>
+        <span class="text-xs text-gray-600 dark:text-gray-400">
+          Monthly Expenses: {{ referenceLines.expenses }}
+        </span>
+      </div>
+      <div class="flex items-center space-x-2">
+        <div class="w-4 h-0.5 border-t-2 border-dashed border-green-500"></div>
+        <span class="text-xs text-gray-600 dark:text-gray-400">
+          Target Revenue ({{ referenceLines.margin }}% margin): {{ referenceLines.target }}
+        </span>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { Chart, registerables } from 'chart.js'
+import annotationPlugin from 'chartjs-plugin-annotation'
 import { format, parse } from 'date-fns'
 import { isDarkModeGlobal } from '../composables/useDarkMode'
 
-Chart.register(...registerables)
+Chart.register(...registerables, annotationPlugin)
 
 const props = defineProps({
   data: {
     type: Array,
     required: true
+  },
+  monthlyExpenses: {
+    type: Number,
+    default: 0
+  },
+  targetNetMargin: {
+    type: Number,
+    default: 20
   }
 })
 
@@ -21,6 +50,29 @@ const emit = defineEmits(['bar-click'])
 
 const chartCanvas = ref(null)
 let chartInstance = null
+
+// Computed property for reference line info
+const referenceLines = computed(() => {
+  if (props.monthlyExpenses <= 0) return null
+  
+  // Calculate target revenue based on the net margin setting
+  // Target revenue = expenses / (1 - targetNetMargin/100)
+  const marginDecimal = props.targetNetMargin / 100
+  const targetRevenue = props.monthlyExpenses / (1 - marginDecimal)
+  
+  const formatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  })
+  
+  return {
+    expenses: formatter.format(props.monthlyExpenses),
+    target: formatter.format(targetRevenue),
+    margin: props.targetNetMargin
+  }
+})
 
 const chartColors = {
   invoiced: '#3b82f6',      // blue
@@ -32,6 +84,43 @@ const chartColors = {
 }
 
 // Custom plugin to display total values above bar stacks
+// Function to get chart annotations (horizontal reference lines)
+function getAnnotations() {
+  const annotations = {}
+  
+  // Monthly Expenses Line
+  if (props.monthlyExpenses > 0) {
+    annotations.monthlyExpensesLine = {
+      type: 'line',
+      yMin: props.monthlyExpenses,
+      yMax: props.monthlyExpenses,
+      borderColor: '#ef4444', // red-500
+      borderWidth: 2,
+      borderDash: [5, 5],
+      label: {
+        display: false
+      }
+    }
+    
+    // Target Revenue Line based on configured net margin
+    const marginDecimal = props.targetNetMargin / 100
+    const targetRevenue = props.monthlyExpenses / (1 - marginDecimal)
+    annotations.targetRevenueLine = {
+      type: 'line',
+      yMin: targetRevenue,
+      yMax: targetRevenue,
+      borderColor: '#22c55e', // green-500
+      borderWidth: 2,
+      borderDash: [5, 5],
+      label: {
+        display: false
+      }
+    }
+  }
+  
+  return annotations
+}
+
 const totalLabelPlugin = {
   id: 'totalLabel',
   afterDatasetsDraw: function(chart) {
@@ -206,6 +295,9 @@ function createChart() {
               }).format(total)
             }
           }
+        },
+        annotation: {
+          annotations: getAnnotations()
         }
       },
       onClick: (event, elements) => {
@@ -238,6 +330,20 @@ watch(() => props.data, () => {
     createChart()
   }
 }, { deep: true })
+
+// Watch for monthly expenses changes
+watch(() => props.monthlyExpenses, () => {
+  if (props.data.length > 0) {
+    createChart()
+  }
+})
+
+// Watch for target margin changes
+watch(() => props.targetNetMargin, () => {
+  if (props.data.length > 0) {
+    createChart()
+  }
+})
 
 // Watch for dark mode changes
 watch(isDarkModeGlobal, () => {
