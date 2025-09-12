@@ -110,6 +110,84 @@
         </div>
       </div>
       
+      <!-- Financial Settings -->
+      <div class="card">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Financial Settings</h2>
+          <button 
+            @click="editingFinancials = !editingFinancials"
+            class="btn-secondary text-sm"
+          >
+            {{ editingFinancials ? 'Cancel' : 'Edit' }}
+          </button>
+        </div>
+        
+        <div v-if="!editingFinancials" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Target Net Margin</label>
+              <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ targetNetMargin }}%</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Used to calculate target revenue line on charts</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Monthly Expenses Override</label>
+              <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+                {{ monthlyExpensesOverride ? formatCurrency(monthlyExpensesOverride) : 'Auto (from previous month)' }}
+              </p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                Leave blank to use previous month's actual expenses
+                <span v-if="!monthlyExpensesOverride && revenueStore.balances?.monthlyExpenses">
+                  ({{ formatCurrency(revenueStore.balances.monthlyExpenses) }})
+                </span>
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div v-else class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Target Net Margin (%)</label>
+              <input
+                type="number"
+                v-model.number="editableTargetNetMargin"
+                class="input mt-1"
+                placeholder="20"
+                min="1"
+                max="50"
+                step="0.1"
+              />
+              <p class="text-xs text-gray-500 mt-1">Percentage (e.g., 20 for 20% margin)</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Monthly Expenses Override</label>
+              <input
+                type="number"
+                v-model.number="editableMonthlyExpensesOverride"
+                class="input mt-1"
+                placeholder="Leave blank for auto"
+                min="0"
+                step="1000"
+              />
+              <p class="text-xs text-gray-500 mt-1">
+                Leave blank to use previous month's actual expenses
+                <span v-if="revenueStore.balances?.monthlyExpenses">
+                  ({{ formatCurrency(revenueStore.balances.monthlyExpenses) }})
+                </span>
+              </p>
+            </div>
+          </div>
+          <div class="flex justify-end space-x-3">
+            <button @click="editingFinancials = false" class="btn-secondary">
+              Cancel
+            </button>
+            <button @click="saveFinancialSettings" class="btn-primary">
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Data Management -->
       <div class="card">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Data Management</h2>
@@ -172,10 +250,12 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import { useRevenueStore } from '../stores/revenue'
 import { useDarkMode } from '../composables/useDarkMode'
 import AppLayout from '../components/AppLayout.vue'
 
 const authStore = useAuthStore()
+const revenueStore = useRevenueStore()
 const { isDarkMode, toggleDarkMode } = useDarkMode()
 
 const showPipedriveModal = ref(false)
@@ -190,7 +270,22 @@ const pipedriveConnected = ref(false)
 const editingCompany = ref(false)
 const editableCompanyName = ref('')
 
+const editingFinancials = ref(false)
+const targetNetMargin = ref(20)
+const monthlyExpensesOverride = ref(null)
+const editableTargetNetMargin = ref(20)
+const editableMonthlyExpensesOverride = ref(null)
+
 const company = computed(() => authStore.company)
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(value)
+}
 
 async function connectQBO() {
   try {
@@ -276,6 +371,39 @@ async function saveCompanyInfo() {
   }
 }
 
+async function saveFinancialSettings() {
+  try {
+    const response = await fetch('/.netlify/functions/company-update', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authStore.token}`
+      },
+      body: JSON.stringify({ 
+        targetNetMargin: editableTargetNetMargin.value,
+        monthlyExpensesOverride: editableMonthlyExpensesOverride.value || null
+      })
+    })
+    
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Failed to update financial settings')
+    }
+    
+    // Update local values
+    targetNetMargin.value = editableTargetNetMargin.value
+    monthlyExpensesOverride.value = editableMonthlyExpensesOverride.value || null
+    editingFinancials.value = false
+    
+    // Update the auth store with the new company info
+    await authStore.fetchCurrentUser()
+    
+  } catch (error) {
+    console.error('Error saving financial settings:', error)
+    alert('Failed to save financial settings: ' + error.message)
+  }
+}
+
 async function triggerRefresh() {
   refreshing.value = true
   try {
@@ -317,9 +445,31 @@ watch(() => editingCompany.value, (isEditing) => {
   }
 })
 
+// Watch for editing financials to populate the fields
+watch(() => editingFinancials.value, (isEditing) => {
+  if (isEditing) {
+    editableTargetNetMargin.value = targetNetMargin.value
+    editableMonthlyExpensesOverride.value = monthlyExpensesOverride.value
+  }
+})
+
+// Watch for company changes to update financial settings
+watch(() => company.value, (newCompany) => {
+  if (newCompany && newCompany.settings) {
+    targetNetMargin.value = newCompany.settings.targetNetMargin || 20
+    monthlyExpensesOverride.value = newCompany.settings.monthlyExpensesOverride || null
+  }
+}, { immediate: true })
+
 onMounted(async () => {
   // Load current settings
   lastRefresh.value = 'Today at 3:00 AM'
   await checkConnectionStatus()
+  
+  // Initialize financial settings from company data
+  if (company.value?.settings) {
+    targetNetMargin.value = company.value.settings.targetNetMargin || 20
+    monthlyExpensesOverride.value = company.value.settings.monthlyExpensesOverride || null
+  }
 })
 </script>
