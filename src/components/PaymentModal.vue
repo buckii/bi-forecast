@@ -75,9 +75,10 @@
               <button
                 @click="confirm"
                 :disabled="!isValid || processing"
-                class="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                class="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
               >
-                {{ processing ? 'Processing...' : 'Record Payment' }}
+                <div v-if="processing" class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                <span>{{ processing ? 'Processing...' : 'Record Payment' }}</span>
               </button>
             </div>
           </div>

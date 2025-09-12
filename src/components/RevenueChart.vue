@@ -133,22 +133,31 @@ const totalLabelPlugin = {
       // Calculate total and get journal entries value
       let total = 0
       let journalEntriesValue = 0
+      const monthLabel = chart.data.labels[index]
+      
       chart.data.datasets.forEach((dataset, datasetIndex) => {
         const value = dataset.data[index] || 0
         total += value
+        
+        // Debug logging for September 2025
+        if (monthLabel && monthLabel.includes('Sep') && monthLabel.includes('2025')) {
+          console.log(`${dataset.label}: $${value.toLocaleString()}`)
+        }
+        
         // Get journal entries value (index 1 in the datasets array)
         if (datasetIndex === 1) { // Journal Entries is the second dataset
           journalEntriesValue = value
         }
       })
       
+      // Debug logging for September 2025 total
+      if (monthLabel && monthLabel.includes('Sep') && monthLabel.includes('2025')) {
+        console.log(`Total calculated: $${total.toLocaleString()}`)
+      }
+      
       if (total > 0) {
-        // Get the top of the stack
-        let stackTop = 0
-        chart.data.datasets.forEach((dataset, datasetIndex) => {
-          const value = dataset.data[index] || 0
-          stackTop += value
-        })
+        // Use the already calculated total instead of recalculating
+        let stackTop = total
         
         // Adjust position if journal entries are negative
         let yOffset = -10
