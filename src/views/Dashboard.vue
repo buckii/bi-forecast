@@ -82,26 +82,28 @@
         <div class="card">
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Days Cash</h3>
           <p class="text-3xl font-bold text-primary-600 mt-2">
-            {{ revenueStore.daysCash || '—' }}
+            {{ daysCash || '—' }}
           </p>
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Cash: {{ formatCurrency(revenueStore.totalCashOnHand || 0) }}
           </p>
           <p class="text-xs text-gray-400 dark:text-gray-500">
-            Expenses: {{ formatCurrency(revenueStore.balances.monthlyExpenses || 0) }}/mo
+            Expenses: {{ formatCurrency(effectiveMonthlyExpenses) }}/mo
+            <span v-if="authStore.company?.settings?.monthlyExpensesOverride" class="text-blue-500">(override)</span>
           </p>
         </div>
 
         <div class="card">
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Days Cash + AR</h3>
           <p class="text-3xl font-bold text-primary-600 mt-2">
-            {{ revenueStore.daysCashPlusAR || '—' }}
+            {{ daysCashPlusAR || '—' }}
           </p>
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Total: {{ formatCurrency((revenueStore.totalCashOnHand || 0) + (revenueStore.totalReceivables || 0)) }}
           </p>
           <p class="text-xs text-gray-400 dark:text-gray-500">
-            Expenses: {{ formatCurrency(revenueStore.balances.monthlyExpenses || 0) }}/mo
+            Expenses: {{ formatCurrency(effectiveMonthlyExpenses) }}/mo
+            <span v-if="authStore.company?.settings?.monthlyExpensesOverride" class="text-blue-500">(override)</span>
           </p>
         </div>
       </div>
@@ -162,7 +164,13 @@
             <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
           </div>
           <!-- Chart content -->
-          <RevenueChart ref="revenueChart" :data="chartData" @bar-click="handleBarClick" />
+          <RevenueChart 
+            ref="revenueChart" 
+            :data="chartData" 
+            :monthly-expenses="effectiveMonthlyExpenses" 
+            :target-net-margin="targetNetMargin"
+            @bar-click="handleBarClick" 
+          />
         </div>
       </div>
       
@@ -247,6 +255,45 @@ const chartData = computed(() => {
       
       return data
     })
+})
+
+// Computed property for effective monthly expenses (override or auto)
+const effectiveMonthlyExpenses = computed(() => {
+  const settings = authStore.company?.settings
+  
+  // If there's an override, use it
+  if (settings?.monthlyExpensesOverride) {
+    return settings.monthlyExpensesOverride
+  }
+  
+  // Otherwise, use the previous month's expenses from balances
+  return revenueStore.balances?.monthlyExpenses || 0
+})
+
+// Computed property for target net margin
+const targetNetMargin = computed(() => {
+  const settings = authStore.company?.settings
+  return settings?.targetNetMargin || 20
+})
+
+// Computed property for days cash using effective monthly expenses
+const daysCash = computed(() => {
+  const monthlyExpenses = effectiveMonthlyExpenses.value
+  const dailyExpenses = monthlyExpenses / 30
+  const cashOnHand = revenueStore.totalCashOnHand
+  
+  if (dailyExpenses === 0 || cashOnHand === 0) return 0
+  return Math.round(cashOnHand / dailyExpenses)
+})
+
+// Computed property for days cash + AR using effective monthly expenses
+const daysCashPlusAR = computed(() => {
+  const monthlyExpenses = effectiveMonthlyExpenses.value
+  const dailyExpenses = monthlyExpenses / 30
+  if (dailyExpenses === 0) return 0
+  const totalLiquid = revenueStore.totalCashOnHand + revenueStore.totalReceivables
+  if (totalLiquid === 0) return 0
+  return Math.round(totalLiquid / dailyExpenses)
 })
 
 function formatCurrency(value) {
