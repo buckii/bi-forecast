@@ -24,7 +24,8 @@ exports.handler = async function(event, context) {
       company: {
         id: company._id,
         name: company.name,
-        domain: company.domain
+        domain: company.domain,
+        settings: company.settings || {}
       }
     })
     
