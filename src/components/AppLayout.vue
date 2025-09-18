@@ -81,7 +81,7 @@
         >
           <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-              d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+              d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M13 7a4 4 0 11-8 0 4 4 0 018 0zM23 21v-2a4 4 0 00-3-3.87m-4-12a4 4 0 010 7.75" />
           </svg>
           Users
         </RouterLink>
@@ -104,9 +104,26 @@
       <!-- User info -->
       <div class="absolute bottom-0 w-full p-6 border-t dark:border-gray-700">
         <div class="flex items-center">
-          <div class="flex-1">
-            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ user?.name || 'User' }}</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">{{ company?.name || 'Company' }}</p>
+          <img 
+            v-if="user?.picture" 
+            :src="user.picture" 
+            :alt="user.name"
+            class="w-10 h-10 rounded-full mr-3"
+            referrerpolicy="no-referrer"
+          />
+          <div 
+            v-else 
+            class="w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-600 mr-3 flex items-center justify-center"
+          >
+            <svg class="w-6 h-6 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ user?.name || 'User' }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 truncate" :title="user?.email">{{ user?.email || 'email@example.com' }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ company?.name || 'Company' }}</p>
+            <p v-if="user?.role" class="text-xs text-blue-600 dark:text-blue-400 capitalize">{{ user.role }}</p>
           </div>
           <button @click="logout" class="p-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -136,11 +153,10 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
-const route = useRoute()
 const authStore = useAuthStore()
 
 const mobileMenuOpen = ref(false)
