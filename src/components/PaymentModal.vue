@@ -89,8 +89,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
 import { format } from 'date-fns'
+import { computed, ref, watch } from 'vue'
 
 const props = defineProps({
   isOpen: {
@@ -142,18 +142,25 @@ async function confirm() {
   if (!isValid.value) return
   
   processing.value = true
-  try {
-    await emit('confirm', {
-      invoiceId: props.invoice.id,
-      customerId: props.invoice.customerId,
-      amount: paymentAmount.value,
-      paymentMethod: paymentMethod.value,
-      paymentDate: paymentDate.value
-    })
-  } finally {
+
+  // Short delay to ensure UI updates before API call
+  await new Promise(resolve => setTimeout(resolve, 100))
+  
+  emit('confirm', {
+    invoiceId: props.invoice.id,
+    customerId: props.invoice.customerId,
+    amount: paymentAmount.value,
+    paymentMethod: paymentMethod.value,
+    paymentDate: paymentDate.value
+  })
+}
+
+// Reset processing state when modal closes
+watch(() => props.isOpen, (isOpen) => {
+  if (!isOpen) {
     processing.value = false
   }
-}
+})
 </script>
 
 <style scoped>
