@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "dev": "netlify dev",
+    "tunnel": "cloudflared tunnel run bi-forecast-dev",
     "functions:serve": "netlify functions:serve",
     "deploy": "npm run build && netlify deploy --prod"
   },
