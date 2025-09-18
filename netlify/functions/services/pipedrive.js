@@ -177,11 +177,8 @@ class PipedriveService {
   }
 
   async getWeightedSalesForPeriod(startDate, endDate) {
-    console.log(`Getting weighted sales for period ${startDate} to ${endDate}`)
     const timeline = await this.getDealsTimeline(startDate, endDate)
     const dealCalendar = {}
-    
-    console.log(`Timeline has ${timeline.length} periods`)
     
     for (const period of timeline) {
       const date = period.period_start.split(' ')[0]
@@ -194,22 +191,10 @@ class PipedriveService {
         }
       }
       
-      console.log(`Period ${date} has ${period.deals?.length || 0} deals`)
-      
       for (const deal of period.deals || []) {
         if (deal.status === 'open') {
           const filteredDeal = this.filterDealFields(deal)
           
-          // Log all deals to see if 1858 is in the data
-          if (deal.id === '1858' || deal.id === 1858) {
-            console.log(`*** FOUND DEAL 1858 ***`, {
-              id: deal.id,
-              title: deal.title,
-              status: deal.status,
-              expected_close_date: deal.expected_close_date,
-              periodDate: date
-            })
-          }
           
           // Skip if invoices are already scheduled
           if (filteredDeal.invoicesScheduled) continue
@@ -221,18 +206,6 @@ class PipedriveService {
           // Add weighted value to additional months for multi-month projects
           const duration = filteredDeal.duration
           
-          // Debug logging for deal 1858
-          if (filteredDeal.id === '1858') {
-            console.log(`Deal 1858 debug:`, {
-              id: filteredDeal.id,
-              title: filteredDeal.title,
-              duration: duration,
-              expectedCloseDate: filteredDeal.expectedCloseDate,
-              projectStartDate: filteredDeal.projectStartDate,
-              monthlyWeightedValue: filteredDeal.monthlyWeightedValue,
-              currentPeriodDate: date
-            })
-          }
           
           // Distribute weighted sales across all months of the project duration
           // Strategy: work backwards from expected close date
@@ -254,10 +227,6 @@ class PipedriveService {
             
             dealCalendar[prevDateStr].weightedValue += filteredDeal.monthlyWeightedValue
             
-            // Debug logging for deal 1858
-            if (filteredDeal.id === '1858') {
-              console.log(`Deal 1858 added to month ${prevDateStr}: $${filteredDeal.monthlyWeightedValue}`)
-            }
           }
         }
       }

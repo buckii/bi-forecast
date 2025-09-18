@@ -467,19 +467,6 @@ class RevenueCalculator {
     for (const deal of openDeals) {
       if (!deal.expectedCloseDate) continue
       
-      // Debug logging for deal 1858
-      if (deal.id === '1858' || deal.id === 1858) {
-        console.log(`*** FOUND DEAL 1858 in optimized calculator ***`, {
-          id: deal.id,
-          title: deal.title,
-          expectedCloseDate: deal.expectedCloseDate,
-          duration: deal.duration,
-          value: deal.value,
-          weightedValue: deal.weightedValue,
-          probability: deal.probability,
-          currentMonth: monthStr
-        })
-      }
       
       // Check if this deal should contribute to the current month
       // For multi-month deals, distribute across all months starting from close month forward
@@ -497,10 +484,6 @@ class RevenueCalculator {
         projectMonth.setMonth(projectMonth.getMonth() + i)
         const projectMonthStr = format(projectMonth, 'yyyy-MM')
         
-        // Debug logging for deal 1858
-        if (deal.id === '1858' || deal.id === 1858) {
-          console.log(`Deal 1858 checking month ${projectMonthStr} against current ${monthStr} (iteration ${i})`)
-        }
         
         if (projectMonthStr === monthStr) {
           shouldIncludeDeal = true
@@ -516,10 +499,6 @@ class RevenueCalculator {
       
       total += monthlyWeightedValue
       
-      // Debug logging for deal 1858
-      if (deal.id === '1858' || deal.id === 1858) {
-        console.log(`Deal 1858 added $${monthlyWeightedValue} to month ${monthStr}`)
-      }
     }
     
     return Math.round(total)
