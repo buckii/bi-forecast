@@ -1,4 +1,4 @@
-const { startOfMonth, endOfMonth, addMonths, format, isWithinInterval } = require('date-fns')
+const { startOfMonth, endOfMonth, addMonths, addDays, format, isWithinInterval } = require('date-fns')
 const QuickBooksService = require('./quickbooks.js')
 const PipedriveService = require('./pipedrive.js')
 const { getCollection } = require('../utils/database.js')
@@ -462,8 +462,6 @@ class RevenueCalculator {
     const monthStr = format(monthDate, 'yyyy-MM')
     let total = 0
     
-    console.log(`Calculating weighted sales for ${monthStr}`)
-    
     for (const deal of openDeals) {
       if (!deal.expectedCloseDate) continue
       
@@ -647,6 +645,57 @@ class RevenueCalculator {
       balances.monthlyExpenses = await this.qbo.getMonthlyExpenses(year, month)
     } catch (error) {
       console.error('[Revenue Calculator] Error getting monthly expenses:', error)
+    }
+
+    // Calculate 30-days unbilled: we need a much wider date range for historical data
+    try {
+      const cutoffDate = format(addDays(new Date(), 30), 'yyyy-MM-dd')
+      const historicalStart = '2020-01-01'
+      
+      // Get QBO data for the wider historical range
+      const historicalQBOData = await this.fetchAllQBOData(
+        new Date(historicalStart), 
+        new Date(cutoffDate)
+      )
+      
+      // Sum all delayed charges in the historical period
+      const allHistoricalCharges = historicalQBOData.delayedCharges || []
+      
+      balances.thirtyDaysUnbilled = allHistoricalCharges.reduce((sum, charge) => {
+        return sum + (charge.TotalAmt || 0)
+      }, 0)
+      
+    } catch (error) {
+      console.error('[Revenue Calculator] Error calculating 30-days unbilled:', error)
+      balances.thirtyDaysUnbilled = 0
+    }
+
+    // Calculate 1-year unbilled from the existing monthly data (this works)
+    try {
+      // Get the revenue data that was calculated for the 18-month period
+      const revenueResult = await this.calculateMonthlyRevenue(18, -6)
+      const months = revenueResult.months || revenueResult
+      
+      let oneYearTotal = 0
+      
+      // For 1-year: include next 12 months from current month
+      const currentMonth = format(new Date(), 'yyyy-MM-dd')
+      const oneYearFromNow = format(addMonths(new Date(), 12), 'yyyy-MM-dd')
+      
+      for (const monthData of months) {
+        const monthDate = monthData.month // Format: YYYY-MM-DD
+        const delayedCharges = monthData.components.delayedCharges || 0
+        
+        if (monthDate >= currentMonth && monthDate <= oneYearFromNow) {
+          oneYearTotal += delayedCharges
+        }
+      }
+      
+      balances.yearUnbilled = oneYearTotal
+      
+    } catch (error) {
+      console.error('[Revenue Calculator] Error calculating 1-year unbilled:', error)
+      balances.yearUnbilled = 0
     }
     
     return balances

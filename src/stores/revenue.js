@@ -63,26 +63,13 @@ export const useRevenueStore = defineStore('revenue', () => {
   })
   
   const yearUnbilledCharges = computed(() => {
-    const start = startOfMonth(new Date())
-    let total = 0
-    
-    for (let i = 0; i < 12; i++) {
-      const month = format(addMonths(start, i), 'yyyy-MM-dd')
-      const monthData = revenueData.value.find(m => m.month === month)
-      if (monthData) {
-        total += monthData.components.delayedCharges
-      }
-    }
-    
-    return total
+    // Get the pre-calculated value from backend balances
+    return balances.value.yearUnbilled || 0
   })
 
   const thirtyDaysUnbilled = computed(() => {
-    const currentMonth = format(startOfMonth(new Date()), 'yyyy-MM-dd')
-    const monthData = revenueData.value.find(m => m.month === currentMonth)
-    if (!monthData) return 0
-    
-    return monthData.components.delayedCharges
+    // Get the pre-calculated value from backend balances
+    return balances.value.thirtyDaysUnbilled || 0
   })
 
   const totalCashOnHand = computed(() => {
