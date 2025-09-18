@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev:local": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "dev:netlify": "netlify dev",
+    "dev": "netlify dev",
     "functions:serve": "netlify functions:serve",
     "deploy": "npm run build && netlify deploy --prod"
   },

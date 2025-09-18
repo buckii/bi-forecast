@@ -94,9 +94,9 @@ The application calculates monthly revenue from 6 components:
    URL=http://localhost:8888
    ```
 
-5. **Start development server**
+5. **Start development server using Netlify**
    ```bash
-   npm run dev:netlify
+   npm run dev
    ```
 
    This starts both the Vite dev server and Netlify Functions locally.
