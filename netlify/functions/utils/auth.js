@@ -100,8 +100,12 @@ async function getOrCreateUser(googleUserData) {
     user.googleId = googleUserData.googleId
     user.lastLoginAt = new Date()
     
-    // Get the company
-    company = await companiesCollection.findOne({ _id: user.companyId })
+    // Get the company - handle both old (companies array) and new (companyId) user structures
+    const companyId = user.companyId || (user.companies && user.companies[0])
+    if (!companyId) {
+      throw new Error('User has no associated company')
+    }
+    company = await companiesCollection.findOne({ _id: companyId })
   } else {
     // User not in authorized list - check for domain-based access
     company = await companiesCollection.findOne({ domain: googleUserData.domain })
@@ -186,7 +190,13 @@ async function getCurrentUser(event) {
     throw new Error('User not found')
   }
   
-  const company = await companiesCollection.findOne({ _id: user.companyId })
+  // Handle both old (companies array) and new (companyId) user structures
+  const companyId = user.companyId || (user.companies && user.companies[0])
+  if (!companyId) {
+    throw new Error('User has no associated company')
+  }
+  
+  const company = await companiesCollection.findOne({ _id: companyId })
   
   if (!company) {
     throw new Error('Company not found')
