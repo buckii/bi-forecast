@@ -42,7 +42,8 @@ exports.handler = async function(event, context) {
         id: user._id,
         email: user.email,
         name: user.name,
-        picture: user.picture
+        picture: user.picture,
+        role: user.role
       },
       company: {
         id: company._id,

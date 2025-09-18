@@ -139,10 +139,6 @@ const totalLabelPlugin = {
         const value = dataset.data[index] || 0
         total += value
         
-        // Debug logging for September 2025
-        if (monthLabel && monthLabel.includes('Sep') && monthLabel.includes('2025')) {
-          console.log(`${dataset.label}: $${value.toLocaleString()}`)
-        }
         
         // Get journal entries value (index 1 in the datasets array)
         if (datasetIndex === 1) { // Journal Entries is the second dataset
@@ -150,10 +146,6 @@ const totalLabelPlugin = {
         }
       })
       
-      // Debug logging for September 2025 total
-      if (monthLabel && monthLabel.includes('Sep') && monthLabel.includes('2025')) {
-        console.log(`Total calculated: $${total.toLocaleString()}`)
-      }
       
       if (total > 0) {
         // Use the already calculated total instead of recalculating

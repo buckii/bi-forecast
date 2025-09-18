@@ -72,70 +72,88 @@ async function getOrCreateUser(googleUserData) {
   const usersCollection = await getCollection('users')
   const companiesCollection = await getCollection('companies')
   
-  // Check if user exists
+  // First, check if user exists in authorized users list
   let user = await usersCollection.findOne({ 
-    $or: [
-      { googleId: googleUserData.googleId },
-      { email: googleUserData.email }
-    ]
+    email: googleUserData.email.toLowerCase()
   })
   
+  let company = null
+  
   if (user) {
-    // Update user info if changed
+    // User found in authorized list
+    // Update user info and last login
     await usersCollection.updateOne(
       { _id: user._id },
       { 
         $set: { 
           name: googleUserData.name,
           picture: googleUserData.picture,
-          lastLogin: new Date()
+          googleId: googleUserData.googleId,
+          lastLoginAt: new Date()
         }
       }
     )
+    
+    // Update user object with latest data
+    user.name = googleUserData.name
+    user.picture = googleUserData.picture
+    user.googleId = googleUserData.googleId
+    user.lastLoginAt = new Date()
+    
+    // Get the company
+    company = await companiesCollection.findOne({ _id: user.companyId })
   } else {
-    // Create new user
-    const newUser = {
-      email: googleUserData.email,
-      name: googleUserData.name,
-      picture: googleUserData.picture,
-      googleId: googleUserData.googleId,
-      companies: [],
-      createdAt: new Date(),
-      lastLogin: new Date()
+    // User not in authorized list - check for domain-based access
+    company = await companiesCollection.findOne({ domain: googleUserData.domain })
+    
+    if (!company) {
+      // Neither user nor domain authorized - deny access
+      throw new Error('Access denied. Please contact an administrator to request access.')
     }
     
-    const result = await usersCollection.insertOne(newUser)
-    user = { ...newUser, _id: result.insertedId }
+    // Domain is authorized - create/update user automatically
+    user = await usersCollection.findOne({ 
+      $or: [
+        { googleId: googleUserData.googleId },
+        { email: googleUserData.email.toLowerCase() }
+      ]
+    })
+    
+    if (user) {
+      // Update existing user
+      await usersCollection.updateOne(
+        { _id: user._id },
+        { 
+          $set: { 
+            name: googleUserData.name,
+            picture: googleUserData.picture,
+            googleId: googleUserData.googleId,
+            companyId: company._id,
+            role: user.role || 'viewer', // Keep existing role or default to viewer
+            lastLoginAt: new Date()
+          }
+        }
+      )
+    } else {
+      // Create new user with domain-based access
+      const newUser = {
+        email: googleUserData.email.toLowerCase(),
+        name: googleUserData.name,
+        picture: googleUserData.picture,
+        googleId: googleUserData.googleId,
+        companyId: company._id,
+        role: 'admin', // First user in domain gets admin access
+        createdAt: new Date(),
+        lastLoginAt: new Date()
+      }
+      
+      const result = await usersCollection.insertOne(newUser)
+      user = { ...newUser, _id: result.insertedId }
+    }
   }
-  
-  // Find or create company based on domain
-  let company = await companiesCollection.findOne({ domain: googleUserData.domain })
   
   if (!company) {
-    const newCompany = {
-      name: googleUserData.domain.split('.')[0].charAt(0).toUpperCase() + 
-            googleUserData.domain.split('.')[0].slice(1),
-      domain: googleUserData.domain,
-      settings: {
-        defaultCurrency: 'USD',
-        fiscalYearStart: new Date(new Date().getFullYear(), 0, 1),
-        archiveRetentionDays: 365
-      },
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
-    
-    const result = await companiesCollection.insertOne(newCompany)
-    company = { ...newCompany, _id: result.insertedId }
-  }
-  
-  // Add user to company if not already associated
-  if (!user.companies.some(id => id.toString() === company._id.toString())) {
-    await usersCollection.updateOne(
-      { _id: user._id },
-      { $push: { companies: company._id } }
-    )
-    user.companies.push(company._id)
+    throw new Error('Company not found')
   }
   
   return { user, company }
@@ -155,7 +173,6 @@ async function getCurrentUser(event) {
   const token = getAuthorizationToken(event)
   const decoded = verifyToken(token)
   
-  
   const usersCollection = await getCollection('users')
   const companiesCollection = await getCollection('companies')
   
@@ -169,7 +186,11 @@ async function getCurrentUser(event) {
     throw new Error('User not found')
   }
   
-  const company = await companiesCollection.findOne({ _id: user.companies[0] })
+  const company = await companiesCollection.findOne({ _id: user.companyId })
+  
+  if (!company) {
+    throw new Error('Company not found')
+  }
   
   return { user, company }
 }

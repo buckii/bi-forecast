@@ -33,6 +33,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/users',
+    name: 'Users',
+    component: () => import('../views/Users.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
     path: '/settings',
     name: 'Settings',
     component: () => import('../views/Settings.vue'),
@@ -56,6 +62,8 @@ router.beforeEach(async (to, from, next) => {
     next('/login')
   } else if (to.path === '/login' && authStore.isAuthenticated) {
     next('/')
+  } else if (to.meta.requiresAdmin && authStore.user?.role !== 'admin') {
+    next('/')  // Redirect non-admins to dashboard
   } else {
     next()
   }

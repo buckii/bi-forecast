@@ -386,10 +386,8 @@ async function shareChartToSlack() {
   
   try {
     // Step 1: Capture chart
-    console.log('Importing html2canvas...')
     const html2canvas = (await import('html2canvas')).default
     
-    console.log('Capturing chart...')
     const canvas = await html2canvas(chartContainer.value, {
       backgroundColor: null,
       scale: 2, // Higher resolution
@@ -398,11 +396,9 @@ async function shareChartToSlack() {
     })
     
     // Step 2: Convert to base64
-    console.log('Converting to image data...')
     const imageData = canvas.toDataURL('image/png', 1.0)
     
     // Step 3: Send to backend with auth token
-    console.log('Sending to backend...')
     const response = await fetch('/.netlify/functions/share-chart', {
       method: 'POST',
       headers: {
@@ -416,7 +412,6 @@ async function shareChartToSlack() {
     })
     
     const responseData = await response.json()
-    console.log('Backend response:', responseData)
     
     if (!response.ok) {
       throw new Error(responseData.message || `HTTP ${response.status}: ${response.statusText}`)
@@ -424,7 +419,6 @@ async function shareChartToSlack() {
     
     // Success!
     shareModalState.value = 'success'
-    console.log('Chart shared successfully:', responseData)
     
   } catch (error) {
     console.error('Error sharing chart to Slack:', error)

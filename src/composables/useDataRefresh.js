@@ -72,7 +72,7 @@ export function useDataRefresh() {
         pipedriveLastRefresh.value = lastUpdated
       }
     } catch (error) {
-      console.log('Failed to fetch last refresh times:', error)
+      // Failed to fetch last refresh times - ignore silently
     }
   }
   

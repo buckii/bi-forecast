@@ -335,7 +335,6 @@ async function connectQBO() {
 
 function disconnectQBO() {
   // This would disconnect QBO
-  console.log('Disconnect QuickBooks Online')
 }
 
 async function savePipedriveKey() {
@@ -457,7 +456,7 @@ async function checkConnectionStatus() {
       qboConnected.value = data.data.quickbooks.connected
     }
   } catch (error) {
-    console.log('Connection status check failed:', error)
+    // Connection status check failed - ignore silently
   }
 }
 

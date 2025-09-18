@@ -327,9 +327,7 @@ async function loadInvoices() {
     }
     
     const data = await response.json()
-    console.log('Invoices API response:', data)
     invoices.value = data.data?.invoices || []
-    console.log('Set invoices.value to:', invoices.value)
   } catch (error) {
     console.error('Error loading invoices:', error)
     invoices.value = []
