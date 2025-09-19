@@ -20,9 +20,9 @@ exports.handler = async function(event, context) {
     
     const calculator = new RevenueCalculator(company._id)
     
-    // Use optimized parallel data fetching (18 months: 6 months ago to 12 months from now)
+    // Use optimized parallel data fetching (15 months: 3 months ago to 12 months from now)
     const [revenueResult, exceptions, balances] = await Promise.all([
-      calculator.calculateMonthlyRevenue(18, -6),
+      calculator.calculateMonthlyRevenue(15, -3),
       calculator.getExceptions(),
       calculator.getBalances()
     ])

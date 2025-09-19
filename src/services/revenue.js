@@ -1,8 +1,9 @@
 import api from './api'
 
 export default {
-  async getCurrentData() {
-    return api.get('/revenue-current')
+  async getCurrentData(bypassCache = false) {
+    const url = bypassCache ? '/revenue-current?nocache=true' : '/revenue-current'
+    return api.get(url)
   },
   
   async getHistoricalData(date) {

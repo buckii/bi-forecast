@@ -88,8 +88,8 @@ export function useDataRefresh() {
       const data = await response.json()
       qboLastRefresh.value = data.data.lastUpdated
       
-      // Trigger revenue store refresh
-      await revenueStore.loadRevenueData()
+      // Trigger revenue store refresh with cache bypass
+      await revenueStore.loadRevenueData(null, true)
       
     } catch (error) {
       console.error('Error refreshing QBO data:', error)
@@ -118,8 +118,8 @@ export function useDataRefresh() {
       const data = await response.json()
       pipedriveLastRefresh.value = data.data.lastUpdated
       
-      // Trigger revenue store refresh
-      await revenueStore.loadRevenueData()
+      // Trigger revenue store refresh with cache bypass
+      await revenueStore.loadRevenueData(null, true)
       
     } catch (error) {
       console.error('Error refreshing Pipedrive data:', error)

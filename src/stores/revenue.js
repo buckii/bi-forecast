@@ -130,7 +130,7 @@ export const useRevenueStore = defineStore('revenue', () => {
     return Math.round(totalLiquid / dailyExpenses)
   })
   
-  async function loadRevenueData(date = null) {
+  async function loadRevenueData(date = null, bypassCache = false) {
     loading.value = true
     error.value = null
     
@@ -145,7 +145,7 @@ export const useRevenueStore = defineStore('revenue', () => {
       } else {
         selectedDate.value = new Date()
         isHistorical.value = false
-        const response = await revenueService.getCurrentData()
+        const response = await revenueService.getCurrentData(bypassCache)
         revenueData.value = response.months
         exceptions.value = response.exceptions
         balances.value = response.balances
@@ -163,7 +163,7 @@ export const useRevenueStore = defineStore('revenue', () => {
     loading.value = true
     try {
       await revenueService.refreshQuickbooks()
-      await loadRevenueData()
+      await loadRevenueData(null, true) // Bypass cache after refresh
     } catch (err) {
       error.value = err.message
     } finally {
@@ -175,7 +175,7 @@ export const useRevenueStore = defineStore('revenue', () => {
     loading.value = true
     try {
       await revenueService.refreshPipedrive()
-      await loadRevenueData()
+      await loadRevenueData(null, true) // Bypass cache after refresh
     } catch (err) {
       error.value = err.message
     } finally {

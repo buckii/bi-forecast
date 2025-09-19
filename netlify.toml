@@ -3,6 +3,9 @@
   command = "npm run build"
   functions = "netlify/functions"
 
+[dev]
+  command = "npm run dev:local"
+
 [build.environment]
   NODE_VERSION = "18"
 
