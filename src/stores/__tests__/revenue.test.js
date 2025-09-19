@@ -246,6 +246,45 @@ describe('Revenue Store', () => {
     })
   })
 
+  describe('lastUpdated property', () => {
+    it('should have lastUpdated property', () => {
+      const store = useRevenueStore()
+      expect(store).toHaveProperty('lastUpdated')
+      expect(store.lastUpdated).toBeNull()
+    })
+
+    it('should update lastUpdated when loading current data', async () => {
+      const mockData = {
+        months: [],
+        exceptions: { overdueDeals: [], pastDelayedCharges: [], wonUnscheduled: [] },
+        balances: { assets: [], receivables: null, monthlyExpenses: 0 },
+        lastUpdated: '2024-01-15T10:00:00Z'
+      }
+
+      revenueService.getCurrentData.mockResolvedValue(mockData)
+
+      const store = useRevenueStore()
+      await store.loadRevenueData()
+
+      expect(store.lastUpdated).toBe('2024-01-15T10:00:00Z')
+    })
+
+    it('should not update lastUpdated when loading historical data', async () => {
+      const mockData = {
+        months: [],
+        exceptions: { overdueDeals: [], pastDelayedCharges: [], wonUnscheduled: [] },
+        balances: { assets: [], receivables: null, monthlyExpenses: 0 }
+      }
+
+      revenueService.getHistoricalData.mockResolvedValue(mockData)
+
+      const store = useRevenueStore()
+      await store.loadRevenueData(new Date('2024-01-01'))
+
+      expect(store.lastUpdated).toBeNull()
+    })
+  })
+
   describe('refresh functions', () => {
     it('should refresh QuickBooks data successfully', async () => {
       const mockData = {

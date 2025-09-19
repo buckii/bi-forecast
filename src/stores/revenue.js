@@ -22,6 +22,7 @@ export const useRevenueStore = defineStore('revenue', () => {
   })
   
   const includeWeightedSales = ref(true)
+  const lastUpdated = ref(null)
   
   const currentMonthRevenue = computed(() => {
     const currentMonth = format(startOfMonth(new Date()), 'yyyy-MM-dd')
@@ -148,6 +149,7 @@ export const useRevenueStore = defineStore('revenue', () => {
         revenueData.value = response.months
         exceptions.value = response.exceptions
         balances.value = response.balances
+        lastUpdated.value = response.lastUpdated
       }
     } catch (err) {
       error.value = err.message
@@ -190,6 +192,7 @@ export const useRevenueStore = defineStore('revenue', () => {
     exceptions,
     balances,
     includeWeightedSales,
+    lastUpdated,
     currentMonthRevenue,
     threeMonthRevenue,
     yearUnbilledCharges,

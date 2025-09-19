@@ -92,64 +92,52 @@ describe('useDataRefresh', () => {
     })
   })
 
-  describe('fetchLastRefreshTimes', () => {
-    it('should fetch and set refresh times successfully', async () => {
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({
-          data: {
-            lastUpdated: '2024-01-15T14:30:00Z'
-          }
-        })
-      }
+  describe('updateRefreshTimes', () => {
+    it('should update refresh times from revenue store', () => {
+      const { updateRefreshTimes, qboLastRefresh, pipedriveLastRefresh } = useDataRefresh()
       
-      global.fetch.mockResolvedValue(mockResponse)
+      // Mock revenue store with lastUpdated value
+      const mockRevenueStore = useRevenueStore()
+      mockRevenueStore.lastUpdated = '2024-01-15T10:00:00Z'
       
-      const { fetchLastRefreshTimes, qboLastRefresh, pipedriveLastRefresh } = useDataRefresh()
-      
-      await fetchLastRefreshTimes()
-      
-      expect(global.fetch).toHaveBeenCalledWith('/.netlify/functions/revenue-current', {
-        method: 'GET',
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token'
-        }
-      })
-      
-      expect(qboLastRefresh.value).toBe('2024-01-15T14:30:00Z')
-      expect(pipedriveLastRefresh.value).toBe('2024-01-15T14:30:00Z')
+      updateRefreshTimes()
+
+      expect(qboLastRefresh.value).toBe('2024-01-15T10:00:00Z')
+      expect(pipedriveLastRefresh.value).toBe('2024-01-15T10:00:00Z')
     })
 
-    it('should handle fetch errors gracefully', async () => {
-      global.fetch.mockRejectedValue(new Error('Network error'))
+    it('should handle null lastUpdated value gracefully', () => {
+      const { updateRefreshTimes, qboLastRefresh, pipedriveLastRefresh } = useDataRefresh()
       
-      const { fetchLastRefreshTimes, qboLastRefresh, pipedriveLastRefresh } = useDataRefresh()
+      // Mock revenue store with null lastUpdated value
+      const mockRevenueStore = useRevenueStore()
+      mockRevenueStore.lastUpdated = null
       
-      // Should not throw error
-      await expect(fetchLastRefreshTimes()).resolves.toBeUndefined()
-      
+      updateRefreshTimes()
+
       // Values should remain unchanged
-      expect(qboLastRefresh.value).toBe(null)
-      expect(pipedriveLastRefresh.value).toBe(null)
+      expect(qboLastRefresh.value).toBeNull()
+      expect(pipedriveLastRefresh.value).toBeNull()
     })
 
-    it('should handle non-ok responses gracefully', async () => {
-      const mockResponse = {
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error'
-      }
+    it('should watch for revenue store lastUpdated changes', () => {
+      const { updateRefreshTimes, qboLastRefresh, pipedriveLastRefresh } = useDataRefresh()
       
-      global.fetch.mockResolvedValue(mockResponse)
+      // Mock revenue store
+      const mockRevenueStore = useRevenueStore()
       
-      const { fetchLastRefreshTimes, qboLastRefresh, pipedriveLastRefresh } = useDataRefresh()
+      // Initially null
+      expect(qboLastRefresh.value).toBeNull()
+      expect(pipedriveLastRefresh.value).toBeNull()
       
-      // Should not throw error
-      await expect(fetchLastRefreshTimes()).resolves.toBeUndefined()
+      // Simulate revenue store update
+      mockRevenueStore.lastUpdated = '2024-01-15T11:00:00Z'
       
-      // Values should remain unchanged
-      expect(qboLastRefresh.value).toBe(null)
-      expect(pipedriveLastRefresh.value).toBe(null)
+      // Manually trigger updateRefreshTimes to simulate the watcher
+      updateRefreshTimes()
+
+      expect(qboLastRefresh.value).toBe('2024-01-15T11:00:00Z')
+      expect(pipedriveLastRefresh.value).toBe('2024-01-15T11:00:00Z')
     })
   })
 
@@ -295,26 +283,13 @@ describe('useDataRefresh', () => {
   })
 
   describe('initialization', () => {
-    it('should call fetchLastRefreshTimes on composable creation', () => {
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({
-          data: { lastUpdated: '2024-01-15T14:30:00Z' }
-        })
-      }
-      
-      global.fetch.mockResolvedValue(mockResponse)
-      
+    it('should initialize without making API calls', () => {
       // Create the composable
       useDataRefresh()
       
-      // Should have called fetchLastRefreshTimes
-      expect(global.fetch).toHaveBeenCalledWith('/.netlify/functions/revenue-current', {
-        method: 'GET',
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token'
-        }
-      })
+      // Should not have made any fetch calls during initialization
+      // (since we now get refresh times from revenue store instead)
+      expect(global.fetch).not.toHaveBeenCalled()
     })
   })
 
@@ -331,14 +306,14 @@ describe('useDataRefresh', () => {
       // Methods
       expect(result).toHaveProperty('formatLastRefresh')
       expect(result).toHaveProperty('formatRefreshTooltip')
-      expect(result).toHaveProperty('fetchLastRefreshTimes')
+      expect(result).toHaveProperty('updateRefreshTimes')
       expect(result).toHaveProperty('refreshQBO')
       expect(result).toHaveProperty('refreshPipedrive')
       
       // Check that methods are functions
       expect(typeof result.formatLastRefresh).toBe('function')
       expect(typeof result.formatRefreshTooltip).toBe('function')
-      expect(typeof result.fetchLastRefreshTimes).toBe('function')
+      expect(typeof result.updateRefreshTimes).toBe('function')
       expect(typeof result.refreshQBO).toBe('function')
       expect(typeof result.refreshPipedrive).toBe('function')
     })

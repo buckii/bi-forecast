@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useRevenueStore } from '../stores/revenue'
 
@@ -54,27 +54,20 @@ export function useDataRefresh() {
     })
   }
   
-  // Fetch current refresh timestamps
-  async function fetchLastRefreshTimes() {
-    try {
-      const response = await fetch('/.netlify/functions/revenue-current', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${authStore.token}`
-        }
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        const lastUpdated = data.data.lastUpdated
-        // Since both QBO and Pipedrive refresh together, they share the same timestamp
-        qboLastRefresh.value = lastUpdated
-        pipedriveLastRefresh.value = lastUpdated
-      }
-    } catch (error) {
-      // Failed to fetch last refresh times - ignore silently
+  // Update refresh timestamps from revenue store data
+  function updateRefreshTimes() {
+    const lastUpdated = revenueStore.lastUpdated
+    if (lastUpdated) {
+      // Since both QBO and Pipedrive refresh together, they share the same timestamp
+      qboLastRefresh.value = lastUpdated
+      pipedriveLastRefresh.value = lastUpdated
     }
   }
+  
+  // Watch for changes in revenue store's lastUpdated value
+  watch(() => revenueStore.lastUpdated, () => {
+    updateRefreshTimes()
+  })
   
   // Refresh QBO data
   async function refreshQBO() {
@@ -137,7 +130,8 @@ export function useDataRefresh() {
   }
   
   // Initialize refresh times on composable creation
-  fetchLastRefreshTimes()
+  // Note: This is now handled by the revenue store to avoid duplicate API calls
+  // fetchLastRefreshTimes()
   
   return {
     // State
@@ -149,7 +143,7 @@ export function useDataRefresh() {
     // Methods
     formatLastRefresh,
     formatRefreshTooltip,
-    fetchLastRefreshTimes,
+    updateRefreshTimes,
     refreshQBO,
     refreshPipedrive
   }

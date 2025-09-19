@@ -23,7 +23,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { Chart, registerables } from 'chart.js'
 import annotationPlugin from 'chartjs-plugin-annotation'
 import { format, parse } from 'date-fns'
@@ -320,36 +320,75 @@ function createChart() {
   })
 }
 
+function updateChart() {
+  if (!chartInstance || props.data.length === 0) {
+    if (props.data.length > 0) {
+      createChart()
+    }
+    return
+  }
+  
+  // Update chart data
+  const labels = props.data.map(d => {
+    const date = parse(d.month, 'yyyy-MM-dd', new Date())
+    return format(date, 'MMM yyyy')
+  })
+  
+  chartInstance.data.labels = labels
+  chartInstance.data.datasets[0].data = props.data.map(d => d.invoiced || 0)
+  chartInstance.data.datasets[1].data = props.data.map(d => d.journalEntries || 0)
+  chartInstance.data.datasets[2].data = props.data.map(d => d.delayedCharges || 0)
+  chartInstance.data.datasets[3].data = props.data.map(d => d.monthlyRecurring || 0)
+  chartInstance.data.datasets[4].data = props.data.map(d => d.wonUnscheduled || 0)
+  chartInstance.data.datasets[5].data = props.data.map(d => d.weightedSales || 0)
+  
+  // Update annotations for reference lines
+  if (chartInstance.options.plugins.annotation) {
+    chartInstance.options.plugins.annotation.annotations = getAnnotations()
+  }
+  
+  // Update colors for dark mode changes
+  const textColor = isDarkModeGlobal.value ? '#ffffff' : '#374151'
+  const gridColor = isDarkModeGlobal.value ? '#374151' : '#e5e7eb'
+  
+  chartInstance.options.scales.x.ticks.color = textColor
+  chartInstance.options.scales.y.ticks.color = textColor
+  chartInstance.options.scales.y.grid.color = gridColor
+  chartInstance.options.plugins.legend.labels.color = textColor
+  
+  chartInstance.update()
+}
+
 onMounted(() => {
   if (props.data.length > 0) {
     createChart()
   }
 })
 
-watch(() => props.data, () => {
-  if (props.data.length > 0) {
-    createChart()
+// Add cleanup on unmount
+onUnmounted(() => {
+  if (chartInstance) {
+    chartInstance.destroy()
+    chartInstance = null
   }
+})
+
+watch(() => props.data, () => {
+  updateChart()
 }, { deep: true })
 
 // Watch for monthly expenses changes
 watch(() => props.monthlyExpenses, () => {
-  if (props.data.length > 0) {
-    createChart()
-  }
+  updateChart()
 })
 
 // Watch for target margin changes
 watch(() => props.targetNetMargin, () => {
-  if (props.data.length > 0) {
-    createChart()
-  }
+  updateChart()
 })
 
 // Watch for dark mode changes
 watch(isDarkModeGlobal, () => {
-  if (props.data.length > 0) {
-    createChart()
-  }
+  updateChart()
 })
 </script>
