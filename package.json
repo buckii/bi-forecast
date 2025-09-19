@@ -10,7 +10,12 @@
     "dev": "netlify dev",
     "tunnel": "cloudflared tunnel run bi-forecast-dev",
     "functions:serve": "netlify functions:serve",
-    "deploy": "npm run build && netlify deploy --prod"
+    "deploy": "npm run build && netlify deploy --prod",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest --watch"
   },
   "dependencies": {
     "@google-cloud/local-auth": "^3.0.1",
@@ -39,10 +44,16 @@
   },
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.10",
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/vue": "^8.1.0",
     "@vitejs/plugin-vue": "^6.0.1",
+    "@vue/test-utils": "^2.4.6",
+    "happy-dom": "^18.0.1",
+    "jsdom": "^27.0.0",
     "netlify-cli": "^23.5.0",
     "tailwindcss": "^3.4.17",
     "vite": "^7.1.2",
-    "vite-plugin-pwa": "^1.0.3"
+    "vite-plugin-pwa": "^1.0.3",
+    "vitest": "^3.2.4"
   }
 }
