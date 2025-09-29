@@ -79,7 +79,9 @@ export const useRevenueStore = defineStore('revenue', () => {
     }
     
     return balances.value.assets.reduce((total, account) => {
-      if (['Checking', 'Savings', 'UndepositedFunds'].includes(account.subType)) {
+      // Check both subType and name for flexibility with different data formats
+      const accountType = account.subType || account.name
+      if (['Checking', 'Savings', 'UndepositedFunds'].includes(accountType)) {
         const balance = parseFloat(account.balance) || 0
         return total + balance
       }
@@ -142,6 +144,7 @@ export const useRevenueStore = defineStore('revenue', () => {
         revenueData.value = response.months
         exceptions.value = response.exceptions
         balances.value = response.balances
+        lastUpdated.value = null // Historical data doesn't have lastUpdated
       } else {
         selectedDate.value = new Date()
         isHistorical.value = false

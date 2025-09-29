@@ -70,7 +70,7 @@ describe('useDataRefresh', () => {
       const result = formatLastRefresh(twoWeeksAgo.toISOString())
       
       // Should contain month abbreviation and day
-      expect(result).toMatch(/^[A-Za-z]{3} \d{1,2}, \d{1,2}:\d{2} [AP]M$/)
+      expect(result).toMatch(/^[A-Za-z]{3} \d{1,2}$/)
     })
   })
 
@@ -316,6 +316,154 @@ describe('useDataRefresh', () => {
       expect(typeof result.updateRefreshTimes).toBe('function')
       expect(typeof result.refreshQBO).toBe('function')
       expect(typeof result.refreshPipedrive).toBe('function')
+    })
+  })
+
+  describe('edge cases and boundary conditions', () => {
+    it('should handle timestamp formatting edge cases', () => {
+      const { formatLastRefresh, formatRefreshTooltip } = useDataRefresh()
+      
+      // Test with null/undefined
+      expect(formatLastRefresh(null)).toBe('Never')
+      expect(formatRefreshTooltip(undefined)).toBe('Never refreshed')
+      expect(formatRefreshTooltip(null)).toBe('Never refreshed')
+      
+      // Test with very old dates  
+      const veryOldDate = new Date('2020-01-01T12:00:00Z').toISOString()
+      const oldResult = formatLastRefresh(veryOldDate)
+      expect(oldResult).toMatch(/(Jan 1|Dec 31)/) // Should show actual date for old timestamps (timezone may affect)
+    })
+
+    it('should handle rapid consecutive refresh calls', async () => {
+      const { refreshQBO, refreshingQBO } = useDataRefresh()
+      
+      // Mock successful response
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          data: { lastUpdated: '2024-01-15T10:00:00Z' }
+        })
+      })
+      
+      // Start multiple refreshes rapidly
+      const promise1 = refreshQBO()
+      const promise2 = refreshQBO()
+      const promise3 = refreshQBO()
+      
+      // Should handle concurrent calls gracefully
+      await Promise.all([promise1, promise2, promise3])
+      
+      expect(refreshingQBO.value).toBe(false)
+      expect(global.fetch).toHaveBeenCalled()
+    })
+
+    it('should handle network timeout scenarios', async () => {
+      const { refreshQBO } = useDataRefresh()
+      
+      // Mock network timeout
+      global.fetch.mockRejectedValue(new Error('Network timeout'))
+      
+      await expect(refreshQBO()).rejects.toThrow('Network timeout')
+    })
+
+    it('should handle malformed API responses', async () => {
+      const { refreshQBO } = useDataRefresh()
+      
+      // Mock response with missing data field
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          // Missing 'data' field
+          message: 'Success but malformed'
+        })
+      })
+      
+      // Mock revenue store reload
+      const mockRevenueStore = useRevenueStore()
+      mockRevenueStore.loadRevenueData = vi.fn().mockResolvedValue()
+      
+      // Should handle gracefully without crashing
+      await expect(refreshQBO()).resolves.not.toThrow()
+    })
+
+    it('should handle empty response bodies', async () => {
+      const { refreshPipedrive } = useDataRefresh()
+      
+      // Mock empty response
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({})
+      })
+      
+      // Mock revenue store reload
+      const mockRevenueStore = useRevenueStore()
+      mockRevenueStore.loadRevenueData = vi.fn().mockResolvedValue()
+      
+      await expect(refreshPipedrive()).resolves.not.toThrow()
+    })
+
+    it('should handle very long refresh operations', async () => {
+      const { refreshQBO, refreshingQBO } = useDataRefresh()
+      
+      // Mock slow response
+      const slowPromise = new Promise(resolve => {
+        setTimeout(() => {
+          resolve({
+            ok: true,
+            json: vi.fn().mockResolvedValue({
+              data: { lastUpdated: '2024-01-15T10:00:00Z' }
+            })
+          })
+        }, 100) // 100ms delay
+      })
+      
+      global.fetch.mockReturnValue(slowPromise)
+      
+      const refreshPromise = refreshQBO()
+      
+      // Should be refreshing during the operation
+      expect(refreshingQBO.value).toBe(true)
+      
+      await refreshPromise
+      
+      // Should be done after completion
+      expect(refreshingQBO.value).toBe(false)
+    })
+
+    it('should handle refresh state during errors', async () => {
+      const { refreshQBO, refreshingQBO } = useDataRefresh()
+      
+      global.fetch.mockRejectedValue(new Error('Server error'))
+      
+      const refreshPromise = refreshQBO().catch(() => {}) // Suppress error
+      
+      expect(refreshingQBO.value).toBe(true)
+      
+      await refreshPromise
+      
+      expect(refreshingQBO.value).toBe(false)
+    })
+
+    it('should handle timestamp updates with revenue store integration', () => {
+      const { updateRefreshTimes, qboLastRefresh, pipedriveLastRefresh } = useDataRefresh()
+      
+      // Mock revenue store with various timestamp formats
+      const mockRevenueStore = useRevenueStore()
+      
+      // Test with ISO string
+      mockRevenueStore.lastUpdated = '2024-01-15T10:00:00.000Z'
+      updateRefreshTimes()
+      expect(qboLastRefresh.value).toBe('2024-01-15T10:00:00.000Z')
+      
+      // Test with different ISO format
+      mockRevenueStore.lastUpdated = '2024-01-15T10:00:00Z'
+      updateRefreshTimes()
+      expect(qboLastRefresh.value).toBe('2024-01-15T10:00:00Z')
+      
+      // Test with invalid timestamp
+      mockRevenueStore.lastUpdated = 'invalid'
+      updateRefreshTimes()
+      expect(qboLastRefresh.value).toBe('invalid') // Should pass through
     })
   })
 })

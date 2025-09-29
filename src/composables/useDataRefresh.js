@@ -31,9 +31,7 @@ export function useDataRefresh() {
     
     return date.toLocaleDateString('en-US', { 
       month: 'short', 
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit'
+      day: 'numeric'
     })
   }
   
@@ -86,7 +84,9 @@ export function useDataRefresh() {
       }
       
       const data = await response.json()
-      qboLastRefresh.value = data.data.lastUpdated
+      if (data.data && data.data.lastUpdated) {
+        qboLastRefresh.value = data.data.lastUpdated
+      }
       
       // Trigger revenue store refresh with cache bypass
       await revenueStore.loadRevenueData(null, true)
@@ -116,7 +116,9 @@ export function useDataRefresh() {
       }
       
       const data = await response.json()
-      pipedriveLastRefresh.value = data.data.lastUpdated
+      if (data.data && data.data.lastUpdated) {
+        pipedriveLastRefresh.value = data.data.lastUpdated
+      }
       
       // Trigger revenue store refresh with cache bypass
       await revenueStore.loadRevenueData(null, true)

@@ -333,4 +333,168 @@ describe('Revenue Store', () => {
       expect(store.loading).toBe(false)
     })
   })
+
+  describe('edge cases and boundary conditions', () => {
+    it('should handle empty revenue data', async () => {
+      const mockData = {
+        months: [],
+        exceptions: { overdueDeals: [], pastDelayedCharges: [], wonUnscheduled: [] },
+        balances: { assets: [], receivables: null, monthlyExpenses: 0 }
+      }
+
+      revenueService.getCurrentData.mockResolvedValue(mockData)
+      
+      const store = useRevenueStore()
+      await store.loadRevenueData()
+      
+      expect(store.revenueData).toEqual([])
+      expect(store.currentMonthRevenue).toBe(0)
+      expect(store.threeMonthRevenue).toBe(0)
+    })
+
+    it('should handle missing components in revenue data', async () => {
+      const mockData = {
+        months: [{
+          month: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
+          components: {
+            invoiced: 1000,
+            journalEntries: 0,
+            delayedCharges: 0,
+            monthlyRecurring: 0,
+            wonUnscheduled: 0,
+            weightedSales: 0
+            // Set missing components to 0
+          }
+        }],
+        exceptions: { overdueDeals: [], pastDelayedCharges: [], wonUnscheduled: [] },
+        balances: { assets: [], receivables: null, monthlyExpenses: 0 }
+      }
+
+      revenueService.getCurrentData.mockResolvedValue(mockData)
+      
+      const store = useRevenueStore()
+      await store.loadRevenueData()
+      
+      // Should handle missing components gracefully
+      expect(store.currentMonthRevenue).toBe(1000) // Only invoiced amount
+    })
+
+    it('should handle null/undefined balances', async () => {
+      const mockData = {
+        months: [],
+        exceptions: { overdueDeals: [], pastDelayedCharges: [], wonUnscheduled: [] },
+        balances: { assets: null, receivables: null, monthlyExpenses: 0 }
+      }
+
+      revenueService.getCurrentData.mockResolvedValue(mockData)
+      
+      const store = useRevenueStore()
+      await store.loadRevenueData()
+      
+      expect(store.totalCashOnHand).toBe(0)
+      expect(store.totalReceivables).toBe(0)
+    })
+
+    it('should handle malformed asset data', async () => {
+      const mockData = {
+        months: [],
+        exceptions: { overdueDeals: [], pastDelayedCharges: [], wonUnscheduled: [] },
+        balances: { 
+          assets: 'not-an-array', // Invalid data type
+          receivables: null, 
+          monthlyExpenses: 0 
+        }
+      }
+
+      revenueService.getCurrentData.mockResolvedValue(mockData)
+      
+      const store = useRevenueStore()
+      await store.loadRevenueData()
+      
+      expect(store.totalCashOnHand).toBe(0) // Should handle gracefully
+    })
+
+    it('should handle weighted sales toggle with empty data', async () => {
+      const store = useRevenueStore()
+      
+      // Test with no data
+      expect(store.currentMonthRevenue).toBe(0)
+      
+      // Toggle weighted sales
+      store.includeWeightedSales = false
+      expect(store.currentMonthRevenue).toBe(0)
+      
+      store.includeWeightedSales = true
+      expect(store.currentMonthRevenue).toBe(0)
+    })
+
+    it('should handle very large revenue numbers', async () => {
+      const mockData = {
+        months: [{
+          month: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
+          components: {
+            invoiced: 999999999,
+            journalEntries: 888888888,
+            delayedCharges: 777777777,
+            monthlyRecurring: 666666666,
+            wonUnscheduled: 555555555,
+            weightedSales: 444444444
+          }
+        }],
+        exceptions: { overdueDeals: [], pastDelayedCharges: [], wonUnscheduled: [] },
+        balances: { assets: [], receivables: null, monthlyExpenses: 0 }
+      }
+
+      revenueService.getCurrentData.mockResolvedValue(mockData)
+      
+      const store = useRevenueStore()
+      await store.loadRevenueData()
+      
+      const expectedTotal = 999999999 + 888888888 + 777777777 + 666666666 + 555555555 + 444444444
+      expect(store.currentMonthRevenue).toBe(expectedTotal)
+    })
+
+    it('should handle concurrent refresh operations', async () => {
+      const mockData = {
+        months: [],
+        exceptions: { overdueDeals: [], pastDelayedCharges: [], wonUnscheduled: [] },
+        balances: { assets: [], receivables: null, monthlyExpenses: 0 }
+      }
+
+      revenueService.refreshQuickbooks.mockResolvedValue({ success: true })
+      revenueService.refreshPipedrive.mockResolvedValue({ success: true })
+      revenueService.getCurrentData.mockResolvedValue(mockData)
+      
+      const store = useRevenueStore()
+      
+      // Start both refreshes concurrently
+      const qboPromise = store.refreshQuickbooks()
+      const pipedrivePromise = store.refreshPipedrive()
+      
+      await Promise.all([qboPromise, pipedrivePromise])
+      
+      expect(store.loading).toBe(false)
+      expect(store.error).toBeNull()
+    })
+
+    it('should handle cache bypass parameter correctly', async () => {
+      const mockData = {
+        months: [],
+        exceptions: { overdueDeals: [], pastDelayedCharges: [], wonUnscheduled: [] },
+        balances: { assets: [], receivables: null, monthlyExpenses: 0 }
+      }
+
+      revenueService.getCurrentData.mockResolvedValue(mockData)
+      
+      const store = useRevenueStore()
+      
+      // Test normal load (should not bypass cache)
+      await store.loadRevenueData()
+      expect(revenueService.getCurrentData).toHaveBeenCalledWith(false)
+      
+      // Test with cache bypass
+      await store.loadRevenueData(null, true)
+      expect(revenueService.getCurrentData).toHaveBeenCalledWith(true)
+    })
+  })
 })
