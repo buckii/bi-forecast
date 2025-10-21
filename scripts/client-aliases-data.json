@@ -1,0 +1,456 @@
+{
+  "exportedAt": "2025-10-21T15:47:16.885Z",
+  "exportedFrom": {
+    "companyId": "68ae0d745c6902d767348165",
+    "companyName": "Buckeye Innovation",
+    "database": "biforecast"
+  },
+  "clientAliases": [
+    {
+      "primaryName": "AFCPE (Association for Financial Counseling & Planning Education)",
+      "aliases": []
+    },
+    {
+      "primaryName": "AcademyOne New Albany",
+      "aliases": [
+        "AcademyOne"
+      ]
+    },
+    {
+      "primaryName": "Accelerate Columbus",
+      "aliases": []
+    },
+    {
+      "primaryName": "Adaptive Sports Connection",
+      "aliases": []
+    },
+    {
+      "primaryName": "American College of Education",
+      "aliases": [
+        "ACE.edu"
+      ]
+    },
+    {
+      "primaryName": "Anderson Companies",
+      "aliases": [
+        "Anderson Aluminum"
+      ]
+    },
+    {
+      "primaryName": "Arlington Roe",
+      "aliases": []
+    },
+    {
+      "primaryName": "Armor Paving & Sealing",
+      "aliases": []
+    },
+    {
+      "primaryName": "Association for Financial Counseling & Planning Education (AFCPE)",
+      "aliases": [
+        "AFCPE"
+      ]
+    },
+    {
+      "primaryName": "Bechtel",
+      "aliases": []
+    },
+    {
+      "primaryName": "Benevilla",
+      "aliases": []
+    },
+    {
+      "primaryName": "Besa Community, Inc.",
+      "aliases": [
+        "Besa"
+      ]
+    },
+    {
+      "primaryName": "BroadbandOhio",
+      "aliases": []
+    },
+    {
+      "primaryName": "Buddy Up For Life",
+      "aliases": [
+        "BuddyUp",
+        "Buddy Up"
+      ]
+    },
+    {
+      "primaryName": "Central Ohio Health Care Consortium",
+      "aliases": [
+        "COHCC"
+      ]
+    },
+    {
+      "primaryName": "Cincinnati Children’s",
+      "aliases": []
+    },
+    {
+      "primaryName": "City of Hilliard",
+      "aliases": [
+        "Hilliard"
+      ]
+    },
+    {
+      "primaryName": "City of New Albany",
+      "aliases": [
+        "City of NA"
+      ]
+    },
+    {
+      "primaryName": "Columbus Academy",
+      "aliases": []
+    },
+    {
+      "primaryName": "Columbus Metropolitan Library",
+      "aliases": [
+        "CML"
+      ]
+    },
+    {
+      "primaryName": "Community Financial Wellness",
+      "aliases": [
+        "CFW"
+      ]
+    },
+    {
+      "primaryName": "Connect The Dots",
+      "aliases": [
+        "CTD"
+      ]
+    },
+    {
+      "primaryName": "Connect the Dots Consulting",
+      "aliases": []
+    },
+    {
+      "primaryName": "ConnectUs",
+      "aliases": []
+    },
+    {
+      "primaryName": "Crane Consumables",
+      "aliases": []
+    },
+    {
+      "primaryName": "Cristo Rey Columbus",
+      "aliases": [
+        "Cristo Rey"
+      ]
+    },
+    {
+      "primaryName": "DLZ",
+      "aliases": []
+    },
+    {
+      "primaryName": "DNO Produce",
+      "aliases": []
+    },
+    {
+      "primaryName": "Delaware County Commissioners",
+      "aliases": []
+    },
+    {
+      "primaryName": "Delaware County District Library",
+      "aliases": [
+        "DCDL"
+      ]
+    },
+    {
+      "primaryName": "Downtown Columbus, Inc.",
+      "aliases": [
+        "Downtown Columbus"
+      ]
+    },
+    {
+      "primaryName": "EMC Research",
+      "aliases": []
+    },
+    {
+      "primaryName": "Ecologik",
+      "aliases": []
+    },
+    {
+      "primaryName": "Ecologik | Indiana Department of Environmental Management",
+      "aliases": [
+        "IDEM"
+      ]
+    },
+    {
+      "primaryName": "EnvisionEdPlus",
+      "aliases": []
+    },
+    {
+      "primaryName": "Experience Columbus",
+      "aliases": []
+    },
+    {
+      "primaryName": "Florida Dermatology Specialists",
+      "aliases": [
+        "Florida Dermatology",
+        "hipaasaferesults"
+      ]
+    },
+    {
+      "primaryName": "Found Search Marketing",
+      "aliases": [
+        "FoundSM",
+        "Found SM"
+      ]
+    },
+    {
+      "primaryName": "FoundSM",
+      "aliases": []
+    },
+    {
+      "primaryName": "Foundation for Autoimmune Cancer Support",
+      "aliases": []
+    },
+    {
+      "primaryName": "Foundation for Autoimmune Cancer Support (FACS)",
+      "aliases": [
+        "FACS"
+      ]
+    },
+    {
+      "primaryName": "Fresh Environmental",
+      "aliases": []
+    },
+    {
+      "primaryName": "Goodwill Columbus",
+      "aliases": [
+        "Goodwill"
+      ]
+    },
+    {
+      "primaryName": "Great Columbus Sports Commission",
+      "aliases": [
+        "GCSC"
+      ]
+    },
+    {
+      "primaryName": "Greater Columbus Arts Council",
+      "aliases": [
+        "GCAC"
+      ]
+    },
+    {
+      "primaryName": "Heritage",
+      "aliases": []
+    },
+    {
+      "primaryName": "Independence Through Interdependence Labs",
+      "aliases": []
+    },
+    {
+      "primaryName": "Installed Building Products",
+      "aliases": [
+        "IBP"
+      ]
+    },
+    {
+      "primaryName": "Just Trading Company L3C, Ltd.",
+      "aliases": [
+        "Just Trading"
+      ]
+    },
+    {
+      "primaryName": "Licking County Transit",
+      "aliases": []
+    },
+    {
+      "primaryName": "Little Bottoms Free Store",
+      "aliases": []
+    },
+    {
+      "primaryName": "Mansfield Richland County Public Library",
+      "aliases": [
+        "MRCPL"
+      ]
+    },
+    {
+      "primaryName": "Miracle League of New Albany",
+      "aliases": [
+        "Miracle League"
+      ]
+    },
+    {
+      "primaryName": "Mollard Consulting",
+      "aliases": [
+        "Board Building",
+        "Mollard"
+      ]
+    },
+    {
+      "primaryName": "Mr. Quik Home Services",
+      "aliases": []
+    },
+    {
+      "primaryName": "Myers Tire Supply Distribution, Inc.",
+      "aliases": [
+        "Myers Tire Supply Distribution",
+        "MTS"
+      ]
+    },
+    {
+      "primaryName": "New Albany Community Foundation",
+      "aliases": [
+        "NACF"
+      ]
+    },
+    {
+      "primaryName": "New Albany Company",
+      "aliases": [
+        "NACo"
+      ]
+    },
+    {
+      "primaryName": "New Albany Parks & Rec",
+      "aliases": [
+        "NA Parks",
+        "naparksohio"
+      ]
+    },
+    {
+      "primaryName": "New Albany Parks and Recreation",
+      "aliases": []
+    },
+    {
+      "primaryName": "New Albany Realty",
+      "aliases": []
+    },
+    {
+      "primaryName": "Ohio Auditor",
+      "aliases": []
+    },
+    {
+      "primaryName": "Ohio Department of Higher Education",
+      "aliases": [
+        "ODHE",
+        "Ohio Dept of Higher Education"
+      ]
+    },
+    {
+      "primaryName": "Ohio Domestic Violence Network",
+      "aliases": [
+        "ODVN"
+      ]
+    },
+    {
+      "primaryName": "Ohio Harness Horsemen’s Association",
+      "aliases": [
+        "OHHA"
+      ]
+    },
+    {
+      "primaryName": "Optimum Technology, Inc.",
+      "aliases": []
+    },
+    {
+      "primaryName": "Orange Township",
+      "aliases": [
+        "Orange Twp",
+        "orangetwp"
+      ]
+    },
+    {
+      "primaryName": "Otterbein University",
+      "aliases": [
+        "Coalition for the Common Good"
+      ]
+    },
+    {
+      "primaryName": "Pickerington Local School District:Pickerington Education Foundation",
+      "aliases": []
+    },
+    {
+      "primaryName": "Pluto Healthcare Staffing, LLC",
+      "aliases": [
+        "Pluto"
+      ]
+    },
+    {
+      "primaryName": "Predictable Income, LLC",
+      "aliases": [
+        "Tardus",
+        "Income Snowball"
+      ]
+    },
+    {
+      "primaryName": "Rafiki Children Center",
+      "aliases": []
+    },
+    {
+      "primaryName": "Rev1 Ventures",
+      "aliases": []
+    },
+    {
+      "primaryName": "Securely",
+      "aliases": []
+    },
+    {
+      "primaryName": "Skin Perfect Spas",
+      "aliases": [
+        "ColorMe Perfect"
+      ]
+    },
+    {
+      "primaryName": "Southeastern Equipment Company",
+      "aliases": [
+        "Southeastern"
+      ]
+    },
+    {
+      "primaryName": "TIGER Innovation LLC",
+      "aliases": []
+    },
+    {
+      "primaryName": "Teton Conservation District",
+      "aliases": []
+    },
+    {
+      "primaryName": "The Grand Resort",
+      "aliases": []
+    },
+    {
+      "primaryName": "The Polaris Surgery Center",
+      "aliases": [
+        "Polaris Surgery"
+      ]
+    },
+    {
+      "primaryName": "The Wexner Foundation",
+      "aliases": [
+        "TWF",
+        "Wexner"
+      ]
+    },
+    {
+      "primaryName": "Think Veterans First",
+      "aliases": []
+    },
+    {
+      "primaryName": "True Citrus",
+      "aliases": []
+    },
+    {
+      "primaryName": "VocFit",
+      "aliases": []
+    },
+    {
+      "primaryName": "Walker SCM, LLC",
+      "aliases": [
+        "Walker"
+      ]
+    },
+    {
+      "primaryName": "Wyn House",
+      "aliases": []
+    },
+    {
+      "primaryName": "c and j Water",
+      "aliases": [
+        "C&J Water"
+      ]
+    }
+  ]
+}
