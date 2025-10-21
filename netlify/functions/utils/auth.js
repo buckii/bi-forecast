@@ -165,43 +165,64 @@ async function getOrCreateUser(googleUserData) {
 
 function getAuthorizationToken(event) {
   const authHeader = event.headers.authorization || event.headers.Authorization
-  
+
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     throw new Error('No valid authorization token provided')
   }
-  
+
   return authHeader.substring(7)
 }
 
 async function getCurrentUser(event) {
+  // Check if we should bypass auth for localhost development
+  const bypassAuth = process.env.BYPASS_AUTH_LOCALHOST === 'true'
+  const isLocalhost = event.headers.host?.includes('localhost') || event.headers.host?.includes('127.0.0.1')
+
+  if (bypassAuth && isLocalhost) {
+    // Return a default user/company for localhost development
+    const usersCollection = await getCollection('users')
+    const companiesCollection = await getCollection('companies')
+
+    // Try to get the first user and company from the database
+    const user = await usersCollection.findOne({})
+    const company = await companiesCollection.findOne({})
+
+    if (!user || !company) {
+      throw new Error('No default user/company found in database for localhost bypass')
+    }
+
+    return { user, company }
+  }
+
+  // Normal authentication flow - this will throw if no token provided
   const token = getAuthorizationToken(event)
   const decoded = verifyToken(token)
-  
+
   const usersCollection = await getCollection('users')
   const companiesCollection = await getCollection('companies')
-  
+
   // Try to find user with ObjectId conversion
   const { ObjectId } = require('mongodb')
   const userId = typeof decoded.userId === 'string' ? new ObjectId(decoded.userId) : decoded.userId
-  
+
   const user = await usersCollection.findOne({ _id: userId })
-  
+
   if (!user) {
     throw new Error('User not found')
   }
-  
+
   // Handle both old (companies array) and new (companyId) user structures
   const companyId = user.companyId || (user.companies && user.companies[0])
   if (!companyId) {
     throw new Error('User has no associated company')
   }
-  
+
   const company = await companiesCollection.findOne({ _id: companyId })
-  
+
   if (!company) {
     throw new Error('Company not found')
   }
-  
+
   return { user, company }
 }
 

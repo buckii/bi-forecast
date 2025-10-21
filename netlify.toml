@@ -6,6 +6,9 @@
 [dev]
   command = "npm run dev:local"
 
+[context.dev.environment]
+  BYPASS_AUTH_LOCALHOST = "true"
+
 [build.environment]
   NODE_VERSION = "18"
 
