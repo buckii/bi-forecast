@@ -20,5 +20,12 @@ export default {
   
   async getTransactionDetails(month, component) {
     return api.get(`/revenue-details?month=${month}&component=${component}`)
+  },
+
+  async getRevenueByClient(month = null, includeWeightedSales = true) {
+    if (month) {
+      return api.get(`/revenue-by-client?month=${month}&includeWeightedSales=${includeWeightedSales}`)
+    }
+    return api.get(`/revenue-by-client?includeWeightedSales=${includeWeightedSales}`)
   }
 }

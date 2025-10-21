@@ -172,12 +172,13 @@
             <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
           </div>
           <!-- Chart content -->
-          <RevenueChart 
-            ref="revenueChart" 
-            :data="chartData" 
-            :monthly-expenses="effectiveMonthlyExpenses" 
+          <RevenueChart
+            ref="revenueChart"
+            :data="chartData"
+            :monthly-expenses="effectiveMonthlyExpenses"
             :target-net-margin="targetNetMargin"
-            @bar-click="handleBarClick" 
+            @bar-click="handleBarClick"
+            @show-client-details="showClientDetails"
           />
         </div>
       </div>
@@ -194,6 +195,14 @@
       :month="selectedTransaction.month"
       :component="selectedTransaction.component"
       @close="closeTransactionModal"
+    />
+
+    <!-- Client Detail Modal -->
+    <ClientDetailModal
+      :is-open="showClientDetailModal"
+      :month="selectedMonth"
+      :include-weighted-sales="revenueStore.includeWeightedSales"
+      @close="closeClientDetailModal"
     />
 
     <!-- Chart Share Modal -->
@@ -221,6 +230,7 @@ import { useDataRefresh } from '../composables/useDataRefresh'
 import AppLayout from '../components/AppLayout.vue'
 import RevenueChart from '../components/RevenueChart.vue'
 import TransactionDetailsModal from '../components/TransactionDetailsModal.vue'
+import ClientDetailModal from '../components/ClientDetailModal.vue'
 import StatusModal from '../components/StatusModal.vue'
 import { format, parse, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns'
 
@@ -244,6 +254,8 @@ const chartStartDateStr = ref(format(startOfMonth(subMonths(new Date(), 1)), 'yy
 const chartEndDateStr = ref(format(endOfMonth(addMonths(new Date(), 4)), 'yyyy-MM-dd'))
 const showTransactionModal = ref(false)
 const selectedTransaction = ref({ month: '', component: '' })
+const showClientDetailModal = ref(false)
+const selectedMonth = ref('')
 const sharingToSlack = ref(false)
 const chartContainer = ref(null)
 const revenueChart = ref(null)
@@ -263,12 +275,12 @@ const chartData = computed(() => {
         month: month.month,
         ...month.components
       }
-      
+
       // Conditionally exclude weighted sales based on setting
       if (!revenueStore.includeWeightedSales) {
         data.weightedSales = 0
       }
-      
+
       return data
     })
 })
@@ -374,6 +386,16 @@ function closeTransactionModal() {
   selectedTransaction.value = { month: '', component: '' }
 }
 
+function showClientDetails(month) {
+  selectedMonth.value = month
+  showClientDetailModal.value = true
+}
+
+function closeClientDetailModal() {
+  showClientDetailModal.value = false
+  selectedMonth.value = ''
+}
+
 async function shareChartToSlack() {
   if (!chartContainer.value) return
   
@@ -451,7 +473,7 @@ onMounted(async () => {
   try {
     await revenueStore.loadRevenueData()
     // fetchLastRefreshTimes() is automatically called by useDataRefresh composable
-    
+
     // Initial data loaded successfully
   } catch (err) {
     // Don't block the UI if initial load fails

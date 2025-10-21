@@ -3,7 +3,7 @@
     <div class="h-80">
       <canvas ref="chartCanvas"></canvas>
     </div>
-    
+
     <!-- Reference Lines Legend -->
     <div v-if="referenceLines" class="flex flex-wrap items-center justify-center gap-4 pt-2 border-t border-gray-200 dark:border-gray-700">
       <div class="flex items-center space-x-2">
@@ -18,6 +18,18 @@
           Target Revenue ({{ referenceLines.margin }}% margin): {{ referenceLines.target }}
         </span>
       </div>
+    </div>
+
+    <!-- Month Links for Client Details -->
+    <div class="flex flex-wrap gap-2 justify-center pt-2 border-t border-gray-200 dark:border-gray-700">
+      <button
+        v-for="month in data"
+        :key="month.month"
+        @click="$emit('show-client-details', month.month)"
+        class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline"
+      >
+        {{ formatMonthLabel(month.month) }}
+      </button>
     </div>
   </div>
 </template>
@@ -46,10 +58,15 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['bar-click'])
+const emit = defineEmits(['bar-click', 'show-client-details'])
 
 const chartCanvas = ref(null)
 let chartInstance = null
+
+function formatMonthLabel(monthStr) {
+  const date = parse(monthStr, 'yyyy-MM-dd', new Date())
+  return format(date, 'MMM yyyy')
+}
 
 // Computed property for reference line info
 const referenceLines = computed(() => {
@@ -188,51 +205,53 @@ function createChart() {
   if (chartInstance) {
     chartInstance.destroy()
   }
-  
+
   const ctx = chartCanvas.value.getContext('2d')
-  
+
   const labels = props.data.map(d => {
     const date = parse(d.month, 'yyyy-MM-dd', new Date())
     return format(date, 'MMM yyyy')
   })
-  
+
+  const datasets = [
+    {
+      label: 'Invoiced',
+      data: props.data.map(d => d.invoiced || 0),
+      backgroundColor: chartColors.invoiced
+    },
+    {
+      label: 'Journal Entries',
+      data: props.data.map(d => d.journalEntries || 0),
+      backgroundColor: chartColors.journalEntries
+    },
+    {
+      label: 'Delayed Charges',
+      data: props.data.map(d => d.delayedCharges || 0),
+      backgroundColor: chartColors.delayedCharges
+    },
+    {
+      label: 'Monthly Recurring',
+      data: props.data.map(d => d.monthlyRecurring || 0),
+      backgroundColor: chartColors.monthlyRecurring
+    },
+    {
+      label: 'Won Unscheduled',
+      data: props.data.map(d => d.wonUnscheduled || 0),
+      backgroundColor: chartColors.wonUnscheduled
+    },
+    {
+      label: 'Weighted Sales',
+      data: props.data.map(d => d.weightedSales || 0),
+      backgroundColor: chartColors.weightedSales
+    }
+  ]
+
   chartInstance = new Chart(ctx, {
     type: 'bar',
     plugins: [totalLabelPlugin],
     data: {
       labels,
-      datasets: [
-        {
-          label: 'Invoiced',
-          data: props.data.map(d => d.invoiced || 0),
-          backgroundColor: chartColors.invoiced
-        },
-        {
-          label: 'Journal Entries',
-          data: props.data.map(d => d.journalEntries || 0),
-          backgroundColor: chartColors.journalEntries
-        },
-        {
-          label: 'Delayed Charges',
-          data: props.data.map(d => d.delayedCharges || 0),
-          backgroundColor: chartColors.delayedCharges
-        },
-        {
-          label: 'Monthly Recurring',
-          data: props.data.map(d => d.monthlyRecurring || 0),
-          backgroundColor: chartColors.monthlyRecurring
-        },
-        {
-          label: 'Won Unscheduled',
-          data: props.data.map(d => d.wonUnscheduled || 0),
-          backgroundColor: chartColors.wonUnscheduled
-        },
-        {
-          label: 'Weighted Sales',
-          data: props.data.map(d => d.weightedSales || 0),
-          backgroundColor: chartColors.weightedSales
-        }
-      ]
+      datasets
     },
     options: {
       responsive: true,
@@ -308,7 +327,7 @@ function createChart() {
           const datasetIndex = element.datasetIndex
           const month = props.data[monthIndex].month
           const component = Object.keys(chartColors)[datasetIndex]
-          
+
           emit('bar-click', {
             month,
             component,
