@@ -91,6 +91,16 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
   resolvedAt: Date,
   createdAt: Date
 }
+
+// Client Aliases Collection
+{
+  _id: ObjectId,
+  companyId: ObjectId,
+  primaryName: String, // The canonical client name
+  aliases: [String], // Alternative names/variations
+  createdAt: Date,
+  updatedAt: Date
+}
 ```
 
 ## Core Features
@@ -105,7 +115,8 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
   - Components: Invoiced, Journal Entries, Delayed Charges, Monthly Recurring, Won Unscheduled, Weighted Sales
   - Mobile-responsive with touch interactions
   - Hover: Show component values
-  - Click: Drill down to transaction details
+  - Click: Show client revenue breakdown modal
+  - Transaction details drill-down available in modal
   - Pinch-to-zoom on mobile
 
 ### 2. Key Metrics
@@ -136,7 +147,28 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 - **Past Delayed Charges**: Delayed charges with dates < today
 - **Won Unscheduled Deals**: All deals needing invoice scheduling
 
-### 5. Balances Page
+### 5. Client Revenue Breakdown
+- **Client Detail Modal**
+  - Triggered by clicking any month on the revenue chart
+  - Shows revenue breakdown by client for selected month
+  - Sorted by total revenue (highest first)
+  - Includes all 6 revenue components attributed to each client
+
+- **Client Alias System**
+  - Maps alternative client names to primary/canonical names
+  - Resolves name variations across QuickBooks and Pipedrive
+  - Managed via Settings page
+  - Two-tier matching: entity references → description text matching
+
+- **Revenue Attribution Logic**
+  - Invoices: Direct customer reference
+  - Journal Entries: Entity reference or description matching
+  - Delayed Charges: Direct customer reference
+  - Monthly Recurring: Based on previous month's client data
+  - Won Unscheduled: Pipedrive organization name
+  - Weighted Sales: Pipedrive organization name
+
+### 6. Balances Page
 - **Asset Accounts from QBO**
   - Bank accounts with current balances
   - Credit card accounts
@@ -147,7 +179,26 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
   - Total A/R balance
   - Drill-down by customer
 
-### 6. Progressive Web App Features
+### 7. Settings Page
+- **API Connections**
+  - QuickBooks OAuth status and reconnect
+  - Pipedrive API key management
+  - Connection status indicators
+
+- **Client Alias Management**
+  - List all clients with collapsible edit forms
+  - Inline editing (no separate form at bottom)
+  - Add alternative names/aliases per client
+  - Individual Save/Delete buttons per client
+  - Toast notifications for feedback
+  - Auto-save on form submission
+
+- **Company Settings**
+  - Target net margin percentage
+  - Monthly expenses override
+  - Financial settings for charts
+
+### 8. Progressive Web App Features
 - **Installation**
   - App manifest for home screen installation
   - Custom app icon and splash screen

@@ -7,9 +7,11 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 - **Multi-tenant SaaS**: Support multiple companies with domain-based access control
 - **Progressive Web App**: Installable on mobile devices with manifest and service worker
 - **Revenue Forecasting**: 6 components of monthly revenue calculation with real-time updates
+- **Client Revenue Attribution**: Per-client revenue breakdown with alias management for accurate tracking
 - **Historical Data**: Daily data archiving with date selector for historical views
 - **API Integrations**: QuickBooks Online OAuth2 and Pipedrive API key authentication
 - **Interactive Charts**: Chart.js visualizations with drill-down transaction details and reference lines
+- **Client Detail Modal**: Click any month to see revenue breakdown by client
 - **Exception Tracking**: Monitor overdue deals, past charges, and unscheduled items
 - **Balance Monitoring**: Asset accounts and aged A/R reporting with payment recording
 - **Mobile Responsive**: Optimized for mobile and desktop with touch interactions
@@ -17,6 +19,7 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 - **Real-time Timestamps**: Live refresh status with tooltips showing exact refresh times
 - **Multi-month Deal Distribution**: Proper weighted sales calculation across project durations
 - **Enhanced Transaction Details**: Comprehensive breakdowns with invoice-level details
+- **Settings Management**: Configure client aliases and manage API connections
 
 ## Revenue Components
 
@@ -92,6 +95,9 @@ The application calculates monthly revenue from 6 components:
    QBO_CLIENT_SECRET=your-quickbooks-client-secret
    QBO_REDIRECT_URI=http://localhost:8888/.netlify/functions/qbo-oauth-callback
    URL=http://localhost:8888
+
+   # Development only - bypass auth on localhost (NEVER use in production!)
+   BYPASS_AUTH_LOCALHOST=true
    ```
 
 5. **Start development server using Netlify**
@@ -280,10 +286,11 @@ This allows secure HTTPS access to your local development server for webhook tes
 ### Database Collections
 
 - **companies** - Multi-tenant company data with financial settings
-- **users** - User profiles with company associations  
+- **users** - User profiles with company associations
 - **oauth_tokens** - Encrypted API credentials per company
 - **revenue_archives** - Daily snapshots of all revenue data with enhanced calculations
 - **exceptions** - Tracked exception items
+- **client_aliases** - Client name mappings for accurate revenue attribution across systems
 
 ### Netlify Functions (API Endpoints)
 
@@ -292,12 +299,13 @@ This allows secure HTTPS access to your local development server for webhook tes
 - `auth-current.js` - Get current user session
 - `auth-logout.js` - Logout (client-side token removal)
 
-#### Revenue Data  
+#### Revenue Data
 - `revenue-current.js` - Current revenue forecast calculations
 - `revenue-historical.js` - Historical archived data retrieval
+- `revenue-by-client.js` - Client-level revenue breakdown with alias resolution
 - `revenue-refresh-qbo.js` - Manual QuickBooks data refresh
 - `revenue-refresh-pipedrive.js` - Manual Pipedrive data refresh
-- `transaction-details.js` - Drill-down transaction data for chart interactions
+- `transaction-details.js` - Drill-down transaction data with client matching
 
 #### OAuth & API Management
 - `qbo-oauth-start.js` - Initiate QuickBooks OAuth flow
@@ -307,6 +315,8 @@ This allows secure HTTPS access to your local development server for webhook tes
 #### Company & Settings
 - `company-update.js` - Company settings management
 - `settings-status.js` - API connection status checks
+- `client-aliases.js` - Client alias data retrieval
+- `settings.js` - Client alias management and updates
 
 #### Scheduled Tasks
 - `scheduled-archive.js` - Daily data archiving (3am ET)
@@ -326,6 +336,14 @@ This allows secure HTTPS access to your local development server for webhook tes
 - Rate limiting (handled by Netlify)
 
 ## Recent Enhancements
+
+### Client Revenue Attribution (Latest)
+- **Client Breakdown Modal**: Click any month on the revenue chart to see revenue by client
+- **Client Alias System**: Map alternative client names to primary names for accurate tracking across systems
+- **Settings Management**: Inline edit forms for managing client aliases with toast notifications
+- **Journal Entry Matching**: Two-tier matching system using entity references and text descriptions
+- **Export/Import Tools**: Scripts for migrating client aliases from development to production
+- **Comprehensive Attribution**: All 6 revenue components attributed to specific clients
 
 ### Chart & Visualization Improvements
 - **Horizontal Reference Lines**: Chart now displays monthly expense levels and target revenue lines based on configured net margins
@@ -347,22 +365,28 @@ This allows secure HTTPS access to your local development server for webhook tes
 - **Loading Indicators**: Spinner animations on refresh buttons and payment recording to prevent double-clicks
 - **Enhanced Transaction Details**: Monthly recurring breakdowns now show individual invoices instead of generic "Baseline" entries
 - **Sorted Invoice Lists**: Monthly recurring invoices sorted by dollar amount (highest first)
+- **Toast Notifications**: Non-intrusive feedback for user actions replacing browser alerts
+
+### Development Experience
+- **Localhost Auth Bypass**: Optional authentication bypass for local API testing
+- **ID-based Tracking**: Prevents focus jumping issues during form editing
 
 ### Code Quality & Architecture
 - **Eliminated Duplication**: Consolidated duplicate revenue calculator implementations
-- **Reusable Composables**: Created `useDataRefresh` composable to eliminate ~130 lines of duplicate refresh logic
+- **Reusable Composables**: Created `useDataRefresh` and `useToast` composables for common patterns
 - **Consistent Error Handling**: Standardized error handling across refresh operations
+- **Client Alias Resolution**: Centralized logic for mapping client names across all revenue components
 
 ## Future Enhancements
 
 - Journal entry tool for revenue deferrals
 - Real-time bank balance integration (Plaid)
 - Date comparison views for forecast analysis
-- Customer name matching across systems
 - ML-based forecast predictions
 - Slack/email alert integrations
 - Budget vs actual comparisons
-- Advanced export capabilities
+- Advanced export capabilities (CSV, Excel)
+- Client-level historical trends and analytics
 
 ## Contributing
 

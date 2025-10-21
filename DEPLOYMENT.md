@@ -37,6 +37,9 @@ QBO_REDIRECT_URI=https://your-domain.com/.netlify/functions/qbo-oauth-callback
 URL=https://your-domain.com
 NODE_ENV=production
 
+# Security: NEVER set this to true in production
+BYPASS_AUTH_LOCALHOST=false
+
 # Optional: Feature Flags (defaults work for most deployments)
 # ENABLE_DEBUG_LOGGING=false
 # DEFAULT_TARGET_NET_MARGIN=20
@@ -119,6 +122,38 @@ netlify deploy --prod
 3. Update OAuth redirect URIs with production domain
 4. Test all OAuth flows
 
+### 4. Client Aliases Migration
+
+After deploying to production, migrate client alias data from development:
+
+1. **Export from Development**
+   ```bash
+   # In your development environment
+   node scripts/export-client-aliases.cjs
+   ```
+   This creates `scripts/client-aliases-data.json` with all your configured client aliases.
+
+2. **Update Environment for Production**
+   ```bash
+   # Update .env to point to production MongoDB
+   MONGODB_URI=mongodb+srv://production-cluster...
+   ```
+
+3. **Import to Production**
+   ```bash
+   # Run the seeder script
+   node scripts/seed-client-aliases.cjs
+   ```
+   This imports all client aliases into the production database.
+
+4. **Verify Import**
+   - Log into production application
+   - Navigate to Settings page
+   - Verify all client aliases are present
+   - Test revenue-by-client endpoint to ensure proper attribution
+
+**Note**: The seeder will auto-detect the company ID if only one company exists in the database. If you have multiple companies, specify the company ID manually in the script.
+
 ## Security Checklist
 
 ### Application Security
@@ -139,6 +174,7 @@ netlify deploy --prod
 - [x] Database user has minimal permissions
 - [x] Connection string uses TLS
 - [x] Regular backups configured
+- [x] Client aliases collection properly indexed
 
 ### Infrastructure Security
 
