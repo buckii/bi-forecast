@@ -159,67 +159,135 @@ async function getInvoicedTransactions(calculator, startDate, endDate) {
 
 async function getJournalEntryTransactions(calculator, startDate, endDate) {
   const journalEntries = await calculator.qbo.getJournalEntries(startDate, endDate)
-  
+
   // Filter journal entries to only include those within the exact month
   const startDateObj = new Date(startDate + 'T00:00:00.000Z')
   const endDateObj = new Date(endDate + 'T23:59:59.999Z')
-  
+
   const filteredEntries = journalEntries.filter(entry => {
     const txnDate = new Date(entry.TxnDate + 'T00:00:00.000Z')
     return txnDate >= startDateObj && txnDate <= endDateObj
   })
-  
-  
+
+  // Load client aliases for matching
+  await calculator.loadClientAliases()
+
   const transactions = []
   
   for (const entry of filteredEntries) {
     const lines = entry.Line || []
     let revenueAmount = 0
     let revenueLines = []
-    
-    // Calculate revenue amount from this journal entry (excluding unearned)
+    let allLines = []
+
+    // Process all lines to show complete journal entry
     for (const line of lines) {
       const accountRef = line.JournalEntryLineDetail?.AccountRef
       const postingType = line.JournalEntryLineDetail?.PostingType
-      
-      if (accountRef?.name?.match(/^4\d{3}|revenue|income/i) && 
+      const entityRef = line.JournalEntryLineDetail?.Entity
+      const amount = line.Amount || 0
+
+      // Add to all lines array with complete details
+      allLines.push({
+        lineNum: line.LineNum,
+        description: line.Description || '',
+        amount: amount,
+        postingType: postingType,
+        accountName: accountRef?.name || 'Unknown Account',
+        accountNumber: accountRef?.value || '',
+        accountType: accountRef?.type || '',
+        entity: entityRef?.name || '',
+        entityType: entityRef?.type || ''
+      })
+
+      // Track revenue lines separately for amount calculation
+      if (accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
           !accountRef?.name?.toLowerCase().includes('unearned')) {
-        
+
         // For journal entries: Credits are positive revenue, Debits are negative
-        const lineAmount = (line.Amount || 0) * (postingType === 'Credit' ? 1 : -1)
+        const lineAmount = amount * (postingType === 'Credit' ? 1 : -1)
         revenueAmount += lineAmount
-        
+
         revenueLines.push({
+          lineNum: line.LineNum,
           description: line.Description || 'No description',
           amount: lineAmount,
           accountName: accountRef.name,
-          postingType: postingType
+          accountNumber: accountRef.value,
+          postingType: postingType,
+          entity: entityRef?.name || ''
         })
       }
     }
-    
+
     // Include journal entries that have any revenue lines, even if net amount is negative or zero
     if (revenueLines.length > 0) {
       // Create description from revenue line descriptions
       const revenueDescriptions = revenueLines
         .filter(line => line.description && line.description !== 'No description')
         .map(line => line.description)
-      
-      const description = revenueDescriptions.length > 0 
+
+      const description = revenueDescriptions.length > 0
         ? revenueDescriptions.join('; ')
         : (entry.PrivateNote || `Journal Entry ${entry.DocNumber}`)
-      
+
+      // Try to match a client based on:
+      // 1. Entity reference on revenue lines
+      // 2. Description text matching client aliases
+      // 3. Private note matching client aliases
+      let matchedClient = 'N/A'
+      let matchSource = 'none'
+
+      // First, check if any revenue line has an entity (customer) reference
+      const entityNames = revenueLines
+        .map(line => line.entity)
+        .filter(entity => entity && entity !== '')
+
+      if (entityNames.length > 0) {
+        // Use the first entity found and resolve it
+        const rawClientName = entityNames[0]
+        matchedClient = calculator.resolveClientName(rawClientName, description)
+        matchSource = 'entity_reference'
+      } else {
+        // No entity reference, try to match based on description
+        const searchText = `${description} ${entry.PrivateNote || ''}`.toLowerCase()
+
+        console.log(`[JE Client Match] Searching for match in: "${searchText}"`)
+        console.log(`[JE Client Match] Available aliases:`, calculator.clientAliasesMap ? Object.keys(calculator.clientAliasesMap) : 'none')
+
+        // Iterate through all client aliases to find a match
+        if (calculator.clientAliasesMap) {
+          for (const [alias, primaryName] of Object.entries(calculator.clientAliasesMap)) {
+            if (searchText.includes(alias.toLowerCase())) {
+              console.log(`[JE Client Match] MATCHED: "${alias}" -> "${primaryName}"`)
+              matchedClient = primaryName
+              matchSource = `description_match:${alias}`
+              break
+            }
+          }
+        }
+
+        if (matchedClient === 'N/A') {
+          console.log(`[JE Client Match] No match found for: "${searchText.substring(0, 100)}"`)
+        }
+      }
+
       transactions.push({
         id: entry.Id,
         type: 'journalEntry',
         docNumber: entry.DocNumber,
         date: entry.TxnDate,
         amount: revenueAmount,
-        customer: 'N/A',
+        customer: matchedClient,
         description: description,
         details: {
           totalLines: lines.length,
-          revenueLines: revenueLines
+          privateNote: entry.PrivateNote || '',
+          allLines: allLines,
+          revenueLines: revenueLines,
+          debitsTotal: allLines.filter(l => l.postingType === 'Debit').reduce((sum, l) => sum + l.amount, 0),
+          creditsTotal: allLines.filter(l => l.postingType === 'Credit').reduce((sum, l) => sum + l.amount, 0),
+          clientMatchSource: matchSource
         }
       })
     }
