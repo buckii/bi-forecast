@@ -188,6 +188,100 @@
         </div>
       </div>
 
+      <!-- Client Aliases -->
+      <div class="card">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Client Aliases</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Map alternative client names to primary names for accurate revenue tracking</p>
+          </div>
+          <button
+            @click="addNewClient"
+            class="btn-primary text-sm"
+          >
+            Add Client
+          </button>
+        </div>
+
+        <div v-if="clientAliases.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
+          <p>No client aliases configured yet.</p>
+          <p class="text-sm mt-1">Click "Add Client" to create your first client mapping.</p>
+        </div>
+
+        <div v-else class="space-y-2">
+          <div v-for="client in sortedClientAliases" :key="'client-' + client._id" class="border dark:border-gray-600 rounded-lg overflow-hidden">
+            <!-- Client name button -->
+            <button
+              @click="toggleClientEdit(client._id)"
+              class="w-full text-left px-4 py-3 transition-colors flex items-center justify-between"
+              :class="editingClientId === client._id
+                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100'
+                : 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
+            >
+              <span class="text-sm font-medium">{{ client.primaryName || '(New Client)' }}</span>
+              <svg
+                class="h-5 w-5 flex-shrink-0 transition-transform"
+                :class="editingClientId === client._id ? 'transform rotate-180' : ''"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            <!-- Inline editing form -->
+            <div v-if="editingClientId === client._id" class="p-4 bg-white dark:bg-gray-800 border-t dark:border-gray-700">
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Primary Client Name
+                  </label>
+                  <input
+                    type="text"
+                    v-model="client.primaryName"
+                    class="input"
+                    placeholder="e.g., Acme Corporation"
+                    ref="clientNameInput"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Aliases / Alternative Names
+                    <span class="text-xs text-gray-500 dark:text-gray-400">(comma-separated)</span>
+                  </label>
+                  <textarea
+                    v-model="client.aliases"
+                    class="input"
+                    rows="2"
+                    placeholder="e.g., Acme, Acme Corp, ACME Corporation"
+                  ></textarea>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    These names will be matched in journal entry descriptions
+                  </p>
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-2">
+                  <button
+                    @click="deleteClient(client._id)"
+                    class="btn-secondary text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    Delete
+                  </button>
+                  <button
+                    @click="saveIndividualClient(client._id)"
+                    class="btn-primary"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Data Management -->
       <div class="card">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Data Management</h2>
@@ -257,6 +351,7 @@
       </div>
     </div>
   </AppLayout>
+  <ToastContainer />
 </template>
 
 <script setup>
@@ -265,15 +360,18 @@ import { useAuthStore } from '../stores/auth'
 import { useRevenueStore } from '../stores/revenue'
 import { useDarkMode } from '../composables/useDarkMode'
 import { useDataRefresh } from '../composables/useDataRefresh'
+import { useToast } from '../composables/useToast'
 import AppLayout from '../components/AppLayout.vue'
+import ToastContainer from '../components/ToastContainer.vue'
 
 const authStore = useAuthStore()
 const revenueStore = useRevenueStore()
 const { isDarkMode, toggleDarkMode } = useDarkMode()
-const { 
-  refreshingQBO, 
-  refreshingPipedrive, 
-  qboLastRefresh, 
+const toast = useToast()
+const {
+  refreshingQBO,
+  refreshingPipedrive,
+  qboLastRefresh,
   pipedriveLastRefresh,
   formatLastRefresh,
   formatRefreshTooltip,
@@ -296,6 +394,18 @@ const targetNetMargin = ref(20)
 const monthlyExpensesOverride = ref(null)
 const editableTargetNetMargin = ref(20)
 const editableMonthlyExpensesOverride = ref(null)
+
+const clientAliases = ref([])
+const originalClientAliases = ref([])
+const editingClientId = ref(null)
+let nextClientId = 0
+
+// Don't use computed - just reference clientAliases directly
+// We'll sort once on load instead of reactively
+const sortedClientAliases = computed(() => {
+  // Return unsorted list to prevent jumping while editing
+  return clientAliases.value
+})
 
 const company = computed(() => authStore.company)
 
@@ -449,7 +559,7 @@ async function checkConnectionStatus() {
         'Authorization': `Bearer ${authStore.token}`
       }
     })
-    
+
     if (response.ok) {
       const data = await response.json()
       pipedriveConnected.value = data.data.pipedrive.connected
@@ -457,6 +567,127 @@ async function checkConnectionStatus() {
     }
   } catch (error) {
     // Connection status check failed - ignore silently
+  }
+}
+
+function toggleClientEdit(clientId) {
+  if (editingClientId.value === clientId) {
+    editingClientId.value = null
+  } else {
+    editingClientId.value = clientId
+  }
+}
+
+function addNewClient() {
+  const newClient = {
+    _id: nextClientId++,
+    primaryName: '',
+    aliases: ''
+  }
+  // Add to the top of the list so it appears right under the "Add Client" button
+  clientAliases.value.unshift(newClient)
+  editingClientId.value = newClient._id
+}
+
+async function deleteClient(clientId) {
+  try {
+    // Find and remove the client
+    const actualIndex = clientAliases.value.findIndex(c => c._id === clientId)
+
+    if (actualIndex !== -1) {
+      clientAliases.value.splice(actualIndex, 1)
+    }
+
+    // Close editing panel
+    editingClientId.value = null
+
+    // Save all remaining clients
+    await saveAllClientAliases()
+    toast.success('Client deleted successfully')
+  } catch (error) {
+    console.error('Error deleting client:', error)
+    toast.error('Failed to delete client: ' + error.message)
+  }
+}
+
+async function saveIndividualClient(clientId) {
+  try {
+    const client = clientAliases.value.find(c => c._id === clientId)
+
+    if (!client || !client.primaryName.trim()) {
+      toast.warning('Please enter a primary client name')
+      return
+    }
+
+    // Save all clients (backend replaces all at once)
+    await saveAllClientAliases()
+
+    editingClientId.value = null
+    toast.success('Client saved successfully')
+  } catch (error) {
+    console.error('Error saving client:', error)
+    toast.error('Failed to save client: ' + error.message)
+  }
+}
+
+async function saveAllClientAliases() {
+  // Transform comma-separated aliases string into array
+  const aliasesData = clientAliases.value
+    .filter(c => c.primaryName.trim()) // Only include clients with a primary name
+    .map(c => ({
+      primaryName: c.primaryName.trim(),
+      aliases: c.aliases.split(',').map(a => a.trim()).filter(a => a) // Split, trim, remove empties
+    }))
+
+  const response = await fetch('/.netlify/functions/settings', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${authStore.token}`
+    },
+    body: JSON.stringify({
+      clientAliases: aliasesData
+    })
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.message || 'Failed to save client aliases')
+  }
+
+  // Reload to get fresh data
+  await loadClientAliases()
+}
+
+async function loadClientAliases() {
+  try {
+    const response = await fetch('/.netlify/functions/client-aliases', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`
+      }
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      // Transform array of aliases back to comma-separated string for display
+      // Assign unique IDs for tracking and sort alphabetically once
+      const clients = data.data.clientAliases.map(c => ({
+        _id: nextClientId++,
+        primaryName: c.primaryName,
+        aliases: c.aliases.join(', ')
+      }))
+
+      // Sort once on load
+      clients.sort((a, b) =>
+        a.primaryName.localeCompare(b.primaryName, undefined, { sensitivity: 'base' })
+      )
+
+      clientAliases.value = clients
+      originalClientAliases.value = JSON.parse(JSON.stringify(clientAliases.value))
+    }
+  } catch (error) {
+    console.error('Error loading client aliases:', error)
   }
 }
 
@@ -490,11 +721,14 @@ watch(() => company.value, (newCompany) => {
 onMounted(async () => {
   await checkConnectionStatus()
   // fetchLastRefreshTimes() is automatically called by useDataRefresh composable
-  
+
   // Initialize financial settings from company data
   if (company.value?.settings) {
     targetNetMargin.value = company.value.settings.targetNetMargin || 20
     monthlyExpensesOverride.value = company.value.settings.monthlyExpensesOverride || null
   }
+
+  // Load client aliases from separate collection
+  await loadClientAliases()
 })
 </script>
