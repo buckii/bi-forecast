@@ -113,7 +113,7 @@ node scripts/seed-client-aliases.cjs
 
 ### Requirements
 
-- Node.js 18+
+- Node.js 22+
 - MongoDB connection configured in `.env`
 - Valid company record in the `companies` collection
 

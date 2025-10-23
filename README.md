@@ -58,7 +58,7 @@ The application calculates monthly revenue from 6 components:
 
 ### Prerequisites
 
-- Node.js 20+ (for local development)
+- Node.js 22+ (for local development)
 - MongoDB Atlas account
 - Google OAuth2 credentials
 - QuickBooks Online developer account
