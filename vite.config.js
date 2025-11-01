@@ -57,7 +57,8 @@ export default defineConfig({
     })
   ],
   server: {
-    port: 5173,
+    // Let Vite choose an available port dynamically
+    // Netlify CLI will auto-detect it
     host: true,
     allowedHosts: [
       'local.buckeye.dev',
@@ -65,12 +66,7 @@ export default defineConfig({
       'localhost',
       '.trycloudflare.com',
       '.netlify.live'
-    ],
-    proxy: {
-      '/.netlify/functions': {
-        target: 'http://localhost:8888',
-        changeOrigin: true
-      }
-    }
+    ]
+    // No proxy needed - Netlify CLI handles function proxying
   }
 })
