@@ -371,11 +371,11 @@ async function recordPayment(paymentData) {
       throw new Error(`Failed to record payment: ${response.statusText}`)
     }
     
-    // Refresh invoices, revenue data, and A/R aging
+    // Refresh invoices and balances (including A/R aging)
+    // No need to refresh all QuickBooks data - just reload what changed
     await Promise.all([
       loadInvoices(),
-      revenueStore.loadRevenueData(),
-      revenueStore.refreshQuickbooks()
+      revenueStore.loadRevenueData()
     ])
     
     closePaymentModal()
