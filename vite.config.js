@@ -57,8 +57,8 @@ export default defineConfig({
     })
   ],
   server: {
-    // Let Vite choose an available port dynamically
-    // Netlify CLI will auto-detect it
+    port: 3001,  // Use different port to avoid conflicts with other projects
+    strictPort: false,  // Allow auto-increment if 3001 is taken
     host: true,
     allowedHosts: [
       'local.buckeye.dev',

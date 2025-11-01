@@ -5,8 +5,8 @@
 
 [dev]
   command = "npm run dev:local"
-  framework = "#auto"  # Auto-detect Vite and its port
-  targetPort = 0       # Let Netlify auto-detect the dev server port
+  framework = "#auto"
+  targetPort = 3001  # Point to this project's Vite server (different from other projects)
 
 [context.dev.environment]
   BYPASS_AUTH_LOCALHOST = "true"
