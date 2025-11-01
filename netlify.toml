@@ -25,12 +25,20 @@
   to = "/.netlify/functions/:splat"
   status = 200
 
-# SPA fallback - only for routes without file extensions
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-  force = false  # Don't redirect if actual file exists
+# Disable SPA redirect in dev mode - Vite handles it
+[context.dev]
+  [[context.dev.redirects]]
+    from = "/.netlify/*"
+    to = "/.netlify/:splat"
+    status = 200
+
+# SPA fallback for production only
+[context.production]
+  [[context.production.redirects]]
+    from = "/*"
+    to = "/index.html"
+    status = 200
+    force = false
 
 
 # Environment variables needed:
