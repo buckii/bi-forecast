@@ -25,14 +25,7 @@
   to = "/.netlify/functions/:splat"
   status = 200
 
-# Disable SPA redirect in dev mode - Vite handles it
-[context.dev]
-  [[context.dev.redirects]]
-    from = "/.netlify/*"
-    to = "/.netlify/:splat"
-    status = 200
-
-# SPA fallback for production only
+# SPA fallback for production only - dev mode doesn't need this
 [context.production]
   [[context.production.redirects]]
     from = "/*"
