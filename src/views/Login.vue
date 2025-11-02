@@ -14,7 +14,7 @@
       <div class="card">
         <!-- Google Sign-In Button -->
         <div v-if="googleAuth.isLoaded" id="google-signin-button" class="mb-4"></div>
-        
+
         <!-- Fallback button -->
         <button
           v-if="!googleAuth.isLoaded"
@@ -29,6 +29,20 @@
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
           </svg>
           {{ getButtonText() }}
+        </button>
+
+        <!-- Dev Login Button (only in development) -->
+        <button
+          v-if="isDevelopment"
+          @click="handleDevLogin"
+          :disabled="devLoginLoading"
+          class="w-full mt-4 flex justify-center items-center px-4 py-3 border-2 border-dashed border-yellow-400 rounded-md shadow-sm text-sm font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <svg v-if="!devLoginLoading" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+          </svg>
+          <div v-if="devLoginLoading" class="animate-spin h-5 w-5 mr-2 border-2 border-yellow-700 border-t-transparent rounded-full"></div>
+          {{ devLoginLoading ? 'Logging in...' : 'Dev Login (Localhost Only)' }}
         </button>
         
         <div v-if="displayError" class="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
@@ -59,6 +73,9 @@ const router = useRouter()
 const authStore = useAuthStore()
 const googleAuth = useGoogleAuth()
 
+const isDevelopment = import.meta.env.DEV
+const devLoginLoading = ref(false)
+
 const clientIdConfigured = computed(() => {
   return !!import.meta.env.VITE_GOOGLE_CLIENT_ID
 })
@@ -79,6 +96,20 @@ async function handleGoogleLogin() {
     await googleAuth.signIn()
   } catch (err) {
     googleAuth.error.value = 'Login failed. Please try again.'
+  }
+}
+
+async function handleDevLogin() {
+  devLoginLoading.value = true
+  try {
+    const response = await authStore.devLogin()
+    // Redirect to dashboard
+    router.push('/')
+  } catch (err) {
+    console.error('Dev login error:', err)
+    googleAuth.error.value = err.message || 'Dev login failed. Make sure BYPASS_AUTH_LOCALHOST=true is set and you have data in your database.'
+  } finally {
+    devLoginLoading.value = false
   }
 }
 

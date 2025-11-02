@@ -43,6 +43,20 @@ export const useAuthStore = defineStore('auth', () => {
       throw error
     }
   }
+
+  async function devLogin() {
+    try {
+      const response = await authService.devLogin()
+      token.value = response.token
+      user.value = response.user
+      company.value = response.company
+      localStorage.setItem('token', response.token)
+      return response
+    } catch (error) {
+      console.error('Dev login failed:', error)
+      throw error
+    }
+  }
   
   function logout() {
     user.value = null
@@ -73,6 +87,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     login,
     loginWithGoogle,
+    devLogin,
     logout,
     fetchCurrentUser
   }
