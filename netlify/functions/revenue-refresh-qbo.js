@@ -2,6 +2,7 @@ const { success, error, cors } = require('./utils/response.js')
 const { getCurrentUser } = require('./utils/auth.js')
 const RevenueCalculator = require('./services/revenue-calculator.js')
 const { getCollection } = require('./utils/database.js')
+const { prefetchTransactionDetails } = require('./services/transaction-details-cache.js')
 
 exports.handler = async function(event, context) {
   // Handle CORS preflight requests
@@ -35,7 +36,7 @@ exports.handler = async function(event, context) {
     
     const dbStartTime = Date.now()
     await archivesCollection.updateOne(
-      { 
+      {
         companyId: company._id,
         archiveDate: today
       },
@@ -49,8 +50,17 @@ exports.handler = async function(event, context) {
       },
       { upsert: true }
     )
-    
-    
+
+    // Prefetch transaction details for quick loading (previous, current, next month)
+    // Run in background - don't wait for it to complete
+    prefetchTransactionDetails(company._id, today)
+      .then(result => {
+        console.log(`[QBO Refresh] Transaction details prefetch completed: ${result.monthsCached} months cached`)
+      })
+      .catch(err => {
+        console.error(`[QBO Refresh] Transaction details prefetch failed:`, err)
+      })
+
     return success({
       message: 'QuickBooks data refreshed successfully',
       lastUpdated: new Date().toISOString(),

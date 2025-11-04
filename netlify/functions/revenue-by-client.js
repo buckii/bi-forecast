@@ -1,5 +1,6 @@
 const { success, error, cors } = require('./utils/response.js')
 const { getCurrentUser } = require('./utils/auth.js')
+const { getCachedTransactionDetails } = require('./services/transaction-details-cache.js')
 
 exports.handler = async function(event, context) {
   // Handle CORS preflight requests
@@ -43,6 +44,27 @@ exports.handler = async function(event, context) {
     }
 
     if (month) {
+      // Try to get from cache first
+      const asOfDate = asOf ? new Date(asOf) : new Date()
+      asOfDate.setHours(0, 0, 0, 0)
+
+      const cachedData = await getCachedTransactionDetails(company._id, month, asOfDate)
+
+      if (cachedData && cachedData.clients) {
+        console.log(`[Revenue by Client] Serving from cache for ${month}`)
+        return success({
+          month: cachedData.clients.month,
+          clients: cachedData.clients.clients || [],
+          includeWeightedSales,
+          dataSourceErrors: [],
+          fromCache: true,
+          cachedAt: cachedData.cachedAt,
+          lastUpdated: new Date().toISOString()
+        })
+      }
+
+      console.log(`[Revenue by Client] Cache miss, computing on-demand for ${month}`)
+
       // Get revenue data for a specific month
       const monthData = await calculator.calculateMonthRevenueByClient(month, includeWeightedSales)
 

@@ -1,6 +1,6 @@
 <template>
-  <div class="space-y-3">
-    <div class="h-80">
+  <div class="space-y-3 h-full flex flex-col">
+    <div class="flex-1">
       <canvas ref="chartCanvas"></canvas>
     </div>
 
@@ -19,18 +19,6 @@
         </span>
       </div>
     </div>
-
-    <!-- Month Links for Client Details -->
-    <div class="flex flex-wrap gap-2 justify-center pt-2 border-t border-gray-200 dark:border-gray-700">
-      <button
-        v-for="month in data"
-        :key="month.month"
-        @click="$emit('show-client-details', month.month)"
-        class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline"
-      >
-        {{ formatMonthLabel(month.month) }}
-      </button>
-    </div>
   </div>
 </template>
 
@@ -48,6 +36,18 @@ const props = defineProps({
     type: Array,
     required: true
   },
+  comparisonData: {
+    type: Array,
+    default: null
+  },
+  selectedDate: {
+    type: String,
+    default: ''
+  },
+  compareAsOfDate: {
+    type: String,
+    default: ''
+  },
   monthlyExpenses: {
     type: Number,
     default: 0
@@ -58,15 +58,10 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['bar-click', 'show-client-details'])
+const emit = defineEmits(['bar-click'])
 
 const chartCanvas = ref(null)
 let chartInstance = null
-
-function formatMonthLabel(monthStr) {
-  const date = parse(monthStr, 'yyyy-MM-dd', new Date())
-  return format(date, 'MMM yyyy')
-}
 
 // Computed property for reference line info
 const referenceLines = computed(() => {
@@ -142,61 +137,74 @@ const totalLabelPlugin = {
   id: 'totalLabel',
   afterDatasetsDraw: function(chart) {
     const ctx = chart.ctx
-    
-    chart.data.labels.forEach((label, index) => {
-      const meta = chart.getDatasetMeta(0)
-      const dataPoint = meta.data[index]
-      
-      // Calculate total and get journal entries value
-      let total = 0
-      let journalEntriesValue = 0
-      const monthLabel = chart.data.labels[index]
-      
-      chart.data.datasets.forEach((dataset, datasetIndex) => {
-        const value = dataset.data[index] || 0
-        total += value
-        
-        
-        // Get journal entries value (index 1 in the datasets array)
-        if (datasetIndex === 1) { // Journal Entries is the second dataset
-          journalEntriesValue = value
+
+    // Group datasets by stack
+    const stacks = {}
+    chart.data.datasets.forEach((dataset, datasetIndex) => {
+      const stackName = dataset.stack || 'default'
+      if (!stacks[stackName]) {
+        stacks[stackName] = []
+      }
+      stacks[stackName].push({ dataset, datasetIndex })
+    })
+
+    // For each stack, calculate totals and draw labels
+    Object.keys(stacks).forEach(stackName => {
+      const stackDatasets = stacks[stackName]
+
+      chart.data.labels.forEach((label, index) => {
+        // Find a dataset in this stack to get the bar position
+        const firstDatasetInStack = stackDatasets[0].datasetIndex
+        const meta = chart.getDatasetMeta(firstDatasetInStack)
+        const dataPoint = meta.data[index]
+
+        if (!dataPoint) return
+
+        // Calculate total for this stack at this index
+        let total = 0
+        let journalEntriesValue = 0
+
+        stackDatasets.forEach(({ dataset, datasetIndex }) => {
+          const value = dataset.data[index] || 0
+          total += value
+
+          // Get journal entries value (second dataset in each stack)
+          if (dataset.label.includes('Journal Entries')) {
+            journalEntriesValue = value
+          }
+        })
+
+        if (total > 0) {
+          // Adjust position if journal entries are negative
+          let yOffset = -10
+          if (journalEntriesValue < 0) {
+            // Move the label up by the height of the negative value
+            const negativePixelHeight = chart.scales.y.getPixelForValue(0) - chart.scales.y.getPixelForValue(Math.abs(journalEntriesValue))
+            yOffset -= negativePixelHeight
+          }
+
+          // Position the text
+          const x = dataPoint.x
+          const y = chart.scales.y.getPixelForValue(total) + yOffset
+
+          // Format the total value
+          const formattedTotal = new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+          }).format(total)
+
+          // Draw the total with dynamic color based on dark mode
+          ctx.save()
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'bottom'
+          ctx.font = '12px sans-serif'
+          ctx.fillStyle = isDarkModeGlobal.value ? '#ffffff' : '#374151'
+          ctx.fillText(formattedTotal, x, y)
+          ctx.restore()
         }
       })
-      
-      
-      if (total > 0) {
-        // Use the already calculated total instead of recalculating
-        let stackTop = total
-        
-        // Adjust position if journal entries are negative
-        let yOffset = -10
-        if (journalEntriesValue < 0) {
-          // Move the label up by the height of the negative value
-          const negativePixelHeight = chart.scales.y.getPixelForValue(0) - chart.scales.y.getPixelForValue(Math.abs(journalEntriesValue))
-          yOffset -= negativePixelHeight
-        }
-        
-        // Position the text
-        const x = dataPoint.x
-        const y = chart.scales.y.getPixelForValue(stackTop) + yOffset
-        
-        // Format the total value
-        const formattedTotal = new Intl.NumberFormat('en-US', {
-          style: 'currency',
-          currency: 'USD',
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 0
-        }).format(total)
-        
-        // Draw the total with dynamic color based on dark mode
-        ctx.save()
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'bottom'
-        ctx.font = '12px sans-serif'
-        ctx.fillStyle = isDarkModeGlobal.value ? '#ffffff' : '#374151'
-        ctx.fillText(formattedTotal, x, y)
-        ctx.restore()
-      }
     })
   }
 }
@@ -213,38 +221,131 @@ function createChart() {
     return format(date, 'MMM yyyy')
   })
 
-  const datasets = [
+  // Helper function to add opacity to hex color
+  const addOpacity = (hex, opacity) => {
+    const r = parseInt(hex.slice(1, 3), 16)
+    const g = parseInt(hex.slice(3, 5), 16)
+    const b = parseInt(hex.slice(5, 7), 16)
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`
+  }
+
+  // Create datasets - comparison first (left), then current (right)
+  const datasets = []
+
+  // Add comparison datasets first if comparison data is available
+  if (props.comparisonData && props.comparisonData.length > 0) {
+    // Create a map for quick lookup
+    const comparisonMap = new Map(props.comparisonData.map(d => [d.month, d]))
+
+    datasets.push(
+      {
+        label: 'Invoiced (Compare)',
+        data: props.data.map(d => {
+          const comp = comparisonMap.get(d.month)
+          return comp ? (comp.invoiced || 0) : 0
+        }),
+        backgroundColor: addOpacity(chartColors.invoiced, 0.5),
+        stack: 'comparison',
+        borderColor: chartColors.invoiced,
+        borderWidth: 1
+      },
+      {
+        label: 'Journal Entries (Compare)',
+        data: props.data.map(d => {
+          const comp = comparisonMap.get(d.month)
+          return comp ? (comp.journalEntries || 0) : 0
+        }),
+        backgroundColor: addOpacity(chartColors.journalEntries, 0.5),
+        stack: 'comparison',
+        borderColor: chartColors.journalEntries,
+        borderWidth: 1
+      },
+      {
+        label: 'Delayed Charges (Compare)',
+        data: props.data.map(d => {
+          const comp = comparisonMap.get(d.month)
+          return comp ? (comp.delayedCharges || 0) : 0
+        }),
+        backgroundColor: addOpacity(chartColors.delayedCharges, 0.5),
+        stack: 'comparison',
+        borderColor: chartColors.delayedCharges,
+        borderWidth: 1
+      },
+      {
+        label: 'Monthly Recurring (Compare)',
+        data: props.data.map(d => {
+          const comp = comparisonMap.get(d.month)
+          return comp ? (comp.monthlyRecurring || 0) : 0
+        }),
+        backgroundColor: addOpacity(chartColors.monthlyRecurring, 0.5),
+        stack: 'comparison',
+        borderColor: chartColors.monthlyRecurring,
+        borderWidth: 1
+      },
+      {
+        label: 'Won Unscheduled (Compare)',
+        data: props.data.map(d => {
+          const comp = comparisonMap.get(d.month)
+          return comp ? (comp.wonUnscheduled || 0) : 0
+        }),
+        backgroundColor: addOpacity(chartColors.wonUnscheduled, 0.5),
+        stack: 'comparison',
+        borderColor: chartColors.wonUnscheduled,
+        borderWidth: 1
+      },
+      {
+        label: 'Weighted Sales (Compare)',
+        data: props.data.map(d => {
+          const comp = comparisonMap.get(d.month)
+          return comp ? (comp.weightedSales || 0) : 0
+        }),
+        backgroundColor: addOpacity(chartColors.weightedSales, 0.5),
+        stack: 'comparison',
+        borderColor: chartColors.weightedSales,
+        borderWidth: 1
+      }
+    )
+  }
+
+  // Add current data datasets
+  datasets.push(
     {
       label: 'Invoiced',
       data: props.data.map(d => d.invoiced || 0),
-      backgroundColor: chartColors.invoiced
+      backgroundColor: chartColors.invoiced,
+      stack: 'current'
     },
     {
       label: 'Journal Entries',
       data: props.data.map(d => d.journalEntries || 0),
-      backgroundColor: chartColors.journalEntries
+      backgroundColor: chartColors.journalEntries,
+      stack: 'current'
     },
     {
       label: 'Delayed Charges',
       data: props.data.map(d => d.delayedCharges || 0),
-      backgroundColor: chartColors.delayedCharges
+      backgroundColor: chartColors.delayedCharges,
+      stack: 'current'
     },
     {
       label: 'Monthly Recurring',
       data: props.data.map(d => d.monthlyRecurring || 0),
-      backgroundColor: chartColors.monthlyRecurring
+      backgroundColor: chartColors.monthlyRecurring,
+      stack: 'current'
     },
     {
       label: 'Won Unscheduled',
       data: props.data.map(d => d.wonUnscheduled || 0),
-      backgroundColor: chartColors.wonUnscheduled
+      backgroundColor: chartColors.wonUnscheduled,
+      stack: 'current'
     },
     {
       label: 'Weighted Sales',
       data: props.data.map(d => d.weightedSales || 0),
-      backgroundColor: chartColors.weightedSales
+      backgroundColor: chartColors.weightedSales,
+      stack: 'current'
     }
-  ]
+  )
 
   chartInstance = new Chart(ctx, {
     type: 'bar',
@@ -256,6 +357,9 @@ function createChart() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      interaction: {
+        mode: 'index'
+      },
       scales: {
         x: {
           stacked: true,
@@ -290,7 +394,11 @@ function createChart() {
           labels: {
             padding: 10,
             usePointStyle: true,
-            color: isDarkModeGlobal.value ? '#ffffff' : '#374151'
+            color: isDarkModeGlobal.value ? '#ffffff' : '#374151',
+            filter: function(legendItem, chartData) {
+              // Only show main datasets in legend, hide comparison datasets
+              return !legendItem.text.includes('(Compare)')
+            }
           }
         },
         tooltip: {
@@ -306,13 +414,55 @@ function createChart() {
               return `${label}: ${value}`
             },
             footer: function(tooltipItems) {
-              const total = tooltipItems.reduce((sum, item) => sum + item.parsed.y, 0)
-              return 'Total: ' + new Intl.NumberFormat('en-US', {
+              // Calculate totals for current and comparison stacks separately
+              let currentTotal = 0
+              let comparisonTotal = 0
+
+              tooltipItems.forEach(item => {
+                if (item.dataset.stack === 'current') {
+                  currentTotal += item.parsed.y
+                } else if (item.dataset.stack === 'comparison') {
+                  comparisonTotal += item.parsed.y
+                }
+              })
+
+              const formatter = new Intl.NumberFormat('en-US', {
                 style: 'currency',
                 currency: 'USD',
                 minimumFractionDigits: 0,
                 maximumFractionDigits: 0
-              }).format(total)
+              })
+
+              // Format dates
+              let currentDateLabel = 'Current'
+              let compareDateLabel = 'As of'
+
+              if (props.selectedDate) {
+                try {
+                  const selectedDate = parse(props.selectedDate, 'yyyy-MM-dd', new Date())
+                  currentDateLabel = format(selectedDate, 'MMM d')
+                } catch (e) {
+                  // Keep default
+                }
+              }
+
+              if (props.compareAsOfDate) {
+                try {
+                  const compareDate = parse(props.compareAsOfDate, 'yyyy-MM-dd', new Date())
+                  compareDateLabel = `As of ${format(compareDate, 'MMM d')}`
+                } catch (e) {
+                  // Keep default
+                }
+              }
+
+              let footer = `${currentDateLabel}: ${formatter.format(currentTotal)}`
+              if (comparisonTotal > 0) {
+                footer += `\n${compareDateLabel}: ${formatter.format(comparisonTotal)}`
+                const diff = currentTotal - comparisonTotal
+                const diffPercent = comparisonTotal !== 0 ? ((diff / comparisonTotal) * 100) : 0
+                footer += `\n${diff >= 0 ? '+' : ''}${formatter.format(diff)} (${diffPercent >= 0 ? '+' : ''}${diffPercent.toFixed(1)}%)`
+              }
+              return footer
             }
           }
         },
@@ -325,14 +475,18 @@ function createChart() {
           const element = elements[0]
           const monthIndex = element.index
           const datasetIndex = element.datasetIndex
-          const month = props.data[monthIndex].month
-          const component = Object.keys(chartColors)[datasetIndex]
 
-          emit('bar-click', {
-            month,
-            component,
-            value: props.data[monthIndex][component]
-          })
+          // Only handle clicks on current data (first 6 datasets)
+          if (datasetIndex < 6) {
+            const month = props.data[monthIndex].month
+            const component = Object.keys(chartColors)[datasetIndex]
+
+            emit('bar-click', {
+              month,
+              component,
+              value: props.data[monthIndex][component]
+            })
+          }
         }
       }
     }
@@ -346,13 +500,34 @@ function updateChart() {
     }
     return
   }
-  
-  // Update chart data
+
+  // Calculate expected number of datasets
+  const hasComparison = props.comparisonData && props.comparisonData.length > 0
+  const expectedDatasets = hasComparison ? 12 : 6
+
+  // If comparison state changed (datasets count mismatch), recreate the chart
+  if (chartInstance.data.datasets.length !== expectedDatasets) {
+    console.log('[RevenueChart] Dataset count changed, recreating chart:', {
+      current: chartInstance.data.datasets.length,
+      expected: expectedDatasets,
+      hasComparison
+    })
+    createChart()
+    return
+  }
+
+  // If we have comparison data, recreate to ensure proper mapping
+  if (hasComparison) {
+    createChart()
+    return
+  }
+
+  // Update chart data for non-comparison updates
   const labels = props.data.map(d => {
     const date = parse(d.month, 'yyyy-MM-dd', new Date())
     return format(date, 'MMM yyyy')
   })
-  
+
   chartInstance.data.labels = labels
   chartInstance.data.datasets[0].data = props.data.map(d => d.invoiced || 0)
   chartInstance.data.datasets[1].data = props.data.map(d => d.journalEntries || 0)
@@ -360,21 +535,21 @@ function updateChart() {
   chartInstance.data.datasets[3].data = props.data.map(d => d.monthlyRecurring || 0)
   chartInstance.data.datasets[4].data = props.data.map(d => d.wonUnscheduled || 0)
   chartInstance.data.datasets[5].data = props.data.map(d => d.weightedSales || 0)
-  
+
   // Update annotations for reference lines
   if (chartInstance.options.plugins.annotation) {
     chartInstance.options.plugins.annotation.annotations = getAnnotations()
   }
-  
+
   // Update colors for dark mode changes
   const textColor = isDarkModeGlobal.value ? '#ffffff' : '#374151'
   const gridColor = isDarkModeGlobal.value ? '#374151' : '#e5e7eb'
-  
+
   chartInstance.options.scales.x.ticks.color = textColor
   chartInstance.options.scales.y.ticks.color = textColor
   chartInstance.options.scales.y.grid.color = gridColor
   chartInstance.options.plugins.legend.labels.color = textColor
-  
+
   chartInstance.update()
 }
 
@@ -393,6 +568,11 @@ onUnmounted(() => {
 })
 
 watch(() => props.data, () => {
+  updateChart()
+}, { deep: true })
+
+// Watch for comparison data changes
+watch(() => props.comparisonData, () => {
   updateChart()
 }, { deep: true })
 

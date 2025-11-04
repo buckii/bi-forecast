@@ -1,6 +1,7 @@
 const { success, error, cors } = require('./utils/response.js')
 const { getCurrentUser } = require('./utils/auth.js')
 const RevenueCalculator = require('./services/revenue-calculator.js')
+const { getCachedTransactionDetails } = require('./services/transaction-details-cache.js')
 const { startOfMonth, endOfMonth, format, addMonths } = require('date-fns')
 
 exports.handler = async function(event, context) {
@@ -29,6 +30,30 @@ exports.handler = async function(event, context) {
     if (asOf && !/^\d{4}-\d{2}-\d{2}$/.test(asOf)) {
       return error('Invalid date format for as_of. Use YYYY-MM-DD', 400)
     }
+
+    // Try to get from cache first
+    const asOfDate = asOf ? new Date(asOf) : new Date()
+    asOfDate.setHours(0, 0, 0, 0)
+
+    const cachedData = await getCachedTransactionDetails(company._id, month, asOfDate)
+
+    if (cachedData && cachedData.transactions && cachedData.transactions[component]) {
+      console.log(`[Transaction Details] Serving from cache for ${month} ${component}`)
+      const transactions = cachedData.transactions[component]
+      const totalAmount = transactions.reduce((sum, txn) => sum + (txn.amount || 0), 0)
+
+      return success({
+        month: month,
+        component: component,
+        transactions: transactions,
+        totalAmount: totalAmount,
+        count: transactions.length,
+        fromCache: true,
+        cachedAt: cachedData.cachedAt
+      })
+    }
+
+    console.log(`[Transaction Details] Cache miss, computing on-demand for ${month} ${component}`)
 
     const calculator = new RevenueCalculator(company._id)
 
@@ -356,17 +381,6 @@ async function getDelayedChargeTransactions(calculator, startDate, endDate, asOf
     })
     console.log(`[Transaction Details] Fallback: Filtered delayed charges by CreateTime <= ${asOf}`)
   }
-  
-  
-  // Debug logging for December delayed charges
-  if (startDate.includes('2025-12')) {
-    
-    delayedCharges.forEach(charge => {
-      const txnDate = new Date(charge.TxnDate + 'T00:00:00.000Z')
-      const included = txnDate >= startDateObj && txnDate <= endDateObj
-    })
-  }
-  
   return filteredCharges.map(charge => ({
     id: charge.Id || `dc-${charge.DocNumber}`,
     type: 'delayedCharge',
@@ -374,9 +388,27 @@ async function getDelayedChargeTransactions(calculator, startDate, endDate, asOf
     date: charge.TxnDate,
     amount: charge.TotalAmt || 0,
     customer: charge.CustomerRef?.name || 'Unknown Customer',
-    description: `Delayed Charge ${charge.DocNumber}`,
+    description: '',
     details: {
-      lineCount: (charge.Line || []).length
+      balance: charge.Balance || 0,
+      lineCount: (charge.Line || []).length,
+      lines: (charge.Line || []).map(line => {
+        const detailType = line.DetailType
+        const salesDetail = line.SalesItemLineDetail
+        const incomeAccount = salesDetail?.IncomeAccountRef || salesDetail?.AccountRef
+
+        return {
+          detailType: detailType,
+          lineNum: line.LineNum,
+          description: line.Description,
+          amount: line.Amount,
+          revenueAccountName: incomeAccount?.name || 'Unknown Account',
+          revenueAccountNumber: incomeAccount?.value || '',
+          itemName: salesDetail?.ItemRef?.name,
+          qty: salesDetail?.Qty,
+          unitPrice: salesDetail?.UnitPrice
+        }
+      })
     }
   }))
 }
@@ -386,9 +418,10 @@ async function getMonthlyRecurringTransactions(calculator, startDate, endDate, m
   const isFutureMonth = monthDate > currentMonth
   const isCurrentMonth = format(monthDate, 'yyyy-MM') === format(currentMonth, 'yyyy-MM')
 
-  // For past months, show actual monthly recurring from invoices and journal entries
-  if (!isFutureMonth && !isCurrentMonth) {
-    return await getHistoricalMonthlyRecurringTransactions(calculator, startDate, endDate, asOf)
+  // For past and current months, monthly recurring should be $0
+  // Monthly recurring is only projected for future months
+  if (!isFutureMonth) {
+    return []
   }
   
   
