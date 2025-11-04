@@ -16,7 +16,7 @@ exports.handler = async function(event, context) {
     const { company } = await getCurrentUser(event)
     
     const requestBody = JSON.parse(event.body || '{}')
-    const { name, targetNetMargin, monthlyExpensesOverride } = requestBody
+    const { name, targetNetMargin, monthlyExpensesOverride, pricePerPoint } = requestBody
     
     const companiesCollection = await getCollection('companies')
     const updateData = { updatedAt: new Date() }
@@ -30,24 +30,31 @@ exports.handler = async function(event, context) {
     }
     
     // Handle financial settings updates
-    if (targetNetMargin !== undefined || monthlyExpensesOverride !== undefined) {
+    if (targetNetMargin !== undefined || monthlyExpensesOverride !== undefined || pricePerPoint !== undefined) {
       // Initialize settings object if it doesn't exist
       const currentSettings = company.settings || {}
-      
+
       if (targetNetMargin !== undefined) {
         if (typeof targetNetMargin !== 'number' || targetNetMargin < 1 || targetNetMargin > 50) {
           return error('Target net margin must be a number between 1 and 50', 400)
         }
         currentSettings.targetNetMargin = targetNetMargin
       }
-      
+
       if (monthlyExpensesOverride !== undefined) {
         if (monthlyExpensesOverride !== null && (typeof monthlyExpensesOverride !== 'number' || monthlyExpensesOverride < 0)) {
           return error('Monthly expenses override must be a positive number or null', 400)
         }
         currentSettings.monthlyExpensesOverride = monthlyExpensesOverride
       }
-      
+
+      if (pricePerPoint !== undefined) {
+        if (typeof pricePerPoint !== 'number' || pricePerPoint <= 0) {
+          return error('Price per point must be a positive number', 400)
+        }
+        currentSettings.pricePerPoint = pricePerPoint
+      }
+
       updateData.settings = currentSettings
     }
     

@@ -123,7 +123,7 @@
         </div>
         
         <div v-if="!editingFinancials" class="space-y-4">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Target Net Margin</label>
               <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ targetNetMargin }}%</p>
@@ -141,11 +141,16 @@
                 </span>
               </p>
             </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Price Per Point</label>
+              <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ formatCurrency(pricePerPoint) }}</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Used to calculate point values on transaction details</p>
+            </div>
           </div>
         </div>
         
         <div v-else class="space-y-4">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Target Net Margin (%)</label>
               <input
@@ -175,6 +180,18 @@
                   ({{ formatCurrency(revenueStore.balances.monthlyExpenses) }})
                 </span>
               </p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Price Per Point ($)</label>
+              <input
+                type="number"
+                v-model.number="editablePricePerPoint"
+                class="input mt-1"
+                placeholder="550"
+                min="1"
+                step="10"
+              />
+              <p class="text-xs text-gray-500 mt-1">Dollar amount per point (e.g., 550)</p>
             </div>
           </div>
           <div class="flex justify-end space-x-3">
@@ -392,8 +409,10 @@ const editableCompanyName = ref('')
 const editingFinancials = ref(false)
 const targetNetMargin = ref(20)
 const monthlyExpensesOverride = ref(null)
+const pricePerPoint = ref(550)
 const editableTargetNetMargin = ref(20)
 const editableMonthlyExpensesOverride = ref(null)
+const editablePricePerPoint = ref(550)
 
 const clientAliases = ref([])
 const originalClientAliases = ref([])
@@ -509,25 +528,27 @@ async function saveFinancialSettings() {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${authStore.token}`
       },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         targetNetMargin: editableTargetNetMargin.value,
-        monthlyExpensesOverride: editableMonthlyExpensesOverride.value || null
+        monthlyExpensesOverride: editableMonthlyExpensesOverride.value || null,
+        pricePerPoint: editablePricePerPoint.value
       })
     })
-    
+
     if (!response.ok) {
       const errorData = await response.json()
       throw new Error(errorData.error || 'Failed to update financial settings')
     }
-    
+
     // Update local values
     targetNetMargin.value = editableTargetNetMargin.value
     monthlyExpensesOverride.value = editableMonthlyExpensesOverride.value || null
+    pricePerPoint.value = editablePricePerPoint.value
     editingFinancials.value = false
-    
+
     // Update the auth store with the new company info
     await authStore.fetchCurrentUser()
-    
+
   } catch (error) {
     console.error('Error saving financial settings:', error)
     alert('Failed to save financial settings: ' + error.message)
@@ -707,6 +728,7 @@ watch(() => editingFinancials.value, (isEditing) => {
   if (isEditing) {
     editableTargetNetMargin.value = targetNetMargin.value
     editableMonthlyExpensesOverride.value = monthlyExpensesOverride.value
+    editablePricePerPoint.value = pricePerPoint.value
   }
 })
 
@@ -715,6 +737,7 @@ watch(() => company.value, (newCompany) => {
   if (newCompany && newCompany.settings) {
     targetNetMargin.value = newCompany.settings.targetNetMargin || 20
     monthlyExpensesOverride.value = newCompany.settings.monthlyExpensesOverride || null
+    pricePerPoint.value = newCompany.settings.pricePerPoint || 550
   }
 }, { immediate: true })
 
@@ -726,6 +749,7 @@ onMounted(async () => {
   if (company.value?.settings) {
     targetNetMargin.value = company.value.settings.targetNetMargin || 20
     monthlyExpensesOverride.value = company.value.settings.monthlyExpensesOverride || null
+    pricePerPoint.value = company.value.settings.pricePerPoint || 550
   }
 
   // Load client aliases from separate collection
