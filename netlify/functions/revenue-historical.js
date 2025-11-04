@@ -16,13 +16,23 @@ exports.handler = async function(event, context) {
     const { company } = await getCurrentUser(event)
     
     const { date } = event.queryStringParameters || {}
-    
+
     if (!date) {
       return error('Date parameter is required', 400)
     }
-    
-    const archiveDate = new Date(date)
-    archiveDate.setHours(0, 0, 0, 0)
+
+    // Parse date string (YYYY-MM-DD or ISO) and create a UTC midnight date
+    let archiveDate
+    if (date.includes('T')) {
+      // ISO string with time - parse and set to midnight UTC
+      archiveDate = new Date(date)
+      archiveDate.setUTCHours(0, 0, 0, 0)
+    } else {
+      // Date-only string (YYYY-MM-DD) - create UTC date directly
+      // This avoids timezone conversion issues
+      const [year, month, day] = date.split('-').map(Number)
+      archiveDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0))
+    }
     
     // Find the closest archive on or before the requested date
     const archivesCollection = await getCollection('revenue_archives')

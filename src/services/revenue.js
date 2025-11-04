@@ -7,7 +7,12 @@ export default {
   },
   
   async getHistoricalData(date) {
-    return api.get(`/revenue-historical?date=${date.toISOString()}`)
+    // Send date as YYYY-MM-DD string to avoid timezone issues
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const dateStr = `${year}-${month}-${day}`
+    return api.get(`/revenue-historical?date=${dateStr}`)
   },
   
   async refreshQuickbooks() {

@@ -709,14 +709,22 @@ const actualDataDates = computed(() => {
 
   // Get main data date from revenue store
   if (revenueStore.selectedDate) {
-    mainDate = format(new Date(revenueStore.selectedDate), 'MMM d, yyyy')
+    // Extract just the date portion to avoid timezone issues
+    const dateStr = typeof revenueStore.selectedDate === 'string'
+      ? revenueStore.selectedDate.split('T')[0]
+      : format(revenueStore.selectedDate, 'yyyy-MM-dd')
+    mainDate = format(parse(dateStr, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy')
   } else {
     mainDate = format(new Date(), 'MMM d, yyyy')
   }
 
   // Get comparison data date from comparison data
   if (comparisonData.value && comparisonData.value.archiveDate) {
-    compareDate = format(new Date(comparisonData.value.archiveDate), 'MMM d, yyyy')
+    // Extract just the date portion to avoid timezone issues
+    const dateStr = typeof comparisonData.value.archiveDate === 'string'
+      ? comparisonData.value.archiveDate.split('T')[0]
+      : format(comparisonData.value.archiveDate, 'yyyy-MM-dd')
+    compareDate = format(parse(dateStr, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy')
   }
 
   return { mainDate, compareDate }
