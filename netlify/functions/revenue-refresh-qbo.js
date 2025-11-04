@@ -20,12 +20,15 @@ exports.handler = async function(event, context) {
     
     
     const calculator = new RevenueCalculator(company._id)
-    
-    // Use optimized parallel data fetching (15 months: 3 months ago to 12 months from now)
-    const [revenueResult, exceptions, balances] = await Promise.all([
-      calculator.calculateMonthlyRevenue(15, -3),
+
+    // Calculate revenue first (this caches QBO data in calculator instance)
+    const revenueResult = await calculator.calculateMonthlyRevenue(15, -3)
+
+    // Now fetch exceptions and balances in parallel, passing months data to getBalances
+    // getBalances will use the cached QBO data from calculateMonthlyRevenue
+    const [exceptions, balances] = await Promise.all([
       calculator.getExceptions(),
-      calculator.getBalances()
+      calculator.getBalances(revenueResult.months || revenueResult)
     ])
     
     
@@ -51,7 +54,7 @@ exports.handler = async function(event, context) {
       { upsert: true }
     )
 
-    // Prefetch transaction details for quick loading (previous, current, next month)
+    // Prefetch transaction details for quick loading (6 months: prev 2, current, next 3)
     // Run in background - don't wait for it to complete
     prefetchTransactionDetails(company._id, today)
       .then(result => {

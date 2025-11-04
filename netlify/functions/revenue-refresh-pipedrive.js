@@ -16,20 +16,44 @@ exports.handler = async function(event, context) {
 
   try {
     const { company } = await getCurrentUser(event)
-    
+
     const calculator = new RevenueCalculator(company._id)
-    
-    // Force refresh of Pipedrive data by recalculating revenue and exceptions (18 months: 6 months ago to 12 months from now)
-    const [revenueResult, exceptions, balances] = await Promise.all([
-      calculator.calculateMonthlyRevenue(18, -6),
-      calculator.getExceptions(),
-      calculator.getBalances()
-    ])
-    
-    // Update the current archive with fresh data
+
+    // Load today's archive to get existing QuickBooks data
+    // This avoids making unnecessary QB API calls when only refreshing Pipedrive
     const archivesCollection = await getCollection('revenue_archives')
     const today = new Date()
     today.setHours(0, 0, 0, 0)
+
+    const existingArchive = await archivesCollection.findOne({
+      companyId: company._id,
+      archiveDate: today
+    })
+
+    // If we have today's archive with QB data, load it to avoid re-fetching
+    if (existingArchive && existingArchive.quickbooks) {
+      console.log('[Pipedrive Refresh] Using existing QB data from archive, only refreshing Pipedrive')
+      try {
+        await calculator.loadFromArchive(today.toISOString().split('T')[0])
+      } catch (err) {
+        console.warn('[Pipedrive Refresh] Could not load archive, will fetch fresh QB data:', err.message)
+      }
+    }
+
+    // Recalculate revenue with fresh Pipedrive data (QB data from archive if available)
+    const revenueResult = await calculator.calculateMonthlyRevenue(18, -6)
+
+    // Fetch exceptions and balances in parallel
+    // Use existing balances if available to avoid QB calls
+    let balances = existingArchive?.balances || null
+    const exceptions = await calculator.getExceptions()
+
+    // If no existing balances, calculate them
+    if (!balances) {
+      balances = await calculator.getBalances(revenueResult.months || revenueResult)
+    }
+
+    // Update the current archive with fresh data
     
     await archivesCollection.updateOne(
       {
@@ -47,7 +71,7 @@ exports.handler = async function(event, context) {
       { upsert: true }
     )
 
-    // Prefetch transaction details for quick loading (previous, current, next month)
+    // Prefetch transaction details for quick loading (6 months: prev 2, current, next 3)
     // Run in background - don't wait for it to complete
     prefetchTransactionDetails(company._id, today)
       .then(result => {

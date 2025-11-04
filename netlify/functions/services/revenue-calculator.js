@@ -134,8 +134,9 @@ class RevenueCalculator {
       this.fetchAllQBOData(startMonth, endMonth),
       this.fetchAllPipedriveData()
     ])
-    
-    // Cache the Pipedrive data for use by transaction details
+
+    // Cache the data for use by transaction details and getBalances()
+    this.cachedQBOData = qboData
     this.cachedPipedriveData = pipedriveData
     
     
@@ -217,11 +218,20 @@ class RevenueCalculator {
     this.qboDataSourceErrors = []
 
     try {
-      // Fetch all QBO data in parallel with individual error tracking
+      // Fetch all QBO data with 100ms spacing to avoid API burst
+      // This helps stay under QuickBooks' rate limit
+      const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+
+      const invoicesPromise = this.qbo.getInvoices(startStr, endStr)
+      await delay(100)
+      const journalEntriesPromise = this.qbo.getJournalEntries(startStr, endStr)
+      await delay(100)
+      const delayedChargesPromise = this.qbo.getDelayedCharges(startStr, endStr)
+
       const results = await Promise.allSettled([
-        this.qbo.getInvoices(startStr, endStr),
-        this.qbo.getJournalEntries(startStr, endStr),
-        this.qbo.getDelayedCharges(startStr, endStr)
+        invoicesPromise,
+        journalEntriesPromise,
+        delayedChargesPromise
       ])
       
       const [invoicesResult, journalEntriesResult, delayedChargesResult] = results
@@ -1137,7 +1147,9 @@ class RevenueCalculator {
       .sort((a, b) => b.total - a.total)
   }
 
-  async getBalances() {
+  async getBalances(monthsData = null, qboData = null) {
+    // Use cached QBO data if available and not explicitly provided
+    const effectiveQBOData = qboData || this.cachedQBOData
 
     const balances = {
       assets: [],
@@ -1145,7 +1157,7 @@ class RevenueCalculator {
       receivables: null,
       monthlyExpenses: 0
     }
-    
+
     try {
       // Get asset accounts (only Checking, Savings, UndepositedFunds)
       const accounts = await this.qbo.getAccounts()
@@ -1195,58 +1207,80 @@ class RevenueCalculator {
       lastMonth.setMonth(lastMonth.getMonth() - 1)
       const year = lastMonth.getFullYear()
       const month = lastMonth.getMonth() + 1
-      
+
       balances.monthlyExpenses = await this.qbo.getMonthlyExpenses(year, month)
     } catch (error) {
       console.error('[Revenue Calculator] Error getting monthly expenses:', error)
     }
 
-    // Calculate 30-days unbilled: we need a much wider date range for historical data
+    // Calculate 30-days unbilled using provided or cached qboData if available
     try {
-      const cutoffDate = format(addDays(new Date(), 30), 'yyyy-MM-dd')
-      const historicalStart = '2020-01-01'
-      
-      // Get QBO data for the wider historical range
-      const historicalQBOData = await this.fetchAllQBOData(
-        new Date(historicalStart), 
-        new Date(cutoffDate)
-      )
-      
-      // Sum all delayed charges in the historical period
-      const allHistoricalCharges = historicalQBOData.delayedCharges || []
-      
-      balances.thirtyDaysUnbilled = allHistoricalCharges.reduce((sum, charge) => {
-        return sum + (charge.TotalAmt || 0)
-      }, 0)
-      
+      if (effectiveQBOData && effectiveQBOData.delayedCharges) {
+        // Use already-fetched data (optimized path)
+        console.log('[Revenue Calculator] Using provided/cached QBO data for thirtyDaysUnbilled calculation')
+        const cutoffDate = format(addDays(new Date(), 30), 'yyyy-MM-dd')
+
+        // Filter delayed charges up to 30 days from now
+        const upcomingCharges = (effectiveQBOData.delayedCharges || []).filter(charge => {
+          return charge.TxnDate <= cutoffDate
+        })
+
+        balances.thirtyDaysUnbilled = upcomingCharges.reduce((sum, charge) => {
+          return sum + (charge.TotalAmt || 0)
+        }, 0)
+      } else {
+        // Fallback: fetch historical data (less optimal but maintains backwards compatibility)
+        console.log('[Revenue Calculator] Fetching historical data for thirtyDaysUnbilled (fallback path)')
+        const cutoffDate = format(addDays(new Date(), 30), 'yyyy-MM-dd')
+        const historicalStart = '2020-01-01'
+
+        const historicalQBOData = await this.fetchAllQBOData(
+          new Date(historicalStart),
+          new Date(cutoffDate)
+        )
+
+        const allHistoricalCharges = historicalQBOData.delayedCharges || []
+
+        balances.thirtyDaysUnbilled = allHistoricalCharges.reduce((sum, charge) => {
+          return sum + (charge.TotalAmt || 0)
+        }, 0)
+      }
+
     } catch (error) {
       console.error('[Revenue Calculator] Error calculating 30-days unbilled:', error)
       balances.thirtyDaysUnbilled = 0
     }
 
-    // Calculate 1-year unbilled from the existing monthly data (this works)
+    // Calculate 1-year unbilled from the provided monthly data or fetch if not provided
     try {
-      // Get the revenue data that was calculated for the 18-month period
-      const revenueResult = await this.calculateMonthlyRevenue(18, -6)
-      const months = revenueResult.months || revenueResult
-      
+      let months = monthsData
+
+      if (!months) {
+        // Fallback: calculate monthly revenue (less optimal but maintains backwards compatibility)
+        console.log('[Revenue Calculator] Fetching monthly revenue for yearUnbilled (fallback path)')
+        const revenueResult = await this.calculateMonthlyRevenue(18, -6)
+        months = revenueResult.months || revenueResult
+      } else {
+        console.log('[Revenue Calculator] Using provided months data for yearUnbilled calculation')
+      }
+
       let oneYearTotal = 0
-      
+
       // For 1-year: include next 12 months from current month
       const currentMonth = format(new Date(), 'yyyy-MM-dd')
       const oneYearFromNow = format(addMonths(new Date(), 12), 'yyyy-MM-dd')
-      
+
       for (const monthData of months) {
         const monthDate = monthData.month // Format: YYYY-MM-DD
         const delayedCharges = monthData.components.delayedCharges || 0
-        
+
         if (monthDate >= currentMonth && monthDate <= oneYearFromNow) {
           oneYearTotal += delayedCharges
         }
       }
-      
+
       balances.yearUnbilled = oneYearTotal
-      
+
     } catch (error) {
       console.error('[Revenue Calculator] Error calculating 1-year unbilled:', error)
       balances.yearUnbilled = 0

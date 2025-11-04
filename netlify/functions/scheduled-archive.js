@@ -20,14 +20,19 @@ exports.handler = async function(event, context) {
       try {
         
         const calculator = new RevenueCalculator(company._id)
-        
+
         // Calculate current revenue data (18 months: 6 months ago to 12 months from now)
+        // This caches QBO data in calculator instance
         const revenueResult = await calculator.calculateMonthlyRevenue(18, -6)
         const months = revenueResult.months || revenueResult // Handle both old and new return format
         const dataSourceErrors = revenueResult.dataSourceErrors || []
 
-        const exceptions = await calculator.getExceptions()
-        const balances = await calculator.getBalances()
+        // Fetch exceptions and balances, passing months data to getBalances
+        // getBalances will use the cached QBO data from calculateMonthlyRevenue
+        const [exceptions, balances] = await Promise.all([
+          calculator.getExceptions(),
+          calculator.getBalances(months)
+        ])
 
         // Archive QuickBooks data (invoices, journal entries, delayed charges)
         const qboData = await archiveQuickBooksData(calculator, -6, 18)

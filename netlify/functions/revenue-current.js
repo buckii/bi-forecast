@@ -60,16 +60,17 @@ exports.handler = async function(event, context) {
     // No cache or stale cache, calculate fresh data
     const RevenueCalculator = require('./services/revenue-calculator.js')
     const calculator = new RevenueCalculator(company._id)
-    
-    // Get revenue data for 15 months (3 months ago to 12 months from now)
+
+    // Calculate revenue first (this caches QBO data in calculator instance)
     const revenueResult = await calculator.calculateMonthlyRevenue(15, -3)
     const months = revenueResult.months || revenueResult // Handle both old and new return format
-    
-    // Get exceptions
-    const exceptions = await calculator.getExceptions()
-    
-    // Get account balances
-    const balances = await calculator.getBalances()
+
+    // Fetch exceptions and balances in parallel, passing months data to getBalances
+    // getBalances will use the cached QBO data from calculateMonthlyRevenue
+    const [exceptions, balances] = await Promise.all([
+      calculator.getExceptions(),
+      calculator.getBalances(months)
+    ])
     
     // Cache the results
     await archivesCollection.updateOne(
