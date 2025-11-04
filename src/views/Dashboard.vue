@@ -194,6 +194,7 @@
       :is-open="showTransactionModal"
       :month="selectedTransaction.month"
       :component="selectedTransaction.component"
+      :as-of="revenueStore.isHistorical ? selectedDateStr : ''"
       @close="closeTransactionModal"
     />
 
@@ -202,6 +203,7 @@
       :is-open="showClientDetailModal"
       :month="selectedMonth"
       :include-weighted-sales="revenueStore.includeWeightedSales"
+      :as-of="revenueStore.isHistorical ? selectedDateStr : ''"
       @close="closeClientDetailModal"
     />
 

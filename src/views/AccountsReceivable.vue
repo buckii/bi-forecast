@@ -1,8 +1,13 @@
 <template>
   <AppLayout>
     <div class="space-y-6">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Accounts Receivable</h1>
-      
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Accounts Receivable</h1>
+
+        <!-- Date Selector -->
+        <AsOfDateSelector v-model="asOfDate" />
+      </div>
+
       <!-- Aged Accounts Receivable -->
       <div class="card">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Aged Accounts Receivable</h2>
@@ -249,11 +254,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRevenueStore } from '../stores/revenue'
 import { useAuthStore } from '../stores/auth'
 import AppLayout from '../components/AppLayout.vue'
 import PaymentModal from '../components/PaymentModal.vue'
+import AsOfDateSelector from '../components/AsOfDateSelector.vue'
 import { format, parseISO, isAfter, isBefore, addDays } from 'date-fns'
 
 const revenueStore = useRevenueStore()
@@ -264,6 +270,12 @@ const invoices = ref([])
 const loadingInvoices = ref(false)
 const showPaymentModal = ref(false)
 const selectedInvoice = ref(null)
+const asOfDate = ref('')
+
+// Watch for date changes and reload invoices
+watch(asOfDate, () => {
+  loadInvoices()
+})
 
 const sortedInvoices = computed(() => {
   if (!invoices.value) return []
@@ -316,16 +328,24 @@ function getBalanceClass(balance) {
 async function loadInvoices() {
   loadingInvoices.value = true
   try {
-    const response = await fetch('/.netlify/functions/invoices-list', {
+    // Build URL with as_of parameter if date is selected
+    const params = new URLSearchParams()
+    if (asOfDate.value) {
+      params.append('as_of', asOfDate.value)
+    }
+
+    const url = `/.netlify/functions/invoices-list${params.toString() ? '?' + params.toString() : ''}`
+
+    const response = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${authStore.token}`
       }
     })
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch invoices: ${response.statusText}`)
     }
-    
+
     const data = await response.json()
     invoices.value = data.data?.invoices || []
   } catch (error) {

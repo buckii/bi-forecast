@@ -125,6 +125,10 @@ const props = defineProps({
   includeWeightedSales: {
     type: Boolean,
     default: true
+  },
+  asOf: {
+    type: String,
+    default: ''
   }
 })
 
@@ -228,7 +232,7 @@ async function loadClientData() {
   try {
     loading.value = true
     error.value = ''
-    const response = await revenueService.getRevenueByClient(props.month, props.includeWeightedSales)
+    const response = await revenueService.getRevenueByClient(props.month, props.includeWeightedSales, props.asOf)
 
     // Response now contains data for just the requested month
     if (response.clients) {

@@ -20,8 +20,27 @@ exports.handler = async function(event, context) {
     // Check if a specific month is requested
     const month = event.queryStringParameters?.month
 
+    // Check for as_of date
+    const asOf = event.queryStringParameters?.as_of
+
+    // Validate as_of date format if provided
+    if (asOf && !/^\d{4}-\d{2}-\d{2}$/.test(asOf)) {
+      return error('Invalid date format for as_of. Use YYYY-MM-DD', 400)
+    }
+
     const RevenueCalculator = require('./services/revenue-calculator.js')
     const calculator = new RevenueCalculator(company._id)
+
+    // Load from archive if as_of date is provided
+    if (asOf) {
+      try {
+        await calculator.loadFromArchive(asOf)
+        console.log(`[Revenue by Client] Using archived data for ${asOf}`)
+      } catch (archiveError) {
+        console.warn(`[Revenue by Client] Archive not found for ${asOf}, using current data`)
+        // Continue with current data if archive doesn't exist
+      }
+    }
 
     if (month) {
       // Get revenue data for a specific month

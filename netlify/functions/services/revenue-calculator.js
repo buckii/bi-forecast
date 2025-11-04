@@ -9,6 +9,65 @@ class RevenueCalculator {
     this.qbo = new QuickBooksService(companyId)
     this.pipedrive = new PipedriveService(companyId)
     this.clientAliasesMap = null
+    this.isUsingArchive = false
+    this.isUsingFallback = false  // True when archive exists but has no QB/Pipedrive data
+    this.archivedData = null
+    this.archiveDate = null
+  }
+
+  /**
+   * Load data from a specific archive date
+   * @param {string} asOfDate - Date string in YYYY-MM-DD format
+   * @returns {Promise<Object>} The loaded archive data
+   */
+  async loadFromArchive(asOfDate) {
+    console.log(`[RevenueCalculator] Loading archive for ${asOfDate}`)
+    const archivesCollection = await getCollection('revenue_archives')
+
+    const archiveDate = new Date(asOfDate)
+    archiveDate.setHours(0, 0, 0, 0)
+
+    // Find the closest archive on or before the requested date
+    const archive = await archivesCollection.findOne(
+      {
+        companyId: this.companyId,
+        archiveDate: { $lte: archiveDate }
+      },
+      { sort: { archiveDate: -1 } }
+    )
+
+    if (!archive) {
+      throw new Error(`No archived data found for date: ${asOfDate}`)
+    }
+
+    this.isUsingArchive = true
+    this.archivedData = archive
+    this.archiveDate = asOfDate
+
+    // Check if this is an old format archive (no QB/Pipedrive data)
+    const hasQBData = (
+      (archive.quickbooks?.invoices?.all?.length || 0) > 0 ||
+      (archive.quickbooks?.journalEntries?.all?.length || 0) > 0 ||
+      (archive.quickbooks?.delayedCharges?.active?.length || 0) > 0
+    )
+    const hasPipedriveData = (
+      (archive.pipedrive?.wonUnscheduled?.deals?.length || 0) > 0 ||
+      (archive.pipedrive?.openDeals?.deals?.length || 0) > 0
+    )
+
+    if (!hasQBData && !hasPipedriveData) {
+      this.isUsingFallback = true
+      console.log(`[RevenueCalculator] ⚠️  Archive has no QB/Pipedrive data (old format) - fallback mode enabled`)
+    }
+
+    const actualArchiveDate = archive.archiveDate.toISOString().split('T')[0]
+    console.log(`[RevenueCalculator] ✓ Loaded archive from ${actualArchiveDate} (requested: ${asOfDate})`)
+    console.log(`[RevenueCalculator]   - ${archive.months?.length || 0} months`)
+    console.log(`[RevenueCalculator]   - ${archive.quickbooks?.invoices?.all?.length || 0} invoices`)
+    console.log(`[RevenueCalculator]   - ${archive.quickbooks?.journalEntries?.all?.length || 0} journal entries`)
+    console.log(`[RevenueCalculator]   - ${archive.pipedrive?.openDeals?.deals?.length || 0} open deals`)
+
+    return archive
   }
 
   async loadClientAliases() {
@@ -124,12 +183,39 @@ class RevenueCalculator {
   }
 
   async fetchAllQBOData(startDate, endDate) {
+    // If using archive, check if it has QuickBooks data
+    if (this.isUsingArchive && this.archivedData?.quickbooks) {
+      const hasQBData = (
+        (this.archivedData.quickbooks.invoices?.all?.length || 0) > 0 ||
+        (this.archivedData.quickbooks.journalEntries?.all?.length || 0) > 0 ||
+        (this.archivedData.quickbooks.delayedCharges?.active?.length || 0) > 0
+      )
+
+      if (hasQBData) {
+        console.log('[RevenueCalculator] Using archived QuickBooks data')
+        console.log(`[RevenueCalculator]   - ${this.archivedData.quickbooks.invoices?.all?.length || 0} invoices`)
+        console.log(`[RevenueCalculator]   - ${this.archivedData.quickbooks.journalEntries?.all?.length || 0} journal entries`)
+        console.log(`[RevenueCalculator]   - ${this.archivedData.quickbooks.delayedCharges?.active?.length || 0} delayed charges`)
+        return {
+          invoices: this.archivedData.quickbooks.invoices?.all || [],
+          journalEntries: this.archivedData.quickbooks.journalEntries?.all || [],
+          delayedCharges: this.archivedData.quickbooks.delayedCharges?.active || [],
+          hasErrors: false,
+          errors: []
+        }
+      } else {
+        console.log('[RevenueCalculator] Archive has no QB data (old format), using fallback with CreateTime filtering')
+        this.isUsingFallback = true
+        // Fall through to fetch current data and filter by CreateTime
+      }
+    }
+
     const startStr = format(startDate, 'yyyy-MM-dd')
     const endStr = format(endOfMonth(endDate), 'yyyy-MM-dd')
-    
+
     // Track which data sources failed
     this.qboDataSourceErrors = []
-    
+
     try {
       // Fetch all QBO data in parallel with individual error tracking
       const results = await Promise.allSettled([
@@ -159,15 +245,52 @@ class RevenueCalculator {
         this.qboDataSourceErrors.push({ source: 'delayed charges', error: delayedChargesResult.reason.message })
       }
       
-      // Log successful data ranges
-      if (invoices.length > 0) {
-        const invoiceDates = invoices.map(inv => inv.TxnDate).sort()
+      // If using fallback mode (archive with no QB data), filter by CreateTime
+      let filteredInvoices = invoices
+      let filteredJournalEntries = journalEntries
+      let filteredDelayedCharges = delayedCharges
+
+      if (this.isUsingFallback && this.archiveDate) {
+        const asOfDate = new Date(this.archiveDate + 'T23:59:59.999Z')
+
+        // Filter invoices by CreateTime
+        const originalInvoiceCount = filteredInvoices.length
+        filteredInvoices = filteredInvoices.filter(invoice => {
+          if (invoice.MetaData && invoice.MetaData.CreateTime) {
+            const createTime = new Date(invoice.MetaData.CreateTime)
+            return createTime <= asOfDate
+          }
+          return true // Conservative: keep if no CreateTime
+        })
+        console.log(`[RevenueCalculator] Fallback: Filtered invoices by CreateTime <= ${this.archiveDate}: ${originalInvoiceCount} → ${filteredInvoices.length}`)
+
+        // Filter journal entries by CreateTime
+        const originalJECount = filteredJournalEntries.length
+        filteredJournalEntries = filteredJournalEntries.filter(entry => {
+          if (entry.MetaData && entry.MetaData.CreateTime) {
+            const createTime = new Date(entry.MetaData.CreateTime)
+            return createTime <= asOfDate
+          }
+          return true
+        })
+        console.log(`[RevenueCalculator] Fallback: Filtered journal entries by CreateTime <= ${this.archiveDate}: ${originalJECount} → ${filteredJournalEntries.length}`)
+
+        // Filter delayed charges by CreateTime
+        const originalDCCount = filteredDelayedCharges.length
+        filteredDelayedCharges = filteredDelayedCharges.filter(charge => {
+          if (charge.MetaData && charge.MetaData.CreateTime) {
+            const createTime = new Date(charge.MetaData.CreateTime)
+            return createTime <= asOfDate
+          }
+          return true
+        })
+        console.log(`[RevenueCalculator] Fallback: Filtered delayed charges by CreateTime <= ${this.archiveDate}: ${originalDCCount} → ${filteredDelayedCharges.length}`)
       }
-      
+
       return {
-        invoices,
-        journalEntries,
-        delayedCharges,
+        invoices: filteredInvoices,
+        journalEntries: filteredJournalEntries,
+        delayedCharges: filteredDelayedCharges,
         hasErrors: this.qboDataSourceErrors.length > 0,
         errors: this.qboDataSourceErrors
       }
@@ -185,9 +308,33 @@ class RevenueCalculator {
   }
 
   async fetchAllPipedriveData() {
+    // If using archive, check if it has Pipedrive data
+    if (this.isUsingArchive && this.archivedData?.pipedrive) {
+      const hasPipedriveData = (
+        (this.archivedData.pipedrive.wonUnscheduled?.deals?.length || 0) > 0 ||
+        (this.archivedData.pipedrive.openDeals?.deals?.length || 0) > 0
+      )
+
+      if (hasPipedriveData) {
+        console.log('[RevenueCalculator] Using archived Pipedrive data')
+        console.log(`[RevenueCalculator]   - ${this.archivedData.pipedrive.wonUnscheduled?.deals?.length || 0} won unscheduled deals`)
+        console.log(`[RevenueCalculator]   - ${this.archivedData.pipedrive.openDeals?.deals?.length || 0} open deals`)
+        return {
+          wonUnscheduledDeals: this.archivedData.pipedrive.wonUnscheduled?.deals || [],
+          openDeals: this.archivedData.pipedrive.openDeals?.deals || [],
+          hasErrors: false,
+          errors: []
+        }
+      } else {
+        console.log('[RevenueCalculator] Archive has no Pipedrive data (old format), using current Pipedrive data')
+        console.warn('[RevenueCalculator] ⚠️ WARNING: Pipedrive historical data not available - using current data instead')
+        // Fall through to fetch current data (note: this won't be historically accurate for Pipedrive)
+      }
+    }
+
     // Track which data sources failed
     this.pipedriveDataSourceErrors = []
-    
+
     try {
       // Fetch all Pipedrive data in parallel with individual error tracking
       const results = await Promise.allSettled([
@@ -642,8 +789,6 @@ class RevenueCalculator {
     const [year, month, day] = monthStr.split('-').map(Number)
     const monthDate = new Date(year, month - 1, day) // month is 0-indexed
 
-    console.log(`[calculateMonthRevenueByClient] Input: ${monthStr}, Parsed date: ${monthDate}, Month: ${format(monthDate, 'yyyy-MM')}`)
-
     // Calculate date range needed for this month
     const startMonth = startOfMonth(monthDate)
     const endMonth = endOfMonth(monthDate)
@@ -741,21 +886,12 @@ class RevenueCalculator {
         return txnDateStr >= format(startDate, 'yyyy-MM-dd') && txnDateStr <= format(endDate, 'yyyy-MM-dd')
       })
 
-      console.log(`[Client Breakdown] Processing ${monthInvoices.length} invoices for ${format(monthDate, 'yyyy-MM')}`)
-
       monthInvoices.forEach(invoice => {
         const rawClientName = invoice.CustomerRef?.name || 'Unknown Client'
         const clientName = this.resolveClientName(rawClientName)
         const amount = invoice.TotalAmt || 0
-
-        if (rawClientName.includes('American College')) {
-          console.log(`[Client Breakdown] ACE Invoice: ${invoice.DocNumber}, Date: ${invoice.TxnDate}, Amount: ${amount}, Raw: ${rawClientName}, Resolved: ${clientName}`)
-        }
-
         addToClient(clientName, amount)
       })
-
-      console.log(`[Client Breakdown] Total clients after invoices: ${Object.keys(clientTotals).length}`)
     }
 
     // Process QBO journal entries

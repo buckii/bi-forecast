@@ -15,17 +15,33 @@ exports.handler = async function(event, context) {
 
   try {
     const { company } = await getCurrentUser(event)
-    
+
     const params = new URLSearchParams(event.queryStringParameters)
     const month = params.get('month') // Format: YYYY-MM-DD
     const component = params.get('component') // invoiced, journalEntries, etc.
-    
+    const asOf = params.get('as_of') // Optional: YYYY-MM-DD
+
     if (!month || !component) {
       return error('Missing required parameters: month and component', 400)
     }
-    
-    
+
+    // Validate as_of date format if provided
+    if (asOf && !/^\d{4}-\d{2}-\d{2}$/.test(asOf)) {
+      return error('Invalid date format for as_of. Use YYYY-MM-DD', 400)
+    }
+
     const calculator = new RevenueCalculator(company._id)
+
+    // Load from archive if as_of date is provided
+    if (asOf) {
+      try {
+        await calculator.loadFromArchive(asOf)
+        console.log(`[Transaction Details] Using archived data for ${asOf}`)
+      } catch (archiveError) {
+        console.warn(`[Transaction Details] Archive not found for ${asOf}, using current data`)
+        // Continue with current data if archive doesn't exist
+      }
+    }
     
     // Parse the month and get the date range (use explicit parsing to avoid timezone issues)
     const [year, monthNum, day] = month.split('-').map(Number)
@@ -39,22 +55,22 @@ exports.handler = async function(event, context) {
     
     switch (component) {
       case 'invoiced':
-        transactions = await getInvoicedTransactions(calculator, startDate, endDate)
+        transactions = await getInvoicedTransactions(calculator, startDate, endDate, asOf)
         break
       case 'journalEntries':
-        transactions = await getJournalEntryTransactions(calculator, startDate, endDate)
+        transactions = await getJournalEntryTransactions(calculator, startDate, endDate, asOf)
         break
       case 'delayedCharges':
-        transactions = await getDelayedChargeTransactions(calculator, startDate, endDate)
+        transactions = await getDelayedChargeTransactions(calculator, startDate, endDate, asOf)
         break
       case 'monthlyRecurring':
-        transactions = await getMonthlyRecurringTransactions(calculator, startDate, endDate, monthDate)
+        transactions = await getMonthlyRecurringTransactions(calculator, startDate, endDate, monthDate, asOf)
         break
       case 'wonUnscheduled':
-        transactions = await getWonUnscheduledTransactions(calculator, monthDate)
+        transactions = await getWonUnscheduledTransactions(calculator, monthDate, asOf)
         break
       case 'weightedSales':
-        transactions = await getWeightedSalesTransactions(calculator, monthDate)
+        transactions = await getWeightedSalesTransactions(calculator, monthDate, asOf)
         break
       default:
         return error(`Invalid component: ${component}`, 400)
@@ -104,19 +120,32 @@ exports.handler = async function(event, context) {
   }
 }
 
-async function getInvoicedTransactions(calculator, startDate, endDate) {
+async function getInvoicedTransactions(calculator, startDate, endDate, asOf = null) {
   const invoices = await calculator.qbo.getInvoices(startDate, endDate)
-  
+
   // Filter invoices to only include those within the exact month
   const startDateObj = new Date(startDate + 'T00:00:00.000Z')
   const endDateObj = new Date(endDate + 'T23:59:59.999Z')
-  
-  const filteredInvoices = invoices.filter(invoice => {
+
+  let filteredInvoices = invoices.filter(invoice => {
     const txnDate = new Date(invoice.TxnDate + 'T00:00:00.000Z')
     return txnDate >= startDateObj && txnDate <= endDateObj
   })
-  
-  
+
+  // If using fallback mode (as_of provided and archive has no data), filter by creation time
+  if (asOf && calculator.isUsingFallback) {
+    const asOfDate = new Date(asOf + 'T23:59:59.999Z')
+    filteredInvoices = filteredInvoices.filter(invoice => {
+      if (invoice.MetaData && invoice.MetaData.CreateTime) {
+        const createTime = new Date(invoice.MetaData.CreateTime)
+        return createTime <= asOfDate
+      }
+      // If no CreateTime, keep it (conservative approach)
+      return true
+    })
+    console.log(`[Transaction Details] Fallback: Filtered invoices by CreateTime <= ${asOf}`)
+  }
+
   return filteredInvoices.map(invoice => ({
     id: invoice.Id,
     type: 'invoice',
@@ -157,17 +186,31 @@ async function getInvoicedTransactions(calculator, startDate, endDate) {
   }))
 }
 
-async function getJournalEntryTransactions(calculator, startDate, endDate) {
+async function getJournalEntryTransactions(calculator, startDate, endDate, asOf = null) {
   const journalEntries = await calculator.qbo.getJournalEntries(startDate, endDate)
 
   // Filter journal entries to only include those within the exact month
   const startDateObj = new Date(startDate + 'T00:00:00.000Z')
   const endDateObj = new Date(endDate + 'T23:59:59.999Z')
 
-  const filteredEntries = journalEntries.filter(entry => {
+  let filteredEntries = journalEntries.filter(entry => {
     const txnDate = new Date(entry.TxnDate + 'T00:00:00.000Z')
     return txnDate >= startDateObj && txnDate <= endDateObj
   })
+
+  // If using fallback mode (as_of provided and archive has no data), filter by creation time
+  if (asOf && calculator.isUsingFallback) {
+    const asOfDate = new Date(asOf + 'T23:59:59.999Z')
+    filteredEntries = filteredEntries.filter(entry => {
+      if (entry.MetaData && entry.MetaData.CreateTime) {
+        const createTime = new Date(entry.MetaData.CreateTime)
+        return createTime <= asOfDate
+      }
+      // If no CreateTime, keep it (conservative approach)
+      return true
+    })
+    console.log(`[Transaction Details] Fallback: Filtered journal entries by CreateTime <= ${asOf}`)
+  }
 
   // Load client aliases for matching
   await calculator.loadClientAliases()
@@ -252,23 +295,15 @@ async function getJournalEntryTransactions(calculator, startDate, endDate) {
         // No entity reference, try to match based on description
         const searchText = `${description} ${entry.PrivateNote || ''}`.toLowerCase()
 
-        console.log(`[JE Client Match] Searching for match in: "${searchText}"`)
-        console.log(`[JE Client Match] Available aliases:`, calculator.clientAliasesMap ? Object.keys(calculator.clientAliasesMap) : 'none')
-
         // Iterate through all client aliases to find a match
         if (calculator.clientAliasesMap) {
           for (const [alias, primaryName] of Object.entries(calculator.clientAliasesMap)) {
             if (searchText.includes(alias.toLowerCase())) {
-              console.log(`[JE Client Match] MATCHED: "${alias}" -> "${primaryName}"`)
               matchedClient = primaryName
               matchSource = `description_match:${alias}`
               break
             }
           }
-        }
-
-        if (matchedClient === 'N/A') {
-          console.log(`[JE Client Match] No match found for: "${searchText.substring(0, 100)}"`)
         }
       }
 
@@ -296,17 +331,31 @@ async function getJournalEntryTransactions(calculator, startDate, endDate) {
   return transactions
 }
 
-async function getDelayedChargeTransactions(calculator, startDate, endDate) {
+async function getDelayedChargeTransactions(calculator, startDate, endDate, asOf = null) {
   const delayedCharges = await calculator.qbo.getDelayedCharges(startDate, endDate)
-  
+
   // Filter delayed charges to only include those within the exact month
   const startDateObj = new Date(startDate + 'T00:00:00.000Z')
   const endDateObj = new Date(endDate + 'T23:59:59.999Z')
-  
-  const filteredCharges = delayedCharges.filter(charge => {
+
+  let filteredCharges = delayedCharges.filter(charge => {
     const txnDate = new Date(charge.TxnDate + 'T00:00:00.000Z')
     return txnDate >= startDateObj && txnDate <= endDateObj
   })
+
+  // If using fallback mode (as_of provided and archive has no data), filter by creation time
+  if (asOf && calculator.isUsingFallback) {
+    const asOfDate = new Date(asOf + 'T23:59:59.999Z')
+    filteredCharges = filteredCharges.filter(charge => {
+      if (charge.MetaData && charge.MetaData.CreateTime) {
+        const createTime = new Date(charge.MetaData.CreateTime)
+        return createTime <= asOfDate
+      }
+      // If no CreateTime, keep it (conservative approach)
+      return true
+    })
+    console.log(`[Transaction Details] Fallback: Filtered delayed charges by CreateTime <= ${asOf}`)
+  }
   
   
   // Debug logging for December delayed charges
@@ -332,14 +381,14 @@ async function getDelayedChargeTransactions(calculator, startDate, endDate) {
   }))
 }
 
-async function getMonthlyRecurringTransactions(calculator, startDate, endDate, monthDate) {
+async function getMonthlyRecurringTransactions(calculator, startDate, endDate, monthDate, asOf = null) {
   const currentMonth = startOfMonth(new Date())
   const isFutureMonth = monthDate > currentMonth
   const isCurrentMonth = format(monthDate, 'yyyy-MM') === format(currentMonth, 'yyyy-MM')
-  
+
   // For past months, show actual monthly recurring from invoices and journal entries
   if (!isFutureMonth && !isCurrentMonth) {
-    return await getHistoricalMonthlyRecurringTransactions(calculator, startDate, endDate)
+    return await getHistoricalMonthlyRecurringTransactions(calculator, startDate, endDate, asOf)
   }
   
   
@@ -436,14 +485,39 @@ async function getBaselineMonthlyRecurringAmount(calculator) {
   }
 }
 
-async function getHistoricalMonthlyRecurringTransactions(calculator, startDate, endDate) {
+async function getHistoricalMonthlyRecurringTransactions(calculator, startDate, endDate, asOf = null) {
   try {
     // Get invoices and journal entries from the specified period
-    const [invoices, journalEntries] = await Promise.all([
+    let [invoices, journalEntries] = await Promise.all([
       calculator.qbo.getInvoices(startDate, endDate),
       calculator.qbo.getJournalEntries(startDate, endDate)
     ])
-    
+
+    // If using fallback mode, filter by CreateTime
+    if (asOf && calculator.isUsingFallback) {
+      const asOfDate = new Date(asOf + 'T23:59:59.999Z')
+
+      const originalInvoiceCount = invoices.length
+      invoices = invoices.filter(invoice => {
+        if (invoice.MetaData && invoice.MetaData.CreateTime) {
+          const createTime = new Date(invoice.MetaData.CreateTime)
+          return createTime <= asOfDate
+        }
+        return true
+      })
+      console.log(`[Monthly Recurring] Fallback: Filtered invoices by CreateTime <= ${asOf}: ${originalInvoiceCount} → ${invoices.length}`)
+
+      const originalJECount = journalEntries.length
+      journalEntries = journalEntries.filter(entry => {
+        if (entry.MetaData && entry.MetaData.CreateTime) {
+          const createTime = new Date(entry.MetaData.CreateTime)
+          return createTime <= asOfDate
+        }
+        return true
+      })
+      console.log(`[Monthly Recurring] Fallback: Filtered journal entries by CreateTime <= ${asOf}: ${originalJECount} → ${journalEntries.length}`)
+    }
+
     const transactions = []
     
     // Process invoices for monthly recurring items
@@ -548,8 +622,13 @@ async function getHistoricalMonthlyRecurringTransactions(calculator, startDate, 
   }
 }
 
-async function getWonUnscheduledTransactions(calculator, monthDate) {
+async function getWonUnscheduledTransactions(calculator, monthDate, asOf = null) {
   try {
+    // Warn if using fallback mode (Pipedrive doesn't support historical filtering)
+    if (asOf && calculator.isUsingFallback) {
+      console.warn(`[Won Unscheduled] ⚠️ Pipedrive historical data not available for ${asOf} - using current data`)
+    }
+
     const wonUnscheduledDeals = await calculator.pipedrive.getWonUnscheduledDeals()
     const monthStr = format(monthDate, 'yyyy-MM')
     const transactions = []
@@ -603,8 +682,13 @@ async function getWonUnscheduledTransactions(calculator, monthDate) {
   }
 }
 
-async function getWeightedSalesTransactions(calculator, monthDate) {
+async function getWeightedSalesTransactions(calculator, monthDate, asOf = null) {
   try {
+    // Warn if using fallback mode (Pipedrive doesn't support historical filtering)
+    if (asOf && calculator.isUsingFallback) {
+      console.warn(`[Weighted Sales] ⚠️ Pipedrive historical data not available for ${asOf} - using current data`)
+    }
+
     // First try to use cached data, fall back to fresh API call if needed
     let openDeals = []
     try {
@@ -613,7 +697,7 @@ async function getWeightedSalesTransactions(calculator, monthDate) {
     } catch (cacheError) {
       openDeals = await calculator.pipedrive.getOpenDeals()
     }
-    
+
     const monthStr = format(monthDate, 'yyyy-MM')
     const transactions = []
     

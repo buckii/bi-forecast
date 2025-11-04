@@ -1,8 +1,13 @@
 <template>
   <AppLayout>
     <div class="space-y-6">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Account Balances</h1>
-      
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Account Balances</h1>
+
+        <!-- Date Selector -->
+        <AsOfDateSelector v-model="selectedDateStr" />
+      </div>
+
       <!-- Asset Accounts -->
       <div class="card">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Asset Accounts</h2>
@@ -136,11 +141,30 @@
 import { computed, onMounted } from 'vue'
 import { useRevenueStore } from '../stores/revenue'
 import AppLayout from '../components/AppLayout.vue'
+import AsOfDateSelector from '../components/AsOfDateSelector.vue'
 import { format, parseISO } from 'date-fns'
 
 const revenueStore = useRevenueStore()
 
 const balances = computed(() => revenueStore.balances)
+
+// Use the store's selectedDate for syncing across pages
+const selectedDateStr = computed({
+  get: () => revenueStore.isHistorical && revenueStore.selectedDate
+    ? format(revenueStore.selectedDate, 'yyyy-MM-dd')
+    : '',
+  set: (value) => {
+    if (value) {
+      revenueStore.selectedDate = new Date(value)
+      revenueStore.isHistorical = true
+      revenueStore.loadRevenueData()
+    } else {
+      revenueStore.selectedDate = new Date()
+      revenueStore.isHistorical = false
+      revenueStore.loadRevenueData()
+    }
+  }
+})
 
 const assetTotalExcludingAR = computed(() => {
   if (!balances.value?.assets) return 0

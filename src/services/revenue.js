@@ -22,10 +22,19 @@ export default {
     return api.get(`/revenue-details?month=${month}&component=${component}`)
   },
 
-  async getRevenueByClient(month = null, includeWeightedSales = true) {
+  async getRevenueByClient(month = null, includeWeightedSales = true, asOf = null) {
+    const params = new URLSearchParams({
+      includeWeightedSales: includeWeightedSales.toString()
+    })
+
     if (month) {
-      return api.get(`/revenue-by-client?month=${month}&includeWeightedSales=${includeWeightedSales}`)
+      params.append('month', month)
     }
-    return api.get(`/revenue-by-client?includeWeightedSales=${includeWeightedSales}`)
+
+    if (asOf) {
+      params.append('as_of', asOf)
+    }
+
+    return api.get(`/revenue-by-client?${params.toString()}`)
   }
 }

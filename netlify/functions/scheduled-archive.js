@@ -2,6 +2,7 @@ const { success, error } = require('./utils/response.js')
 const { getCollection } = require('./utils/database.js')
 const RevenueCalculator = require('./services/revenue-calculator.js')
 const SlackService = require('./services/slack.js')
+const { startOfMonth, endOfMonth, addMonths, format } = require('date-fns')
 
 exports.handler = async function(event, context) {
   // This function runs daily at 3am ET via Netlify scheduled functions
@@ -24,9 +25,15 @@ exports.handler = async function(event, context) {
         const revenueResult = await calculator.calculateMonthlyRevenue(18, -6)
         const months = revenueResult.months || revenueResult // Handle both old and new return format
         const dataSourceErrors = revenueResult.dataSourceErrors || []
-        
+
         const exceptions = await calculator.getExceptions()
         const balances = await calculator.getBalances()
+
+        // Archive QuickBooks data (invoices, journal entries, delayed charges)
+        const qboData = await archiveQuickBooksData(calculator, -6, 18)
+
+        // Archive Pipedrive data (open deals, won unscheduled)
+        const pipedriveData = await archivePipedriveData(calculator)
         
         // Create today's archive
         const today = new Date()
@@ -39,6 +46,8 @@ exports.handler = async function(event, context) {
           exceptions,
           balances,
           dataSourceErrors,
+          quickbooks: qboData,
+          pipedrive: pipedriveData,
           createdAt: new Date()
         }
         
@@ -123,5 +132,93 @@ exports.handler = async function(event, context) {
   } catch (err) {
     console.error('Archive process error:', err)
     return error(err.message || 'Archive process failed', 500)
+  }
+}
+
+/**
+ * Archive QuickBooks data including invoices, journal entries, and delayed charges
+ * @param {RevenueCalculator} calculator - Revenue calculator instance
+ * @param {number} startOffset - Months offset from current month (negative for past)
+ * @param {number} monthsCount - Number of months to archive
+ * @returns {Object} Archived QuickBooks data
+ */
+async function archiveQuickBooksData(calculator, startOffset, monthsCount) {
+  const currentDate = new Date()
+  const startMonth = addMonths(startOfMonth(currentDate), startOffset)
+  const endMonth = addMonths(startOfMonth(currentDate), startOffset + monthsCount - 1)
+  const startDate = format(startMonth, 'yyyy-MM-dd')
+  const endDate = format(endOfMonth(endMonth), 'yyyy-MM-dd')
+
+  console.log(`[Archive QB] Fetching data from ${startDate} to ${endDate}`)
+
+  try {
+    const [invoices, journalEntries, delayedCharges] = await Promise.all([
+      calculator.qbo.getInvoices(startDate, endDate),
+      calculator.qbo.getJournalEntries(startDate, endDate),
+      calculator.qbo.getDelayedCharges(startDate, endDate)
+    ])
+
+    // Separate open and all invoices
+    const openInvoices = invoices.filter(inv => parseFloat(inv.Balance || 0) > 0)
+
+    console.log(`[Archive QB] ✓ Captured ${invoices.length} invoices (${openInvoices.length} open), ${journalEntries.length} journal entries, ${delayedCharges.length} delayed charges`)
+
+    return {
+      invoices: {
+        open: openInvoices,
+        all: invoices,
+        lastSync: new Date()
+      },
+      journalEntries: {
+        all: journalEntries,
+        lastSync: new Date()
+      },
+      delayedCharges: {
+        active: delayedCharges,
+        lastSync: new Date()
+      }
+    }
+  } catch (error) {
+    console.error('[Archive QB] Error archiving QuickBooks data:', error)
+    return {
+      invoices: { open: [], all: [], error: error.message, lastSync: new Date() },
+      journalEntries: { all: [], error: error.message, lastSync: new Date() },
+      delayedCharges: { active: [], error: error.message, lastSync: new Date() }
+    }
+  }
+}
+
+/**
+ * Archive Pipedrive data including open deals and won unscheduled deals
+ * @param {RevenueCalculator} calculator - Revenue calculator instance
+ * @returns {Object} Archived Pipedrive data
+ */
+async function archivePipedriveData(calculator) {
+  console.log('[Archive PD] Fetching Pipedrive data...')
+
+  try {
+    const [openDeals, wonUnscheduled] = await Promise.all([
+      calculator.pipedrive.getOpenDeals(),
+      calculator.pipedrive.getWonUnscheduledDeals()
+    ])
+
+    console.log(`[Archive PD] ✓ Captured ${openDeals.length} open deals, ${wonUnscheduled.length} won unscheduled deals`)
+
+    return {
+      openDeals: {
+        deals: openDeals,
+        lastSync: new Date()
+      },
+      wonUnscheduled: {
+        deals: wonUnscheduled,
+        lastSync: new Date()
+      }
+    }
+  } catch (error) {
+    console.error('[Archive PD] Error archiving Pipedrive data:', error)
+    return {
+      openDeals: { deals: [], error: error.message, lastSync: new Date() },
+      wonUnscheduled: { deals: [], error: error.message, lastSync: new Date() }
+    }
   }
 }

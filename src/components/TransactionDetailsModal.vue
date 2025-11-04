@@ -283,6 +283,10 @@ const props = defineProps({
   component: {
     type: String,
     default: ''
+  },
+  asOf: {
+    type: String,
+    default: ''
   }
 })
 
@@ -320,24 +324,35 @@ watch(() => props.isOpen, (isOpen) => {
 async function loadTransactionDetails() {
   loading.value = true
   error.value = null
-  
+
   try {
     // Use the auth store to get the token (same approach as other components)
     const authStore = useAuthStore()
-    const response = await fetch(`/.netlify/functions/transaction-details?month=${encodeURIComponent(props.month)}&component=${encodeURIComponent(props.component)}`, {
+
+    // Build URL with as_of parameter if provided
+    const params = new URLSearchParams({
+      month: props.month,
+      component: props.component
+    })
+
+    if (props.asOf) {
+      params.append('as_of', props.asOf)
+    }
+
+    const response = await fetch(`/.netlify/functions/transaction-details?${params.toString()}`, {
       headers: {
         'Authorization': `Bearer ${authStore.token}`
       }
     })
-    
+
     if (!response.ok) {
       const errorData = await response.json()
       throw new Error(errorData.error || 'Failed to load transaction details')
     }
-    
+
     const result = await response.json()
     transactionData.value = result.data || result
-    
+
   } catch (err) {
     error.value = err.message
   } finally {
