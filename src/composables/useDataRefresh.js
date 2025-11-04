@@ -9,8 +9,15 @@ export function useDataRefresh() {
   // Reactive state
   const refreshingQBO = ref(false)
   const refreshingPipedrive = ref(false)
+  const refreshingAll = ref(false)
   const qboLastRefresh = ref(null)
   const pipedriveLastRefresh = ref(null)
+
+  // Debounce tracking (20 seconds)
+  const DEBOUNCE_MS = 20000
+  const lastQBORefresh = ref(0)
+  const lastPipedriveRefresh = ref(0)
+  const lastAllRefresh = ref(0)
   
   // Format timestamp for display
   function formatLastRefresh(timestamp) {
@@ -69,6 +76,15 @@ export function useDataRefresh() {
   
   // Refresh QBO data
   async function refreshQBO() {
+    // Check debounce (20 seconds)
+    const now = Date.now()
+    const timeSinceLastRefresh = now - lastQBORefresh.value
+    if (timeSinceLastRefresh < DEBOUNCE_MS) {
+      const secondsRemaining = Math.ceil((DEBOUNCE_MS - timeSinceLastRefresh) / 1000)
+      throw new Error(`Please wait ${secondsRemaining} seconds before refreshing again`)
+    }
+
+    lastQBORefresh.value = now
     refreshingQBO.value = true
     try {
       const response = await fetch('/.netlify/functions/revenue-refresh-qbo', {
@@ -101,6 +117,15 @@ export function useDataRefresh() {
   
   // Refresh Pipedrive data
   async function refreshPipedrive() {
+    // Check debounce (20 seconds)
+    const now = Date.now()
+    const timeSinceLastRefresh = now - lastPipedriveRefresh.value
+    if (timeSinceLastRefresh < DEBOUNCE_MS) {
+      const secondsRemaining = Math.ceil((DEBOUNCE_MS - timeSinceLastRefresh) / 1000)
+      throw new Error(`Please wait ${secondsRemaining} seconds before refreshing again`)
+    }
+
+    lastPipedriveRefresh.value = now
     refreshingPipedrive.value = true
     try {
       const response = await fetch('/.netlify/functions/revenue-refresh-pipedrive', {
@@ -131,22 +156,85 @@ export function useDataRefresh() {
     }
   }
   
+  // Refresh all data (both QBO and Pipedrive)
+  async function refreshAll() {
+    // Check debounce (20 seconds)
+    const now = Date.now()
+    const timeSinceLastRefresh = now - lastAllRefresh.value
+    if (timeSinceLastRefresh < DEBOUNCE_MS) {
+      const secondsRemaining = Math.ceil((DEBOUNCE_MS - timeSinceLastRefresh) / 1000)
+      throw new Error(`Please wait ${secondsRemaining} seconds before refreshing again`)
+    }
+
+    lastAllRefresh.value = now
+    refreshingAll.value = true
+    refreshingQBO.value = true
+    refreshingPipedrive.value = true
+
+    try {
+      // Call QBO refresh which includes QB data + transaction cache
+      const qboResponse = await fetch('/.netlify/functions/revenue-refresh-qbo', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authStore.token}`
+        }
+      })
+
+      if (!qboResponse.ok) {
+        const errorData = await qboResponse.json()
+        throw new Error(errorData.error || 'Failed to refresh QuickBooks data')
+      }
+
+      // Call Pipedrive refresh (now optimized to not re-fetch QB data)
+      const pdResponse = await fetch('/.netlify/functions/revenue-refresh-pipedrive', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authStore.token}`
+        }
+      })
+
+      if (!pdResponse.ok) {
+        const errorData = await pdResponse.json()
+        throw new Error(errorData.error || 'Failed to refresh Pipedrive data')
+      }
+
+      const data = await qboResponse.json()
+      if (data.data && data.data.lastUpdated) {
+        qboLastRefresh.value = data.data.lastUpdated
+        pipedriveLastRefresh.value = data.data.lastUpdated
+      }
+
+      // Trigger revenue store refresh with cache bypass
+      await revenueStore.loadRevenueData(null, true)
+
+    } catch (error) {
+      console.error('Error refreshing all data:', error)
+      throw error // Re-throw so calling component can handle UI feedback
+    } finally {
+      refreshingAll.value = false
+      refreshingQBO.value = false
+      refreshingPipedrive.value = false
+    }
+  }
+
   // Initialize refresh times on composable creation
   // Note: This is now handled by the revenue store to avoid duplicate API calls
   // fetchLastRefreshTimes()
-  
+
   return {
     // State
     refreshingQBO,
     refreshingPipedrive,
+    refreshingAll,
     qboLastRefresh,
     pipedriveLastRefresh,
-    
+
     // Methods
     formatLastRefresh,
     formatRefreshTooltip,
     updateRefreshTimes,
     refreshQBO,
-    refreshPipedrive
+    refreshPipedrive,
+    refreshAll
   }
 }
