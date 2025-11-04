@@ -289,6 +289,7 @@ This allows secure HTTPS access to your local development server for webhook tes
 - **users** - User profiles with company associations
 - **oauth_tokens** - Encrypted API credentials per company
 - **revenue_archives** - Daily snapshots of all revenue data with enhanced calculations
+- **transaction_details_cache** - Prefetched transaction details for 3 months (prev, current, next) with 30-day TTL
 - **exceptions** - Tracked exception items
 - **client_aliases** - Client name mappings for accurate revenue attribution across systems
 
@@ -302,10 +303,11 @@ This allows secure HTTPS access to your local development server for webhook tes
 #### Revenue Data
 - `revenue-current.js` - Current revenue forecast calculations
 - `revenue-historical.js` - Historical archived data retrieval
-- `revenue-by-client.js` - Client-level revenue breakdown with alias resolution
-- `revenue-refresh-qbo.js` - Manual QuickBooks data refresh
-- `revenue-refresh-pipedrive.js` - Manual Pipedrive data refresh
-- `transaction-details.js` - Drill-down transaction data with client matching
+- `revenue-by-client.js` - Client-level revenue breakdown with alias resolution and caching
+- `revenue-refresh-qbo.js` - Manual QuickBooks data refresh with background transaction caching
+- `revenue-refresh-pipedrive.js` - Manual Pipedrive data refresh with background transaction caching
+- `transaction-details.js` - Drill-down transaction data with cache-first retrieval
+- `services/transaction-details-cache.js` - Transaction details prefetching and caching service
 
 #### OAuth & API Management
 - `qbo-oauth-start.js` - Initiate QuickBooks OAuth flow
@@ -337,7 +339,22 @@ This allows secure HTTPS access to your local development server for webhook tes
 
 ## Recent Enhancements
 
-### Client Revenue Attribution (Latest)
+### Transaction Details Caching & Comparison Views (Latest)
+- **Transaction Caching System**: Prefetches and caches transaction details for 3 months (previous, current, next) in MongoDB
+- **Background Prefetching**: Runs automatically during QBO and Pipedrive refresh operations without blocking user
+- **Instant Chart Drill-down**: Chart clicks now load transaction details instantly from cache
+- **Comparison Date Selector**: View historical forecasts side-by-side with current data
+- **Loading Indicators**: Clear visual feedback when changing date ranges to prevent UI flashing
+- **Smart Chart Updates**: Chart properly recreates when comparison datasets are added or removed
+- **Enhanced Transaction Modal**:
+  - Tabbed interface for Transactions and Clients views
+  - Transaction type filtering with toggle checkboxes
+  - Sorting options (amount, date, customer, description)
+  - Point value display alongside dollar amounts using configurable price per point
+- **Price Per Point Setting**: Company-level configuration for point-to-dollar conversion in transaction details
+- **Improved QBO Integration**: Fixed delayed charges parsing to correctly identify uninvoiced items
+
+### Client Revenue Attribution
 - **Client Breakdown Modal**: Click any month on the revenue chart to see revenue by client
 - **Client Alias System**: Map alternative client names to primary names for accurate tracking across systems
 - **Settings Management**: Inline edit forms for managing client aliases with toast notifications
