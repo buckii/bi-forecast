@@ -342,10 +342,13 @@
 import { ref, watch, computed, onUnmounted } from 'vue'
 import { format as formatDate, parseISO } from 'date-fns'
 import { useAuthStore } from '../stores/auth'
+import { useRevenueStore } from '../stores/revenue'
 import { Chart, registerables } from 'chart.js'
 import { isDarkModeGlobal } from '../composables/useDarkMode'
 
 Chart.register(...registerables)
+
+const revenueStore = useRevenueStore()
 
 const props = defineProps({
   isOpen: {
@@ -403,7 +406,7 @@ const enabledTypes = ref({
   delayedCharge: true,
   monthlyRecurring: true,
   wonUnscheduled: true,
-  weightedSales: true
+  weightedSales: revenueStore.includeWeightedSales  // Respect dashboard toggle
 })
 
 const allFiltersEnabled = computed(() => {
@@ -520,6 +523,16 @@ watch(() => props.isOpen, (isOpen) => {
   }
 })
 
+// Sync weighted sales filter with dashboard toggle and reload data
+watch(() => revenueStore.includeWeightedSales, (newValue) => {
+  enabledTypes.value.weightedSales = newValue
+
+  // Reload data if modal is open to fetch/exclude weighted sales transactions
+  if (props.isOpen && props.month) {
+    loadAllData()
+  }
+})
+
 async function loadAllData() {
   loading.value = true
   error.value = null
@@ -531,8 +544,13 @@ async function loadAllData() {
       params.append('as_of', props.asOf)
     }
 
-    // Fetch all transaction types in parallel
-    const components = ['invoiced', 'journalEntries', 'delayedCharges', 'monthlyRecurring', 'wonUnscheduled', 'weightedSales']
+    // Fetch transaction types based on dashboard toggle
+    const components = ['invoiced', 'journalEntries', 'delayedCharges', 'monthlyRecurring', 'wonUnscheduled']
+
+    // Only include weighted sales if enabled on dashboard
+    if (revenueStore.includeWeightedSales) {
+      components.push('weightedSales')
+    }
 
     const transactionPromises = components.map(async (component) => {
       const componentParams = new URLSearchParams(params)
@@ -549,10 +567,10 @@ async function loadAllData() {
       return data.transactions || []
     })
 
-    // Fetch client data
+    // Fetch client data (respect dashboard toggle)
     const clientParams = new URLSearchParams({
       month: props.month,
-      includeWeightedSales: 'true'
+      includeWeightedSales: revenueStore.includeWeightedSales.toString()
     })
     if (props.asOf) {
       clientParams.append('as_of', props.asOf)
