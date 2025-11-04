@@ -106,19 +106,12 @@
             </div>
 
             <div class="flex flex-col items-end">
-              <div class="flex space-x-2">
-                <button @click="refreshQBO" :disabled="refreshingQBO" class="btn-secondary flex items-center space-x-2">
-                  <div v-if="refreshingQBO" class="animate-spin h-4 w-4 border-2 border-gray-600 border-t-transparent rounded-full"></div>
-                  <span>{{ refreshingQBO ? 'Refreshing...' : 'Refresh QBO' }}</span>
-                </button>
-                <button @click="refreshPipedrive" :disabled="refreshingPipedrive" class="btn-secondary flex items-center space-x-2">
-                  <div v-if="refreshingPipedrive" class="animate-spin h-4 w-4 border-2 border-gray-600 border-t-transparent rounded-full"></div>
-                  <span>{{ refreshingPipedrive ? 'Refreshing...' : 'Refresh Pipedrive' }}</span>
-                </button>
-              </div>
+              <button @click="refreshAll" :disabled="refreshingAll" class="btn-secondary flex items-center space-x-2">
+                <div v-if="refreshingAll" class="animate-spin h-4 w-4 border-2 border-gray-600 border-t-transparent rounded-full"></div>
+                <span>{{ refreshingAll ? 'Refreshing...' : 'Refresh All Data' }}</span>
+              </button>
               <div class="flex space-x-6 mt-2 text-xs text-gray-500 dark:text-gray-400">
-                <span :title="formatRefreshTooltip(qboLastRefresh)">QBO: {{ formatLastRefresh(qboLastRefresh) }}</span>
-                <span :title="formatRefreshTooltip(pipedriveLastRefresh)">Pipedrive: {{ formatLastRefresh(pipedriveLastRefresh) }}</span>
+                <span :title="formatRefreshTooltip(qboLastRefresh)">Last refreshed: {{ formatLastRefresh(qboLastRefresh) }}</span>
               </div>
             </div>
           </div>
@@ -136,6 +129,9 @@
           <p class="text-xs text-gray-500 dark:text-gray-400">{{ getThisMonthRange() }}</p>
           <p class="text-3xl font-bold text-primary-600 mt-2">
             {{ chartRefreshing ? '—' : formatCurrency(revenueStore.currentMonthRevenue) }}
+          </p>
+          <p v-if="!chartRefreshing" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            Est. Profit: {{ formatCurrency(thisMonthProfit) }} ({{ thisMonthMargin.toFixed(0) }}%)
           </p>
           <div v-if="!chartRefreshing && comparisonCurrentMonthRevenue !== null" class="mt-3 space-y-1">
             <p class="text-xs text-gray-500 dark:text-gray-400">
@@ -160,6 +156,9 @@
           <p class="text-xs text-gray-500 dark:text-gray-400">{{ getThreeMonthRange() }}</p>
           <p class="text-3xl font-bold text-primary-600 mt-2">
             {{ chartRefreshing ? '—' : formatCurrency(revenueStore.threeMonthRevenue) }}
+          </p>
+          <p v-if="!chartRefreshing" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            Est. Profit: {{ formatCurrency(threeMonthProfit) }} ({{ threeMonthMargin.toFixed(0) }}%)
           </p>
           <div v-if="!chartRefreshing && comparisonThreeMonthRevenue !== null" class="mt-3 space-y-1">
             <p class="text-xs text-gray-500 dark:text-gray-400">
@@ -290,9 +289,15 @@
       <div class="card">
         <div class="flex flex-col space-y-4 mb-4">
           <!-- Title and Send button -->
-          <div class="flex justify-between items-center">
-            <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Monthly Revenue Forecast</h2>
-            <button 
+          <div class="flex justify-between items-start">
+            <div>
+              <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Monthly Revenue Forecast</h2>
+              <p v-if="!chartRefreshing" class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <span>Viewing data as of: <strong>{{ actualDataDates.mainDate }}</strong></span>
+                <span v-if="actualDataDates.compareDate"> | Comparing to: <strong>{{ actualDataDates.compareDate }}</strong></span>
+              </p>
+            </div>
+            <button
               @click="shareChartToSlack"
               :disabled="sharingToSlack || revenueStore.loading"
               class="btn-secondary inline-flex items-center"
@@ -400,15 +405,17 @@ import { format, parse, startOfMonth, endOfMonth, addMonths, subMonths } from 'd
 
 const revenueStore = useRevenueStore()
 const authStore = useAuthStore()
-const { 
-  refreshingQBO, 
-  refreshingPipedrive, 
-  qboLastRefresh, 
+const {
+  refreshingQBO,
+  refreshingPipedrive,
+  refreshingAll,
+  qboLastRefresh,
   pipedriveLastRefresh,
   formatLastRefresh,
   formatRefreshTooltip,
   refreshQBO,
-  refreshPipedrive
+  refreshPipedrive,
+  refreshAll
 } = useDataRefresh()
 
 // Load view as of date from localStorage if available, default to today
@@ -532,6 +539,25 @@ const effectiveMonthlyExpenses = computed(() => {
 const targetNetMargin = computed(() => {
   const settings = authStore.company?.settings
   return settings?.targetNetMargin || 20
+})
+
+// Computed properties for profit and margins
+const thisMonthProfit = computed(() => {
+  return revenueStore.currentMonthRevenue - effectiveMonthlyExpenses.value
+})
+
+const thisMonthMargin = computed(() => {
+  if (revenueStore.currentMonthRevenue === 0) return 0
+  return (thisMonthProfit.value / revenueStore.currentMonthRevenue) * 100
+})
+
+const threeMonthProfit = computed(() => {
+  return revenueStore.threeMonthRevenue - (effectiveMonthlyExpenses.value * 3)
+})
+
+const threeMonthMargin = computed(() => {
+  if (revenueStore.threeMonthRevenue === 0) return 0
+  return (threeMonthProfit.value / revenueStore.threeMonthRevenue) * 100
 })
 
 // Computed property for days cash using effective monthly expenses
@@ -676,6 +702,26 @@ function calculateChange(current, comparison) {
   return { dollar, percent }
 }
 
+// Computed property to show actual data dates from API
+const actualDataDates = computed(() => {
+  let mainDate = null
+  let compareDate = null
+
+  // Get main data date from revenue store
+  if (revenueStore.selectedDate) {
+    mainDate = format(new Date(revenueStore.selectedDate), 'MMM d, yyyy')
+  } else {
+    mainDate = format(new Date(), 'MMM d, yyyy')
+  }
+
+  // Get comparison data date from comparison data
+  if (comparisonData.value && comparisonData.value.archiveDate) {
+    compareDate = format(new Date(comparisonData.value.archiveDate), 'MMM d, yyyy')
+  }
+
+  return { mainDate, compareDate }
+})
+
 // Helper functions for date range labels
 function getThisMonthRange() {
   const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
@@ -728,15 +774,15 @@ function handleDateChange() {
     clearTimeout(dateChangeTimeout.value)
   }
 
-  // Show loading indicator and clear chart data immediately
-  loadingMainData.value = true
-
   // Adjust chart range when dates change
   adjustChartRange()
 
-  // Set new timeout for 1 second
+  // Set new timeout for 1 second - only show loading after debounce
   dateChangeTimeout.value = setTimeout(async () => {
     try {
+      // Show loading indicator only when actually fetching
+      loadingMainData.value = true
+
       const date = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
       const today = format(new Date(), 'yyyy-MM-dd')
 
@@ -758,11 +804,23 @@ async function loadComparisonData(date) {
     comparisonData.value = {
       months: response.months,
       balances: response.balances,
-      exceptions: response.exceptions
+      exceptions: response.exceptions,
+      archiveDate: response.archiveDate, // Store actual archive date from API
+      lastUpdated: response.lastUpdated
     }
   } catch (err) {
     console.error('Failed to load comparison data:', err)
     comparisonData.value = null
+
+    // Show friendly error modal and clear the invalid date
+    const formattedDate = format(date, 'MMM d, yyyy')
+    shareModalState.value = 'error'
+    shareModalError.value = `No data available for ${formattedDate}`
+    shareModalErrorDetails.value = `There is no archived data for the selected date (${formattedDate}). This could mean:\n\n• The date is in the future\n• No data was archived on that date\n• The date is before the system started tracking data\n\nPlease select a different date.`
+    showShareModal.value = true
+
+    // Clear the invalid comparison date
+    compareAsOfDate.value = ''
   } finally {
     loadingComparison.value = false
   }
@@ -774,21 +832,15 @@ function handleCompareDateChange() {
     clearTimeout(compareDateChangeTimeout.value)
   }
 
-  // Show loading indicator and clear chart data immediately
-  loadingComparison.value = true
-
   // Adjust chart range when dates change
   adjustChartRange()
 
-  // Set new timeout for 1 second
+  // Set new timeout for 1 second - only show loading after debounce
   compareDateChangeTimeout.value = setTimeout(async () => {
     if (compareAsOfDate.value) {
       const date = parse(compareAsOfDate.value, 'yyyy-MM-dd', new Date())
-      // loadComparisonData will handle setting loadingComparison to false
+      // loadComparisonData will handle setting loadingComparison to true and false
       await loadComparisonData(date)
-    } else {
-      // If date was cleared, just clear the loading state
-      loadingComparison.value = false
     }
   }, 1000)
 }
@@ -1045,10 +1097,15 @@ watch(selectedDateStr, (newValue) => {
   }
 })
 
-// Watch compareAsOfDate to save to localStorage
+// Watch compareAsOfDate to save to localStorage AND trigger data load
 watch(compareAsOfDate, (newValue) => {
   if (newValue) {
     localStorage.setItem('dashboard_compareAsOfDate', newValue)
+    // Trigger comparison data load when date changes
+    handleCompareDateChange()
+  } else {
+    // Clear comparison data if date is cleared
+    comparisonData.value = null
   }
 })
 
