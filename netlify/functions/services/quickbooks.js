@@ -148,63 +148,37 @@ class QuickBooksService {
 
   async getDelayedCharges(startDate, endDate) {
     const { accessToken, realmId } = await this.getAccessToken()
-    
-    
+
+
     try {
-      // Use Transaction List Report to get all transactions, then filter for charges
-        const columns = [
-          'inv_date',
-          'name',
-          'sales_cust1',
-          'tx_date',
-          'subt_nat_amount',
-          'account_name',
-          'doc_num',
-          'memo',
-          'other_account',
-          'tracking_num',
-          'txn_type',
-      ];
+      // Use Transaction List Report to get all line items for delayed charges
+      // Each row in the report represents a LINE ITEM, which we'll group by DocNumber
+      const columns = [
+        'tx_date',
+        'txn_type',
+        'doc_num',
+        'name',
+        'sales_cust1',
+        'account_name',
+        'category',
+        'inv_date',
+        'subt_nat_amount'
+      ]
       const reportUrl = `reports/TransactionList?start_date=${startDate}&end_date=${endDate}&transaction_list=Charge&columns=` + columns.join(',')
-      
+
       const reportData = await this.makeRequest(reportUrl, realmId, accessToken)
-      
-      if (reportData.Header) {
-      }
-      
-      // Log the full structure for debugging (first few rows)
-      if (reportData.Rows && reportData.Rows.length > 0) {
-        
-        // Also log column headers if available
-        if (reportData.Columns) {
-        }
-      }
-      
-      // Log first few rows with detailed column mapping
-      if (reportData.Rows && reportData.Rows.length > 0) {
-        for (let i = 0; i < Math.min(3, reportData.Rows.length); i++) {
-          const row = reportData.Rows[i]
-          if (row.type === 'Data' && row.ColData) {
-            row.ColData.forEach((col, index) => {
-            })
-          }
-        }
-      }
-      
-      // Parse the report data to extract delayed charges
-      const delayedCharges = this.parseChargeReport(reportData)
-      
-      if (delayedCharges.length > 0) {
-      }
-      
+
+      // Parse the report to get basic charge info
+      const delayedCharges = this.parseChargeReportBasic(reportData)
+
       return delayedCharges
-      
+
     } catch (error) {
       console.error('[QBO] Error fetching delayed charges:', error.message)
       if (error.message.includes('intuit_tid')) {
         console.error('[QBO] intuit_tid from error:', error.message.match(/intuit_tid=([^,\s]+)/)?.[1])
       }
-      
+
       // Return empty array instead of failing
       return []
     }
@@ -327,32 +301,87 @@ class QuickBooksService {
     return data.QueryResponse?.Account || []
   }
 
-  parseChargeReport(reportData) {
-    
-    // Initialize array to collect delayed charges
+  parseChargeReportBasic(reportData) {
+    // Extract basic delayed charge info from Transaction List Report
+    // Each row represents ONE delayed charge (not line items)
     const delayedCharges = []
-    
+
     try {
-      // Debug: Log the full report structure
-      
+      const rows = reportData.Rows?.Row || []
+
+      const processRows = (rowsToProcess) => {
+        if (!Array.isArray(rowsToProcess)) return
+
+        for (const row of rowsToProcess) {
+          if (row.type === 'Section' && row.Rows) {
+            processRows(row.Rows)
+          } else if (row.type === 'Data' && row.ColData) {
+            const colData = row.ColData || []
+
+            // Based on actual API response:
+            // [0] = tx_date, [1] = txn_type, [2] = doc_num, [3] = name (customer)
+            // [4] = account, [5] = inv_date, [6] = subt_nat_amount
+            const date = colData[0]?.value || ''
+            const transactionType = colData[1]?.value || ''
+            const docNumber = colData[2]?.value || ''
+            const customerName = colData[3]?.value || ''
+            const invoiceDate = colData[5]?.value || ''
+            const amount = colData[6]?.value || '0.00'
+
+            // Only include uninvoiced charges
+            const isNotInvoiced = !invoiceDate || invoiceDate.trim() === '' || invoiceDate === '0-00-00'
+
+            if (isNotInvoiced && (transactionType === 'Charge' || !transactionType)) {
+              delayedCharges.push({
+                DocNumber: docNumber,
+                TxnDate: date,
+                TotalAmt: parseFloat(amount.replace(/[$,]/g, '') || '0'),
+                CustomerRef: {
+                  name: customerName || 'Unknown Customer',
+                  value: colData[3]?.id || ''
+                },
+                Id: `dc-${docNumber}`,
+                Line: []
+              })
+            }
+          }
+        }
+      }
+
+      processRows(rows)
+
+      return delayedCharges
+
+    } catch (error) {
+      console.error('[QBO] Error parsing charge report:', error.message)
+      return []
+    }
+  }
+
+  parseChargeReport(reportData) {
+
+    // Initialize map to group line items by delayed charge DocNumber
+    const chargeMap = new Map()
+
+    try {
       // QuickBooks reports have a complex nested structure
       // The actual data is in reportData.Rows.Row
+      // Each row represents a LINE ITEM, not a full delayed charge
       const rows = reportData.Rows?.Row || []
-      const rowCount = rows ? rows.length : 'undefined'
-      
+
       // Recursive function to process all rows and sub-rows
       const processRows = (rowsToProcess, depth = 0) => {
         if (!Array.isArray(rowsToProcess)) {
           return
         }
-        
+
         for (const row of rowsToProcess) {
           if (row.type === 'Section' && row.Rows) {
             processRows(row.Rows, depth + 1)
           } else if (row.type === 'Data' && row.ColData) {
-            // This is a data row containing transaction details
+            // This is a data row containing ONE LINE ITEM from a delayed charge
             const colData = row.ColData || []
-            
+
             // Extract key values based on ACTUAL column structure returned by QB API:
             // Col[0]=tx_date, Col[1]=txn_type, Col[2]=doc_num, Col[3]=name, Col[4]=sales_cust1, Col[5]=account_name, Col[6]=category, Col[7]=inv_date, Col[8]=subt_nat_amount
             const date = colData[0]?.value || ''              // tx_date - Transaction Date
@@ -364,42 +393,66 @@ class QuickBooksService {
             const category = colData[6]?.value || ''          // Category/Item
             const invoiceDate = colData[7]?.value || ''       // inv_date - Invoice Date
             const amount = colData[8]?.value || '0.00'        // subt_nat_amount - Amount
-            
-            
+
+
             // Since we're filtering for charges only at the API level, all transactions should be charges
             // But let's verify the transaction type if it's provided
             if (!transactionType || transactionType === 'Charge' || transactionType === '') {
               // Include charges that have NOT been invoiced yet
               // Invoice Date is empty or '0-00-00' means not yet invoiced
               const isNotInvoiced = !invoiceDate || invoiceDate.trim() === '' || invoiceDate === '0-00-00'
-              
+
               if (isNotInvoiced) {
-                const delayedCharge = {
-                  Id: colData[2]?.id || `dc-${docNumber}`,  // doc_num is at index 2
-                  DocNumber: docNumber || `DC-${Date.now()}`,
-                  TxnDate: date,
-                  TotalAmt: parseFloat(amount.replace(/[$,]/g, '') || '0'),
-                  CustomerRef: { 
-                    name: customerName || 'Unknown Customer',
-                    value: colData[3]?.id || ''  // name is at index 3
-                  },
-                  Line: [], // Report doesn't include line details
-                  account: account,
-                  category: category,
-                  invoiceDate: invoiceDate
+                // Get or create the delayed charge entry
+                if (!chargeMap.has(docNumber)) {
+                  chargeMap.set(docNumber, {
+                    Id: colData[2]?.id || `dc-${docNumber}`,
+                    DocNumber: docNumber || `DC-${Date.now()}`,
+                    TxnDate: date,
+                    TotalAmt: 0,  // Will be calculated from line items
+                    CustomerRef: {
+                      name: customerName || 'Unknown Customer',
+                      value: colData[3]?.id || ''
+                    },
+                    Line: []
+                  })
                 }
-                
-                delayedCharges.push(delayedCharge)
+
+                // Add this line item to the charge
+                const charge = chargeMap.get(docNumber)
+                const lineAmount = parseFloat(amount.replace(/[$,]/g, '') || '0')
+
+                charge.Line.push({
+                  Amount: lineAmount,
+                  Description: category || account || '',  // Use category (item) or account as description
+                  DetailType: 'SalesItemLineDetail',
+                  SalesItemLineDetail: {
+                    ItemRef: {
+                      name: category || '',
+                      value: colData[6]?.id || ''
+                    },
+                    IncomeAccountRef: {
+                      name: account || '',
+                      value: colData[5]?.id || ''
+                    }
+                  }
+                })
+
+                // Update total
+                charge.TotalAmt += lineAmount
               }
             }
           }
         }
       }
-      
+
       processRows(rows)
-      
+
+      // Convert map to array
+      const delayedCharges = Array.from(chargeMap.values())
+
       return delayedCharges
-      
+
     } catch (error) {
       console.error('[QBO] Error parsing charge report:', error.message)
       return []
