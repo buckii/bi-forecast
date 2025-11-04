@@ -1,16 +1,43 @@
 <template>
   <div v-if="isOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-6xl mx-4 max-h-screen overflow-y-auto">
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-7xl mx-4 max-h-screen overflow-y-auto">
       <div class="flex items-center justify-between mb-4">
         <div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Transaction Details</h3>
-          <p class="text-sm text-gray-600 dark:text-gray-400">{{ formatMonth(month) }} - {{ formatComponentName(component) }}</p>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ formatMonth(month) }}</h3>
         </div>
         <button @click="closeModal" class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
+      </div>
+
+      <!-- Tab Navigation -->
+      <div class="border-b border-gray-200 dark:border-gray-700 mb-6">
+        <nav class="-mb-px flex space-x-8">
+          <button
+            @click="activeTab = 'transactions'"
+            :class="[
+              'py-2 px-1 border-b-2 font-medium text-sm',
+              activeTab === 'transactions'
+                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+            ]"
+          >
+            Transactions
+          </button>
+          <button
+            @click="activeTab = 'clients'"
+            :class="[
+              'py-2 px-1 border-b-2 font-medium text-sm',
+              activeTab === 'clients'
+                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+            ]"
+          >
+            Clients
+          </button>
+        </nav>
       </div>
 
       <!-- Loading State -->
@@ -23,240 +50,285 @@
         <p class="text-red-600 dark:text-red-400">{{ error }}</p>
       </div>
 
-      <!-- Transaction Data -->
-      <div v-else-if="transactionData" class="space-y-6">
+      <!-- Transactions Tab -->
+      <div v-else-if="activeTab === 'transactions' && allTransactions" class="space-y-6">
         <!-- Summary -->
         <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="text-center">
               <p class="text-sm text-gray-500 dark:text-gray-400">Total Amount</p>
-              <p class="text-2xl font-bold text-primary-600">{{ formatCurrency(transactionData.totalAmount) }}</p>
+              <p class="text-2xl font-bold text-primary-600">{{ formatCurrency(filteredTotalAmount) }}</p>
             </div>
             <div class="text-center">
               <p class="text-sm text-gray-500 dark:text-gray-400">Transaction Count</p>
-              <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ transactionData.count }}</p>
-            </div>
-            <div class="text-center">
-              <p class="text-sm text-gray-500 dark:text-gray-400">Date Range</p>
-              <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                {{ formatDate(transactionData.dateRange.startDate) }} - {{ formatDate(transactionData.dateRange.endDate) }}
-              </p>
+              <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ filteredTransactions.length }}</p>
             </div>
           </div>
         </div>
 
-        <!-- Transactions List (Material Design Cards) -->
-        <div v-if="transactionData.transactions.length > 0" class="space-y-2">
-          <!-- Transaction Cards -->
-          <div v-for="transaction in sortedTransactions" 
-               :key="transaction.id"
-               class="transaction-card bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden" 
-               :class="{ 
-                 'expanded': expandedTransactions.has(transaction.id),
-                 'annual-item': transaction.description?.toLowerCase().includes('annual')
-               }">
-                    <!-- Main Transaction Row -->
-                    <div @click="toggleDetails(transaction.id)"
-                         class="flex items-center p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150">
-                      <div class="flex-shrink-0 mr-4">
-                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                              :class="getTypeColor(transaction.type)">
-                          {{ formatTransactionType(transaction.type) }}
-                        </span>
-                      </div>
-                      
-                      <div class="flex-1 grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
-                        <div class="font-medium text-gray-900 dark:text-gray-100">
-                          {{ transaction.docNumber }}
-                        </div>
-                        <div class="text-sm text-gray-500 dark:text-gray-400">
-                          {{ formatDate(transaction.date) }}
-                        </div>
-                        <div class="text-sm text-gray-900 dark:text-gray-100">
-                          {{ transaction.customer }}
-                        </div>
-                        <div class="text-sm text-gray-900 dark:text-gray-100 truncate">
-                          {{ transaction.description }}
-                        </div>
-                        <div class="text-right">
-                          <div class="font-medium text-gray-900 dark:text-gray-100">
-                            {{ formatCurrency(transaction.amount) }}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div class="flex-shrink-0 ml-4">
-                        <svg class="w-5 h-5 text-gray-400 transform transition-transform duration-200"
-                             :class="{ 'rotate-180': expandedTransactions.has(transaction.id) }"
-                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
+        <!-- Filter Toggles -->
+        <div class="space-y-3">
+          <div class="flex flex-wrap gap-3 items-center">
+            <button
+              @click="toggleAllFilters"
+              class="text-sm text-primary-600 dark:text-primary-400 hover:underline font-medium w-20 text-left"
+            >
+              {{ allFiltersEnabled ? 'Hide All' : 'Show All' }}
+            </button>
+            <div class="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
+            <label v-for="type in transactionTypes" :key="type.value" class="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                v-model="enabledTypes[type.value]"
+                class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              <span class="text-sm text-gray-700 dark:text-gray-300">{{ type.label }}</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400">({{ getTypeCount(type.value) }})</span>
+            </label>
+          </div>
+
+          <!-- Sort Options -->
+          <div class="flex items-center space-x-4 text-sm">
+            <span class="text-gray-500 dark:text-gray-400">Sort by:</span>
+            <button
+              @click="toggleSort('amount')"
+              :class="[
+                'hover:underline font-medium',
+                sortBy === 'amount' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300'
+              ]"
+            >
+              Amount {{ sortBy === 'amount' ? (sortDirection === 'desc' ? '↓' : '↑') : '' }}
+            </button>
+            <button
+              @click="toggleSort('date')"
+              :class="[
+                'hover:underline font-medium',
+                sortBy === 'date' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300'
+              ]"
+            >
+              Date {{ sortBy === 'date' ? (sortDirection === 'desc' ? '↓' : '↑') : '' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Transactions List (Table Format) -->
+        <div v-if="filteredTransactions.length > 0" class="overflow-x-auto">
+          <table class="w-full">
+            <thead class="bg-gray-50 dark:bg-gray-700 text-xs uppercase text-gray-700 dark:text-gray-300">
+              <tr>
+                <th class="px-3 py-3 text-left font-medium w-32">Type</th>
+                <th class="px-3 py-3 text-left font-medium w-28">Doc #</th>
+                <th class="px-3 py-3 text-left font-medium w-32">Date</th>
+                <th class="px-3 py-3 text-left font-medium">Client</th>
+                <th class="px-3 py-3 text-left font-medium">Description</th>
+                <th class="px-3 py-3 text-right font-medium w-32">Amount</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+              <template v-for="transaction in filteredTransactions" :key="transaction.id">
+                <tr
+                  @click="transaction.type !== 'delayedCharge' ? toggleDetails(transaction.id) : null"
+                  :class="[
+                    transaction.type !== 'delayedCharge' ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700' : '',
+                    'transition-colors',
+                    transaction.description?.toLowerCase().includes('annual') ? 'opacity-60' : ''
+                  ]"
+                >
+                  <td class="px-3 py-3">
+                    <div class="flex items-center">
+                      <svg v-if="transaction.type !== 'delayedCharge'"
+                           class="w-4 h-4 text-gray-400 mr-2 transform transition-transform duration-200"
+                           :class="{ 'rotate-90': expandedTransactions.has(transaction.id) }"
+                           fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                      <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap"
+                            :class="[getTypeColor(transaction.type), transaction.type === 'delayedCharge' ? '' : 'ml-0']"
+                            :style="transaction.type === 'delayedCharge' ? 'margin-left: 24px' : ''">
+                        {{ formatTransactionType(transaction.type) }}
+                      </span>
+                    </div>
+                  </td>
+                  <td class="px-3 py-3 font-medium text-gray-900 dark:text-gray-100 text-sm">
+                    {{ transaction.docNumber }}
+                  </td>
+                  <td class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                    {{ formatTransactionDate(transaction.date) }}
+                  </td>
+                  <td class="px-3 py-3 text-sm text-gray-900 dark:text-gray-100">
+                    {{ transaction.customer }}
+                  </td>
+                  <td class="px-3 py-3 text-sm text-gray-900 dark:text-gray-100">
+                    <div class="truncate max-w-md">{{ transaction.description }}</div>
+                  </td>
+                  <td class="px-3 py-3 text-right font-medium text-gray-900 dark:text-gray-100">
+                    {{ formatCurrency(transaction.amount) }}
+                  </td>
+                </tr>
+                <tr v-if="transaction.type !== 'delayedCharge' && expandedTransactions.has(transaction.id)" class="bg-gray-50 dark:bg-gray-700">
+                  <td colspan="6" class="px-3 py-4">
+                    <div class="space-y-2">
+                      <h4 class="font-medium text-gray-900 dark:text-gray-100 text-sm">Transaction Details</h4>
+                      <div class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                        {{ JSON.stringify(transaction.details, null, 2) }}
                       </div>
                     </div>
-                    
-                    <!-- Expandable Details (Material Design) -->
-                    <div class="expandable-content" 
-                         v-show="expandedTransactions.has(transaction.id)">
-                      <div class="px-4 pb-4 pt-0 bg-gray-50 dark:bg-gray-700 border-t border-gray-100 dark:border-gray-600">
-                        <div class="space-y-4">
-                          <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-3">Transaction Details</h4>
-                          
-                          <!-- Invoice Details -->
-                          <div v-if="transaction.type === 'invoice' && transaction.details" class="space-y-3">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                              <div>
-                                <span class="text-gray-500 dark:text-gray-400">Outstanding Balance:</span>
-                                <span class="ml-2 font-medium">{{ formatCurrency(transaction.details.balance) }}</span>
-                              </div>
-                              <div v-if="transaction.details.dueDate">
-                                <span class="text-gray-500 dark:text-gray-400">Due Date:</span>
-                                <span class="ml-2 font-medium">{{ formatDate(transaction.details.dueDate) }}</span>
-                              </div>
-                              <div>
-                                <span class="text-gray-500 dark:text-gray-400">Line Items:</span>
-                                <span class="ml-2 font-medium">{{ transaction.details.lineCount }}</span>
-                              </div>
-                            </div>
-                            
-                            <!-- Invoice Line Items -->
-                            <div v-if="transaction.details.lines?.length > 0" class="bg-white dark:bg-gray-700 rounded-lg p-3">
-                              <h5 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Line Item Details:</h5>
-                              <div class="overflow-x-auto">
-                                <table class="min-w-full text-xs">
-                                  <thead class="bg-gray-50">
-                                    <tr>
-                                      <th class="px-2 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Description</th>
-                                      <th class="px-2 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Revenue Account</th>
-                                      <th class="px-2 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Item</th>
-                                      <th class="px-2 py-2 text-center font-medium text-gray-600 dark:text-gray-400">Qty</th>
-                                      <th class="px-2 py-2 text-right font-medium text-gray-600 dark:text-gray-400">Unit Price</th>
-                                      <th class="px-2 py-2 text-right font-medium text-gray-600 dark:text-gray-400">Amount</th>
-                                      <th class="px-2 py-2 text-center font-medium text-gray-600 dark:text-gray-400">Monthly?</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody class="divide-y divide-gray-100">
-                                    <tr v-for="line in transaction.details.lines" :key="line.lineNum">
-                                      <td class="px-2 py-2">{{ line.description || 'N/A' }}</td>
-                                      <td class="px-2 py-2">
-                                        <div v-if="line.revenueAccountName" class="text-gray-700 dark:text-gray-300">
-                                          {{ line.revenueAccountName }}
-                                          <span v-if="line.revenueAccountNumber" class="text-gray-400 dark:text-gray-500">({{ line.revenueAccountNumber }})</span>
-                                        </div>
-                                        <span v-else class="text-gray-400 dark:text-gray-500">N/A</span>
-                                      </td>
-                                      <td class="px-2 py-2">{{ line.itemName || 'N/A' }}</td>
-                                      <td class="px-2 py-2 text-center">{{ line.qty || 'N/A' }}</td>
-                                      <td class="px-2 py-2 text-right">${{ (line.unitPrice || 0).toFixed(2) }}</td>
-                                      <td class="px-2 py-2 text-right font-medium">${{ (line.amount || 0).toFixed(2) }}</td>
-                                      <td class="px-2 py-2 text-center">
-                                        <span v-if="line.hasMonthly" 
-                                              class="inline-flex items-center px-1 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                                          Yes
-                                        </span>
-                                        <span v-else class="text-gray-400 dark:text-gray-500 text-xs">No</span>
-                                      </td>
-                                    </tr>
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <!-- Journal Entry Details -->
-                          <div v-if="transaction.type === 'journalEntry' && transaction.details" class="bg-white dark:bg-gray-700 rounded-lg p-3">
-                            <div class="mb-3">
-                              <span class="text-gray-500">Total Lines:</span>
-                              <span class="ml-2 font-medium">{{ transaction.details.totalLines }}</span>
-                            </div>
-                            <div v-if="transaction.details.revenueLines?.length > 0">
-                              <h5 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Revenue Lines:</h5>
-                              <div class="space-y-2">
-                                <div v-for="(line, idx) in transaction.details.revenueLines" 
-                                     :key="idx" 
-                                     class="flex justify-between text-sm py-1 px-2 bg-gray-50 dark:bg-gray-600 rounded">
-                                  <span>{{ line.description }} ({{ line.accountName }})</span>
-                                  <span class="font-medium">{{ formatCurrency(line.amount) }}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <!-- Monthly Recurring Details -->
-                          <div v-if="transaction.type === 'monthlyRecurring' && transaction.details" class="bg-white dark:bg-gray-700 rounded-lg p-3">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-3">
-                              <div>
-                                <span class="text-gray-500 dark:text-gray-400">Original Invoice Amount:</span>
-                                <span class="ml-2 font-medium">{{ formatCurrency(transaction.details.totalInvoiceAmount) }}</span>
-                              </div>
-                            </div>
-                            <div v-if="transaction.details.note" class="text-sm text-amber-600 mb-3 p-2 bg-amber-50 rounded">
-                              <span class="font-medium">Note:</span> {{ transaction.details.note }}
-                            </div>
-                            <div v-if="transaction.details.monthlyLines?.length > 0">
-                              <h5 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Monthly Line Items:</h5>
-                              <div class="space-y-2">
-                                <div v-for="(line, idx) in transaction.details.monthlyLines" 
-                                     :key="idx" 
-                                     class="flex justify-between text-sm py-1 px-2 bg-gray-50 dark:bg-gray-600 rounded">
-                                  <span>{{ line.description }} ({{ line.accountName || line.itemName }})</span>
-                                  <span class="font-medium">{{ formatCurrency(line.amount) }}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <!-- Won Unscheduled Details -->
-                          <div v-if="transaction.type === 'wonUnscheduled' && transaction.details" class="bg-white dark:bg-gray-700 rounded-lg p-3">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                              <div>
-                                <span class="text-gray-500 dark:text-gray-400">Total Deal Value:</span>
-                                <span class="ml-2 font-medium">{{ formatCurrency(transaction.details.totalValue) }}</span>
-                              </div>
-                              <div>
-                                <span class="text-gray-500 dark:text-gray-400">Duration (months):</span>
-                                <span class="ml-2 font-medium">{{ transaction.details.duration }}</span>
-                              </div>
-                              <div>
-                                <span class="text-gray-500 dark:text-gray-400">Monthly Value:</span>
-                                <span class="ml-2 font-medium">{{ formatCurrency(transaction.details.monthlyValue) }}</span>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <!-- Weighted Sales Details -->
-                          <div v-if="transaction.type === 'weightedSales' && transaction.details" class="bg-white dark:bg-gray-700 rounded-lg p-3">
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                              <div>
-                                <span class="text-gray-500 dark:text-gray-400">Deal Value:</span>
-                                <span class="ml-2 font-medium">{{ formatCurrency(transaction.details.totalValue) }}</span>
-                              </div>
-                              <div>
-                                <span class="text-gray-500 dark:text-gray-400">Probability:</span>
-                                <span class="ml-2 font-medium">{{ transaction.details.probability }}%</span>
-                              </div>
-                              <div>
-                                <span class="text-gray-500 dark:text-gray-400">Duration (months):</span>
-                                <span class="ml-2 font-medium">{{ transaction.details.duration || 'N/A' }}</span>
-                              </div>
-                              <div>
-                                <span class="text-gray-500 dark:text-gray-400">Expected Close:</span>
-                                <span class="ml-2 font-medium">{{ formatDate(transaction.details.expectedCloseDate) }}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
         </div>
 
         <!-- No Transactions -->
         <div v-else class="text-center py-8">
-          <p class="text-gray-500 dark:text-gray-400">No transactions found for this period and component.</p>
+          <p class="text-gray-500 dark:text-gray-400">No transactions match the selected filters.</p>
         </div>
       </div>
 
-      <!-- Footer -->
+      <!-- Clients Tab -->
+      <div v-else-if="activeTab === 'clients' && clientData" class="space-y-6">
+        <!-- Total and Toggle -->
+        <div class="flex items-center justify-between">
+          <div class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Total: {{ formatCurrency(clientTotalRevenue) }}
+          </div>
+          <label class="flex items-center cursor-pointer">
+            <div class="relative">
+              <input
+                type="checkbox"
+                v-model="includeWeightedSalesInClients"
+                class="sr-only"
+              />
+              <div class="w-12 h-6 rounded-full shadow-inner transition-colors duration-200 relative flex items-center"
+                   :class="includeWeightedSalesInClients ? 'bg-green-500' : 'bg-red-500'">
+                <div class="w-5 h-5 bg-white rounded-full shadow-lg transition-transform duration-200 absolute"
+                     :class="includeWeightedSalesInClients ? 'translate-x-6' : 'translate-x-0.5'">
+                </div>
+              </div>
+            </div>
+            <span class="ml-3 text-sm text-gray-700 dark:text-gray-300">Include weighted sales</span>
+          </label>
+        </div>
+
+        <!-- Pie Chart -->
+        <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Revenue by Client</h4>
+          <div style="height: 300px;">
+            <canvas ref="pieCanvas"></canvas>
+          </div>
+        </div>
+
+        <!-- Client Table -->
+        <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Client Breakdown</h4>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead class="bg-gray-100 dark:bg-gray-800">
+                <tr>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Client Name
+                  </th>
+                  <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Revenue
+                  </th>
+                  <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Approx. Points
+                  </th>
+                  <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    % of Total
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                <template v-for="client in sortedClients" :key="client.client">
+                  <tr
+                    @click="toggleClient(client.client)"
+                    class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <div class="flex items-center">
+                        <svg class="w-4 h-4 text-gray-400 mr-2 transform transition-transform duration-200"
+                             :class="{ 'rotate-90': expandedClients.has(client.client) }"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                        {{ client.client }}
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-100">
+                      {{ formatCurrency(client.total) }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600 dark:text-gray-300">
+                      {{ formatPoints(client.total) }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">
+                      {{ formatPercent(client.total, clientTotalRevenue) }}
+                    </td>
+                  </tr>
+
+                  <!-- Expanded Transactions for Client -->
+                  <tr v-if="expandedClients.has(client.client)" class="bg-gray-50 dark:bg-gray-800">
+                    <td colspan="4" class="px-6 py-4">
+                      <div class="space-y-2">
+                        <h5 class="font-medium text-gray-900 dark:text-gray-100 text-sm mb-3">
+                          Transactions for {{ client.client }}
+                        </h5>
+                        <div v-if="getClientTransactions(client.client).length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+                          No transactions found
+                        </div>
+                        <div v-else class="space-y-1">
+                          <div
+                            v-for="transaction in getClientTransactions(client.client)"
+                            :key="transaction.id"
+                            class="flex items-center justify-between py-2 px-3 bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 text-xs"
+                          >
+                            <div class="flex items-center space-x-3 flex-1">
+                              <span class="inline-flex items-center px-2 py-1 rounded-full font-medium"
+                                    :class="getTypeColor(transaction.type)">
+                                {{ formatTransactionType(transaction.type) }}
+                              </span>
+                              <span class="font-medium text-gray-900 dark:text-gray-100">
+                                {{ transaction.docNumber }}
+                              </span>
+                              <span class="text-gray-500 dark:text-gray-400">
+                                {{ formatTransactionDate(transaction.date) }}
+                              </span>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                              <span class="text-gray-700 dark:text-gray-300 truncate max-w-xs">
+                                {{ transaction.description }}
+                              </span>
+                              <span class="font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                                {{ formatCurrency(transaction.amount) }}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+                <tr class="bg-gray-50 dark:bg-gray-800 font-semibold">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                    Total
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-100">
+                    {{ formatCurrency(clientTotalRevenue) }}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600 dark:text-gray-300">
+                    {{ formatPoints(clientTotalRevenue) }}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">
+                    100%
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <div class="flex justify-end space-x-3 mt-6 pt-4 border-t">
         <button @click="closeModal" class="btn-secondary">
           Close
@@ -267,9 +339,13 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue'
-import { format, parse } from 'date-fns'
+import { ref, watch, computed, onUnmounted } from 'vue'
+import { format as formatDate, parseISO } from 'date-fns'
 import { useAuthStore } from '../stores/auth'
+import { Chart, registerables } from 'chart.js'
+import { isDarkModeGlobal } from '../composables/useDarkMode'
+
+Chart.register(...registerables)
 
 const props = defineProps({
   isOpen: {
@@ -277,10 +353,6 @@ const props = defineProps({
     default: false
   },
   month: {
-    type: String,
-    default: ''
-  },
-  component: {
     type: String,
     default: ''
   },
@@ -292,76 +364,228 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
-const loading = ref(false)
-const error = ref(null)
-const transactionData = ref(null)
-const expandedTransactions = ref(new Set())
+const authStore = useAuthStore()
 
-const sortedTransactions = computed(() => {
-  if (!transactionData.value?.transactions) return []
-  
-  return [...transactionData.value.transactions].sort((a, b) => {
-    const aIsAnnual = a.description?.toLowerCase().includes('annual') || false
-    const bIsAnnual = b.description?.toLowerCase().includes('annual') || false
-    
-    if (aIsAnnual && !bIsAnnual) return 1
-    if (!aIsAnnual && bIsAnnual) return -1
-    return 0
-  })
+// Get price per point from company settings
+const pricePerPoint = computed(() => {
+  return authStore.company?.settings?.pricePerPoint || 550
 })
 
-watch(() => props.isOpen, (isOpen) => {
-  if (isOpen && props.month && props.component) {
-    loadTransactionDetails()
+// Load last visited tab from localStorage, default to 'transactions'
+const activeTab = ref(localStorage.getItem('transactionModal_lastTab') || 'transactions')
+const loading = ref(false)
+const error = ref(null)
+const allTransactions = ref([])
+const clientData = ref(null)
+const expandedTransactions = ref(new Set())
+const expandedClients = ref(new Set())
+const pieCanvas = ref(null)
+let pieChartInstance = null
+const includeWeightedSalesInClients = ref(true)
+
+// Sorting state
+const sortBy = ref('amount')  // 'amount' | 'date'
+const sortDirection = ref('desc')  // 'asc' | 'desc'
+
+// Transaction type filters
+const transactionTypes = [
+  { value: 'invoice', label: 'Invoiced' },
+  { value: 'journalEntry', label: 'Journal Entries' },
+  { value: 'delayedCharge', label: 'Delayed Charges' },
+  { value: 'monthlyRecurring', label: 'Monthly Recurring' },
+  { value: 'wonUnscheduled', label: 'Won Unscheduled' },
+  { value: 'weightedSales', label: 'Weighted Sales' }
+]
+
+const enabledTypes = ref({
+  invoice: true,
+  journalEntry: true,
+  delayedCharge: true,
+  monthlyRecurring: true,
+  wonUnscheduled: true,
+  weightedSales: true
+})
+
+const allFiltersEnabled = computed(() => {
+  return Object.values(enabledTypes.value).every(v => v)
+})
+
+const filteredTransactions = computed(() => {
+  if (!allTransactions.value) return []
+
+  let filtered = allTransactions.value.filter(t => enabledTypes.value[t.type])
+
+  // Apply sorting
+  filtered.sort((a, b) => {
+    if (sortBy.value === 'amount') {
+      const diff = a.amount - b.amount
+      return sortDirection.value === 'desc' ? -diff : diff
+    } else {
+      // Sort by date
+      const dateA = new Date(a.date)
+      const dateB = new Date(b.date)
+      const diff = dateA - dateB
+      return sortDirection.value === 'desc' ? -diff : diff
+    }
+  })
+
+  return filtered
+})
+
+const filteredTotalAmount = computed(() => {
+  return filteredTransactions.value.reduce((sum, t) => sum + (t.amount || 0), 0)
+})
+
+const sortedClients = computed(() => {
+  if (!clientData.value?.clients) return []
+
+  // If weighted sales should be excluded, recalculate client totals from transactions
+  if (!includeWeightedSalesInClients.value) {
+    const clientTotals = {}
+
+    allTransactions.value
+      .filter(t => t.type !== 'weightedSales')
+      .forEach(t => {
+        if (!clientTotals[t.customer]) {
+          clientTotals[t.customer] = 0
+        }
+        clientTotals[t.customer] += t.amount || 0
+      })
+
+    return Object.entries(clientTotals)
+      .map(([client, total]) => ({ client, total }))
+      .sort((a, b) => b.total - a.total)
+  }
+
+  return [...clientData.value.clients].sort((a, b) => b.total - a.total)
+})
+
+const clientTotalRevenue = computed(() => {
+  return sortedClients.value.reduce((sum, c) => sum + c.total, 0)
+})
+
+function getClientTransactions(clientName) {
+  if (!allTransactions.value) return []
+  let transactions = allTransactions.value.filter(t => t.customer === clientName)
+
+  // Filter out weighted sales if toggle is off
+  if (!includeWeightedSalesInClients.value) {
+    transactions = transactions.filter(t => t.type !== 'weightedSales')
+  }
+
+  return transactions.sort((a, b) => new Date(b.date) - new Date(a.date))
+}
+
+function getTypeCount(type) {
+  if (!allTransactions.value) return 0
+  return allTransactions.value.filter(t => t.type === type).length
+}
+
+function toggleAllFilters() {
+  const newValue = !allFiltersEnabled.value
+  Object.keys(enabledTypes.value).forEach(key => {
+    enabledTypes.value[key] = newValue
+  })
+}
+
+function toggleSort(field) {
+  if (sortBy.value === field) {
+    // Toggle direction
+    sortDirection.value = sortDirection.value === 'desc' ? 'asc' : 'desc'
   } else {
-    // Reset state when modal closes
-    transactionData.value = null
+    // Change field and set to descending
+    sortBy.value = field
+    sortDirection.value = 'desc'
+  }
+}
+
+watch(() => props.isOpen, (isOpen) => {
+  if (isOpen && props.month) {
+    loadAllData()
+  } else {
+    // Reset state when modal closes (but preserve activeTab for next open)
+    allTransactions.value = []
+    clientData.value = null
     error.value = null
     expandedTransactions.value.clear()
+    expandedClients.value.clear()
+    sortBy.value = 'amount'
+    sortDirection.value = 'desc'
+
+    // Cleanup pie chart
+    if (pieChartInstance) {
+      pieChartInstance.destroy()
+      pieChartInstance = null
+    }
   }
 })
 
-async function loadTransactionDetails() {
+async function loadAllData() {
   loading.value = true
   error.value = null
 
   try {
-    // Use the auth store to get the token (same approach as other components)
-    const authStore = useAuthStore()
-
-    // Build URL with as_of parameter if provided
-    const params = new URLSearchParams({
-      month: props.month,
-      component: props.component
-    })
-
+    // Build params
+    const params = new URLSearchParams({ month: props.month })
     if (props.asOf) {
       params.append('as_of', props.asOf)
     }
 
-    const response = await fetch(`/.netlify/functions/transaction-details?${params.toString()}`, {
-      headers: {
-        'Authorization': `Bearer ${authStore.token}`
-      }
+    // Fetch all transaction types in parallel
+    const components = ['invoiced', 'journalEntries', 'delayedCharges', 'monthlyRecurring', 'wonUnscheduled', 'weightedSales']
+
+    const transactionPromises = components.map(async (component) => {
+      const componentParams = new URLSearchParams(params)
+      componentParams.append('component', component)
+
+      const response = await fetch(`/.netlify/functions/transaction-details?${componentParams.toString()}`, {
+        headers: { 'Authorization': `Bearer ${authStore.token}` }
+      })
+
+      if (!response.ok) return []
+
+      const result = await response.json()
+      const data = result.data || result
+      return data.transactions || []
     })
 
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || 'Failed to load transaction details')
+    // Fetch client data
+    const clientParams = new URLSearchParams({
+      month: props.month,
+      includeWeightedSales: 'true'
+    })
+    if (props.asOf) {
+      clientParams.append('as_of', props.asOf)
     }
 
-    const result = await response.json()
-    transactionData.value = result.data || result
+    const clientPromise = fetch(`/.netlify/functions/revenue-by-client?${clientParams.toString()}`, {
+      headers: { 'Authorization': `Bearer ${authStore.token}` }
+    }).then(async (response) => {
+      if (!response.ok) return null
+      const result = await response.json()
+      return result.data || result
+    })
+
+    // Wait for all data
+    const [transactionResults, clientResult] = await Promise.all([
+      Promise.all(transactionPromises),
+      clientPromise
+    ])
+
+    // Flatten all transactions
+    allTransactions.value = transactionResults.flat()
+    clientData.value = clientResult
+
+    // If we're on the clients tab, create the pie chart
+    if (activeTab.value === 'clients' && clientResult?.clients) {
+      setTimeout(() => createPieChart(), 100)
+    }
 
   } catch (err) {
     error.value = err.message
   } finally {
     loading.value = false
   }
-}
-
-function closeModal() {
-  emit('close')
 }
 
 function toggleDetails(transactionId) {
@@ -372,50 +596,52 @@ function toggleDetails(transactionId) {
   }
 }
 
-function formatMonth(monthStr) {
-  if (!monthStr) return ''
-  const date = parse(monthStr, 'yyyy-MM-dd', new Date())
-  return format(date, 'MMMM yyyy')
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return 'N/A'
-  // Handle date parsing more carefully to avoid timezone issues
-  if (dateStr.includes('-') && dateStr.length === 10) {
-    // For YYYY-MM-DD format, parse explicitly to avoid timezone shifts
-    const [year, month, day] = dateStr.split('-').map(Number)
-    const date = new Date(year, month - 1, day)
-    return format(date, 'MMM dd, yyyy')
+function toggleClient(clientName) {
+  if (expandedClients.value.has(clientName)) {
+    expandedClients.value.delete(clientName)
   } else {
-    // For other date formats, use standard parsing
-    const date = new Date(dateStr)
-    return format(date, 'MMM dd, yyyy')
+    expandedClients.value.add(clientName)
   }
 }
 
-function formatCurrency(value) {
+function closeModal() {
+  emit('close')
+}
+
+function formatMonth(monthStr) {
+  if (!monthStr) return ''
+  try {
+    const [year, month] = monthStr.split('-')
+    const date = new Date(year, parseInt(month) - 1, 1)
+    return formatDate(date, 'MMMM yyyy')
+  } catch (e) {
+    return monthStr
+  }
+}
+
+function formatTransactionDate(dateStr) {
+  if (!dateStr) return 'N/A'
+  try {
+    // Parse as ISO and format in local timezone
+    const date = parseISO(dateStr.split('T')[0])
+    return formatDate(date, 'MMM d, yyyy')
+  } catch (e) {
+    return dateStr
+  }
+}
+
+function formatCurrency(amount) {
+  if (amount == null) return '$0.00'
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
-  }).format(value || 0)
-}
-
-function formatComponentName(component) {
-  const names = {
-    invoiced: 'Invoiced Revenue',
-    journalEntries: 'Journal Entry Revenue',
-    delayedCharges: 'Delayed Charges',
-    monthlyRecurring: 'Monthly Recurring (Estimated)',
-    wonUnscheduled: 'Won Unscheduled Deals',
-    weightedSales: 'Weighted Sales Forecast'
-  }
-  return names[component] || component
+  }).format(amount)
 }
 
 function formatTransactionType(type) {
-  const names = {
+  const typeMap = {
     invoice: 'Invoice',
     journalEntry: 'Journal Entry',
     delayedCharge: 'Delayed Charge',
@@ -423,7 +649,7 @@ function formatTransactionType(type) {
     wonUnscheduled: 'Won Unscheduled',
     weightedSales: 'Weighted Sales'
   }
-  return names[type] || type
+  return typeMap[type] || type
 }
 
 function getTypeColor(type) {
@@ -437,44 +663,125 @@ function getTypeColor(type) {
   }
   return colors[type] || 'bg-gray-100 text-gray-800'
 }
+
+function formatPercent(value, total) {
+  if (total === 0) return '0%'
+  return ((value / total) * 100).toFixed(1) + '%'
+}
+
+function formatPoints(value) {
+  const points = value / pricePerPoint.value
+  return points.toFixed(1)
+}
+
+function getClientColors() {
+  const colors = [
+    '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b',
+    '#06b6d4', '#84cc16', '#f97316', '#a855f7', '#14b8a6', '#6366f1',
+    '#ef4444', '#22c55e', '#eab308', '#d946ef', '#0ea5e9', '#f43f5e'
+  ]
+  return colors
+}
+
+function createPieChart() {
+  if (!pieCanvas.value || !clientData.value?.clients || clientData.value.clients.length === 0) return
+
+  if (pieChartInstance) {
+    pieChartInstance.destroy()
+  }
+
+  const ctx = pieCanvas.value.getContext('2d')
+  const colors = getClientColors()
+  const clients = sortedClients.value
+  const total = clientTotalRevenue.value
+
+  // Show top 10 clients individually, group the rest
+  const mainClients = clients.slice(0, 10)
+  const otherClients = clients.slice(10)
+
+  // Add "Other Clients" if there are any
+  if (otherClients.length > 0) {
+    const otherTotal = otherClients.reduce((sum, c) => sum + c.total, 0)
+    mainClients.push({
+      client: `Other Clients (${otherClients.length})`,
+      total: otherTotal
+    })
+  }
+
+  pieChartInstance = new Chart(ctx, {
+    type: 'pie',
+    data: {
+      labels: mainClients.map(c => c.client),
+      datasets: [{
+        data: mainClients.map(c => c.total),
+        backgroundColor: mainClients.map((_, i) => colors[i % colors.length])
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: {
+            color: isDarkModeGlobal.value ? '#ffffff' : '#374151',
+            padding: 10,
+            font: {
+              size: 11
+            }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const label = context.label || ''
+              const value = formatCurrency(context.parsed)
+              const percent = formatPercent(context.parsed, total)
+              return `${label}: ${value} (${percent})`
+            }
+          }
+        }
+      }
+    }
+  })
+}
+
+// Watch for tab changes to create/destroy pie chart and save preference
+watch(activeTab, (newTab) => {
+  // Save to localStorage for next time
+  localStorage.setItem('transactionModal_lastTab', newTab)
+
+  if (newTab === 'clients' && clientData.value?.clients) {
+    setTimeout(() => createPieChart(), 100)
+  } else if (pieChartInstance) {
+    pieChartInstance.destroy()
+    pieChartInstance = null
+  }
+})
+
+// Watch for dark mode changes to update chart
+watch(isDarkModeGlobal, () => {
+  if (pieChartInstance && activeTab.value === 'clients') {
+    createPieChart()
+  }
+})
+
+// Watch for weighted sales toggle to update chart
+watch(includeWeightedSalesInClients, () => {
+  if (pieChartInstance && activeTab.value === 'clients') {
+    createPieChart()
+  }
+})
+
+// Cleanup on unmount
+onUnmounted(() => {
+  if (pieChartInstance) {
+    pieChartInstance.destroy()
+    pieChartInstance = null
+  }
+})
 </script>
 
 <style scoped>
-.transaction-card {
-  @apply transition-all duration-200 ease-in-out;
-}
-
-.transaction-card.expanded {
-  @apply shadow-sm;
-}
-
-.expandable-content {
-  @apply transition-all duration-300 ease-in-out;
-  animation: slideDown 0.3s ease-out;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Material Design elevation for cards */
-.transaction-card:hover {
-  @apply shadow-sm;
-}
-
-.transaction-card.expanded {
-  @apply shadow-md;
-}
-
-/* Annual items styling - muted appearance */
-.transaction-card.annual-item {
-  @apply opacity-60 bg-gray-50 dark:bg-gray-700;
-}
+/* Remove card transitions since we're using table rows */
 </style>
