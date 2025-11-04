@@ -289,7 +289,7 @@ This allows secure HTTPS access to your local development server for webhook tes
 - **users** - User profiles with company associations
 - **oauth_tokens** - Encrypted API credentials per company
 - **revenue_archives** - Daily snapshots of all revenue data with enhanced calculations
-- **transaction_details_cache** - Prefetched transaction details for 3 months (prev, current, next) with 30-day TTL
+- **transaction_details_cache** - Prefetched transaction details for 6 months (prev 2, current, next 3) with 30-day TTL
 - **exceptions** - Tracked exception items
 - **client_aliases** - Client name mappings for accurate revenue attribution across systems
 
@@ -301,13 +301,14 @@ This allows secure HTTPS access to your local development server for webhook tes
 - `auth-logout.js` - Logout (client-side token removal)
 
 #### Revenue Data
-- `revenue-current.js` - Current revenue forecast calculations
+- `revenue-current.js` - Current revenue forecast calculations with data caching
 - `revenue-historical.js` - Historical archived data retrieval
 - `revenue-by-client.js` - Client-level revenue breakdown with alias resolution and caching
-- `revenue-refresh-qbo.js` - Manual QuickBooks data refresh with background transaction caching
-- `revenue-refresh-pipedrive.js` - Manual Pipedrive data refresh with background transaction caching
+- `revenue-refresh-qbo.js` - Manual QuickBooks data refresh with optimized API calls and background transaction caching
+- `revenue-refresh-pipedrive.js` - Manual Pipedrive data refresh reusing existing QB data to minimize API calls
 - `transaction-details.js` - Drill-down transaction data with cache-first retrieval
-- `services/transaction-details-cache.js` - Transaction details prefetching and caching service
+- `services/transaction-details-cache.js` - Transaction details prefetching and caching service (6-month window)
+- `services/revenue-calculator.js` - Core revenue calculation engine with data caching and API call optimization
 
 #### OAuth & API Management
 - `qbo-oauth-start.js` - Initiate QuickBooks OAuth flow
@@ -339,8 +340,23 @@ This allows secure HTTPS access to your local development server for webhook tes
 
 ## Recent Enhancements
 
-### Transaction Details Caching & Comparison Views (Latest)
-- **Transaction Caching System**: Prefetches and caches transaction details for 3 months (previous, current, next) in MongoDB
+### API Optimization & Performance Improvements (Latest)
+- **QuickBooks API Rate Limit Prevention**: Eliminated N+1 query patterns and added 100ms spacing between API calls
+- **Data Caching**: QBO and Pipedrive data cached in RevenueCalculator instance and reused across operations
+- **Optimized Refresh Operations**:
+  - QB refresh reduced from ~14 to ~8 API calls (43% reduction)
+  - Pipedrive refresh reduced from ~16 to ~2 API calls (87.5% reduction) by reusing existing QB data
+- **Extended Transaction Cache**: Prefetch window expanded from 3 to 6 months (prev 2, current, next 3)
+- **20-Second Debounce**: Prevents accidental rapid refresh clicks with helpful countdown messages
+- **Consolidated Refresh UI**: Single "Refresh All Data" button replaces separate QB/Pipedrive buttons
+- **Profit & Margin Display**: This Month and 3-Month Forecast cards now show estimated profit and net margin %
+- **Data Verification**: Chart subtitle displays actual data dates from API to verify loaded data
+- **Improved Error Handling**: Friendly modal messages when comparison dates have no archived data
+- **Auto-clearing Invalid Dates**: Comparison dates automatically cleared when no data exists
+- **Fixed Date Input Debouncing**: Loading spinners only appear after 1 second of no typing
+
+### Transaction Details Caching & Comparison Views
+- **Transaction Caching System**: Prefetches and caches transaction details for 6 months (prev 2, current, next 3) in MongoDB
 - **Background Prefetching**: Runs automatically during QBO and Pipedrive refresh operations without blocking user
 - **Instant Chart Drill-down**: Chart clicks now load transaction details instantly from cache
 - **Comparison Date Selector**: View historical forecasts side-by-side with current data
