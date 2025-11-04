@@ -30,12 +30,15 @@ async function prefetchTransactionDetails(companyId, asOfDate = null) {
       }
     }
 
-    // Calculate months to prefetch: previous, current, next
+    // Calculate months to prefetch: previous 2, current, next 3 (6 months total)
     const currentMonth = startOfMonth(effectiveDate)
     const monthsToCache = [
+      addMonths(currentMonth, -2), // 2 months ago
       addMonths(currentMonth, -1), // Previous month
       currentMonth,                 // Current month
-      addMonths(currentMonth, 1)   // Next month
+      addMonths(currentMonth, 1),  // Next month
+      addMonths(currentMonth, 2),  // 2 months out
+      addMonths(currentMonth, 3)   // 3 months out
     ]
 
     const cacheCollection = await getCollection('transaction_details_cache')
