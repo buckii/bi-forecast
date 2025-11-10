@@ -188,27 +188,63 @@
 
       <!-- Clients Tab -->
       <div v-else-if="activeTab === 'clients' && clientData" class="space-y-6">
-        <!-- Total and Toggle -->
-        <div class="flex items-center justify-between">
-          <div class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Total: {{ formatCurrency(clientTotalRevenue) }}
+        <!-- Summary -->
+        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="text-center">
+              <p class="text-sm text-gray-500 dark:text-gray-400">Total Amount</p>
+              <p class="text-2xl font-bold text-primary-600">{{ formatCurrency(clientTotalRevenue) }}</p>
+            </div>
+            <div class="text-center">
+              <p class="text-sm text-gray-500 dark:text-gray-400">Client Count</p>
+              <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ sortedClients.length }}</p>
+            </div>
           </div>
-          <label class="flex items-center cursor-pointer">
-            <div class="relative">
+        </div>
+
+        <!-- Filter Toggles and Sorting -->
+        <div class="space-y-3">
+          <!-- Transaction Type Filters -->
+          <div class="flex flex-wrap gap-3 items-center">
+            <button
+              @click="toggleAllClientFilters"
+              class="text-sm text-primary-600 dark:text-primary-400 hover:underline font-medium w-20 text-left"
+            >
+              {{ allClientFiltersEnabled ? 'Hide All' : 'Show All' }}
+            </button>
+            <div class="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
+            <label v-for="type in transactionTypes" :key="type.value" class="flex items-center space-x-2 cursor-pointer">
               <input
                 type="checkbox"
-                v-model="includeWeightedSalesInClients"
-                class="sr-only"
+                v-model="clientEnabledTypes[type.value]"
+                class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
               />
-              <div class="w-12 h-6 rounded-full shadow-inner transition-colors duration-200 relative flex items-center"
-                   :class="includeWeightedSalesInClients ? 'bg-green-500' : 'bg-red-500'">
-                <div class="w-5 h-5 bg-white rounded-full shadow-lg transition-transform duration-200 absolute"
-                     :class="includeWeightedSalesInClients ? 'translate-x-6' : 'translate-x-0.5'">
-                </div>
-              </div>
-            </div>
-            <span class="ml-3 text-sm text-gray-700 dark:text-gray-300">Include weighted sales</span>
-          </label>
+              <span class="text-sm text-gray-700 dark:text-gray-300">{{ type.label }}</span>
+            </label>
+          </div>
+
+          <!-- Sort Options -->
+          <div class="flex items-center space-x-4 text-sm">
+            <span class="text-gray-500 dark:text-gray-400">Sort by:</span>
+            <button
+              @click="toggleClientSort('amount')"
+              :class="[
+                'hover:underline font-medium',
+                clientSortBy === 'amount' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300'
+              ]"
+            >
+              Amount {{ clientSortBy === 'amount' ? (clientSortDirection === 'desc' ? '↓' : '↑') : '' }}
+            </button>
+            <button
+              @click="toggleClientSort('client')"
+              :class="[
+                'hover:underline font-medium',
+                clientSortBy === 'client' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300'
+              ]"
+            >
+              Client (alpha) {{ clientSortBy === 'client' ? (clientSortDirection === 'desc' ? '↓' : '↑') : '' }}
+            </button>
+          </div>
         </div>
 
         <!-- Pie Chart -->
@@ -340,6 +376,7 @@
 
 <script setup>
 import { ref, watch, computed, onUnmounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { format as formatDate, parseISO } from 'date-fns'
 import { useAuthStore } from '../stores/auth'
 import { useRevenueStore } from '../stores/revenue'
@@ -349,6 +386,8 @@ import { isDarkModeGlobal } from '../composables/useDarkMode'
 Chart.register(...registerables)
 
 const revenueStore = useRevenueStore()
+const router = useRouter()
+const route = useRoute()
 
 const props = defineProps({
   isOpen: {
@@ -374,8 +413,13 @@ const pricePerPoint = computed(() => {
   return authStore.company?.settings?.pricePerPoint || 550
 })
 
-// Load last visited tab from localStorage, default to 'transactions'
-const activeTab = ref(localStorage.getItem('transactionModal_lastTab') || 'transactions')
+// Initialize tab from URL param, fallback to localStorage, default to 'transactions'
+const getInitialTab = () => {
+  if (route.query.modalTab) return route.query.modalTab
+  return localStorage.getItem('transactionModal_lastTab') || 'transactions'
+}
+
+const activeTab = ref(getInitialTab())
 const loading = ref(false)
 const error = ref(null)
 const allTransactions = ref([])
@@ -384,11 +428,14 @@ const expandedTransactions = ref(new Set())
 const expandedClients = ref(new Set())
 const pieCanvas = ref(null)
 let pieChartInstance = null
-const includeWeightedSalesInClients = ref(true)
 
-// Sorting state
+// Sorting state for Transactions tab
 const sortBy = ref('amount')  // 'amount' | 'date'
 const sortDirection = ref('desc')  // 'asc' | 'desc'
+
+// Sorting state for Clients tab
+const clientSortBy = ref('amount')  // 'amount' | 'client'
+const clientSortDirection = ref('desc')  // 'asc' | 'desc'
 
 // Transaction type filters
 const transactionTypes = [
@@ -409,8 +456,22 @@ const enabledTypes = ref({
   weightedSales: revenueStore.includeWeightedSales  // Respect dashboard toggle
 })
 
+// Separate filter state for Clients tab
+const clientEnabledTypes = ref({
+  invoice: true,
+  journalEntry: true,
+  delayedCharge: true,
+  monthlyRecurring: true,
+  wonUnscheduled: true,
+  weightedSales: revenueStore.includeWeightedSales  // Respect dashboard toggle
+})
+
 const allFiltersEnabled = computed(() => {
   return Object.values(enabledTypes.value).every(v => v)
+})
+
+const allClientFiltersEnabled = computed(() => {
+  return Object.values(clientEnabledTypes.value).every(v => v)
 })
 
 const filteredTransactions = computed(() => {
@@ -442,25 +503,34 @@ const filteredTotalAmount = computed(() => {
 const sortedClients = computed(() => {
   if (!clientData.value?.clients) return []
 
-  // If weighted sales should be excluded, recalculate client totals from transactions
-  if (!includeWeightedSalesInClients.value) {
-    const clientTotals = {}
+  // Recalculate client totals from transactions based on enabled filters
+  const clientTotals = {}
 
-    allTransactions.value
-      .filter(t => t.type !== 'weightedSales')
-      .forEach(t => {
-        if (!clientTotals[t.customer]) {
-          clientTotals[t.customer] = 0
-        }
-        clientTotals[t.customer] += t.amount || 0
-      })
+  allTransactions.value
+    .filter(t => clientEnabledTypes.value[t.type])
+    .forEach(t => {
+      if (!clientTotals[t.customer]) {
+        clientTotals[t.customer] = 0
+      }
+      clientTotals[t.customer] += t.amount || 0
+    })
 
-    return Object.entries(clientTotals)
-      .map(([client, total]) => ({ client, total }))
-      .sort((a, b) => b.total - a.total)
-  }
+  const clients = Object.entries(clientTotals)
+    .map(([client, total]) => ({ client, total }))
 
-  return [...clientData.value.clients].sort((a, b) => b.total - a.total)
+  // Apply sorting
+  clients.sort((a, b) => {
+    if (clientSortBy.value === 'amount') {
+      const diff = a.total - b.total
+      return clientSortDirection.value === 'desc' ? -diff : diff
+    } else {
+      // Sort by client name (alpha)
+      const comparison = a.client.localeCompare(b.client)
+      return clientSortDirection.value === 'desc' ? -comparison : comparison
+    }
+  })
+
+  return clients
 })
 
 const clientTotalRevenue = computed(() => {
@@ -469,14 +539,13 @@ const clientTotalRevenue = computed(() => {
 
 function getClientTransactions(clientName) {
   if (!allTransactions.value) return []
-  let transactions = allTransactions.value.filter(t => t.customer === clientName)
 
-  // Filter out weighted sales if toggle is off
-  if (!includeWeightedSalesInClients.value) {
-    transactions = transactions.filter(t => t.type !== 'weightedSales')
-  }
+  // Filter transactions by client name and enabled types
+  const transactions = allTransactions.value
+    .filter(t => t.customer === clientName && clientEnabledTypes.value[t.type])
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
 
-  return transactions.sort((a, b) => new Date(b.date) - new Date(a.date))
+  return transactions
 }
 
 function getTypeCount(type) {
@@ -491,6 +560,13 @@ function toggleAllFilters() {
   })
 }
 
+function toggleAllClientFilters() {
+  const newValue = !allClientFiltersEnabled.value
+  Object.keys(clientEnabledTypes.value).forEach(key => {
+    clientEnabledTypes.value[key] = newValue
+  })
+}
+
 function toggleSort(field) {
   if (sortBy.value === field) {
     // Toggle direction
@@ -499,6 +575,17 @@ function toggleSort(field) {
     // Change field and set to descending
     sortBy.value = field
     sortDirection.value = 'desc'
+  }
+}
+
+function toggleClientSort(field) {
+  if (clientSortBy.value === field) {
+    // Toggle direction
+    clientSortDirection.value = clientSortDirection.value === 'desc' ? 'asc' : 'desc'
+  } else {
+    // Change field and set to descending
+    clientSortBy.value = field
+    clientSortDirection.value = 'desc'
   }
 }
 
@@ -512,8 +599,14 @@ watch(() => props.isOpen, (isOpen) => {
     error.value = null
     expandedTransactions.value.clear()
     expandedClients.value.clear()
+
+    // Reset transaction filters and sorting
     sortBy.value = 'amount'
     sortDirection.value = 'desc'
+
+    // Reset client filters and sorting
+    clientSortBy.value = 'amount'
+    clientSortDirection.value = 'desc'
 
     // Cleanup pie chart
     if (pieChartInstance) {
@@ -526,6 +619,7 @@ watch(() => props.isOpen, (isOpen) => {
 // Sync weighted sales filter with dashboard toggle and reload data
 watch(() => revenueStore.includeWeightedSales, (newValue) => {
   enabledTypes.value.weightedSales = newValue
+  clientEnabledTypes.value.weightedSales = newValue
 
   // Reload data if modal is open to fetch/exclude weighted sales transactions
   if (props.isOpen && props.month) {
@@ -764,10 +858,14 @@ function createPieChart() {
   })
 }
 
-// Watch for tab changes to create/destroy pie chart and save preference
+// Watch for tab changes to create/destroy pie chart, save preference, and update URL
 watch(activeTab, (newTab) => {
   // Save to localStorage for next time
   localStorage.setItem('transactionModal_lastTab', newTab)
+
+  // Update URL query parameter
+  const query = { ...route.query, modalTab: newTab }
+  router.replace({ query })
 
   if (newTab === 'clients' && clientData.value?.clients) {
     setTimeout(() => createPieChart(), 100)
@@ -784,12 +882,12 @@ watch(isDarkModeGlobal, () => {
   }
 })
 
-// Watch for weighted sales toggle to update chart
-watch(includeWeightedSalesInClients, () => {
+// Watch for client filter changes to update chart
+watch(clientEnabledTypes, () => {
   if (pieChartInstance && activeTab.value === 'clients') {
     createPieChart()
   }
-})
+}, { deep: true })
 
 // Cleanup on unmount
 onUnmounted(() => {

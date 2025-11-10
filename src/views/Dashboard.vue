@@ -393,6 +393,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useRevenueStore } from '../stores/revenue'
 import { useAuthStore } from '../stores/auth'
 import { useDataRefresh } from '../composables/useDataRefresh'
@@ -405,6 +406,8 @@ import { format, parse, startOfMonth, endOfMonth, addMonths, subMonths } from 'd
 
 const revenueStore = useRevenueStore()
 const authStore = useAuthStore()
+const router = useRouter()
+const route = useRoute()
 const {
   refreshingQBO,
   refreshingPipedrive,
@@ -418,10 +421,24 @@ const {
   refreshAll
 } = useDataRefresh()
 
-// Load view as of date from localStorage if available, default to today
-const selectedDateStr = ref(localStorage.getItem('dashboard_viewAsOfDate') || format(new Date(), 'yyyy-MM-dd'))
-// Load compare date from localStorage if available
-const compareAsOfDate = ref(localStorage.getItem('dashboard_compareAsOfDate') || '')
+// Initialize dates from URL params first, fallback to localStorage, then defaults
+const getInitialDate = () => {
+  if (route.query.date) return route.query.date
+  return localStorage.getItem('dashboard_viewAsOfDate') || format(new Date(), 'yyyy-MM-dd')
+}
+
+const getInitialCompareDate = () => {
+  if (route.query.compareDate) return route.query.compareDate
+  return localStorage.getItem('dashboard_compareAsOfDate') || ''
+}
+
+const selectedDateStr = ref(getInitialDate())
+const compareAsOfDate = ref(getInitialCompareDate())
+
+// Initialize weighted sales toggle from URL param if present (default is true)
+if (route.query.weightedSales !== undefined) {
+  revenueStore.includeWeightedSales = route.query.weightedSales !== 'false'
+}
 
 // Comparison data storage
 const comparisonData = ref(null)
@@ -431,9 +448,20 @@ const loadingMainData = ref(false)
 // Chart refreshing is true when either main data or comparison data is loading
 const chartRefreshing = computed(() => loadingMainData.value || loadingComparison.value)
 
+// Initialize chart range from URL params or defaults
+const getInitialChartStart = () => {
+  if (route.query.chartStart) return route.query.chartStart
+  return format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd')
+}
+
+const getInitialChartEnd = () => {
+  if (route.query.chartEnd) return route.query.chartEnd
+  return format(endOfMonth(addMonths(new Date(), 4)), 'yyyy-MM-dd')
+}
+
 // Date range for chart display (default to first day of last month to last day 4 months from now)
-const chartStartDateStr = ref(format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'))
-const chartEndDateStr = ref(format(endOfMonth(addMonths(new Date(), 4)), 'yyyy-MM-dd'))
+const chartStartDateStr = ref(getInitialChartStart())
+const chartEndDateStr = ref(getInitialChartEnd())
 
 // Debounce timeout refs
 const dateChangeTimeout = ref(null)
@@ -861,7 +889,7 @@ function clearCompareDate() {
 
   compareAsOfDate.value = ''
   comparisonData.value = null
-  localStorage.removeItem('dashboard_compareAsOfDate')
+  // localStorage removal and URL update handled by watcher
 
   // Reset comparison loading state
   loadingComparison.value = false
@@ -1018,11 +1046,23 @@ function handleBarClick(data) {
     component: data.component
   }
   showTransactionModal.value = true
+
+  // Add modal params to URL
+  const query = { ...route.query }
+  query.modalTab = route.query.modalTab || 'transactions'
+  query.modalMonth = data.month
+  router.replace({ query })
 }
 
 function closeTransactionModal() {
   showTransactionModal.value = false
   selectedTransaction.value = { month: '', component: '' }
+
+  // Remove modal params from URL when closing
+  const query = { ...route.query }
+  delete query.modalTab
+  delete query.modalMonth
+  router.replace({ query })
 }
 
 async function shareChartToSlack() {
@@ -1098,23 +1138,80 @@ function closeShareModal() {
   showShareModal.value = false
 }
 
-// Watch selectedDateStr to save to localStorage
+// Function to update URL query parameters
+function updateURLParams() {
+  const query = {}
+
+  // Add date params if not default
+  const today = format(new Date(), 'yyyy-MM-dd')
+  if (selectedDateStr.value && selectedDateStr.value !== today) {
+    query.date = selectedDateStr.value
+  }
+
+  if (compareAsOfDate.value) {
+    query.compareDate = compareAsOfDate.value
+  }
+
+  // Add chart range params
+  const defaultStart = format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd')
+  const defaultEnd = format(endOfMonth(addMonths(new Date(), 4)), 'yyyy-MM-dd')
+
+  if (chartStartDateStr.value !== defaultStart) {
+    query.chartStart = chartStartDateStr.value
+  }
+
+  if (chartEndDateStr.value !== defaultEnd) {
+    query.chartEnd = chartEndDateStr.value
+  }
+
+  // Add weighted sales toggle only if false (true is the default)
+  if (!revenueStore.includeWeightedSales) {
+    query.weightedSales = 'false'
+  }
+
+  // Preserve modal params if they exist
+  if (route.query.modalTab) {
+    query.modalTab = route.query.modalTab
+  }
+  if (route.query.modalMonth) {
+    query.modalMonth = route.query.modalMonth
+  }
+
+  // Update URL without triggering navigation
+  router.replace({ query })
+}
+
+// Watch selectedDateStr to save to localStorage and update URL
 watch(selectedDateStr, (newValue) => {
   if (newValue) {
     localStorage.setItem('dashboard_viewAsOfDate', newValue)
+    updateURLParams()
   }
 })
 
-// Watch compareAsOfDate to save to localStorage AND trigger data load
+// Watch compareAsOfDate to save to localStorage, update URL, AND trigger data load
 watch(compareAsOfDate, (newValue) => {
   if (newValue) {
     localStorage.setItem('dashboard_compareAsOfDate', newValue)
+    updateURLParams()
     // Trigger comparison data load when date changes
     handleCompareDateChange()
   } else {
     // Clear comparison data if date is cleared
     comparisonData.value = null
+    localStorage.removeItem('dashboard_compareAsOfDate')
+    updateURLParams()
   }
+})
+
+// Watch chart date range changes to update URL
+watch([chartStartDateStr, chartEndDateStr], () => {
+  updateURLParams()
+})
+
+// Watch weighted sales toggle to update URL
+watch(() => revenueStore.includeWeightedSales, () => {
+  updateURLParams()
 })
 
 onMounted(async () => {
@@ -1133,6 +1230,15 @@ onMounted(async () => {
     if (compareAsOfDate.value) {
       const date = parse(compareAsOfDate.value, 'yyyy-MM-dd', new Date())
       await loadComparisonData(date)
+    }
+
+    // Check if URL has modal parameters and open modal
+    if (route.query.modalMonth) {
+      selectedTransaction.value = {
+        month: route.query.modalMonth,
+        component: ''
+      }
+      showTransactionModal.value = true
     }
 
     // Initial data loaded successfully
