@@ -179,21 +179,29 @@
           <div v-if="chartRefreshing" class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">1-Year Unbilled</h3>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">1-Year Won</h3>
           <p class="text-xs text-gray-500 dark:text-gray-400">{{ getCurrentDateLabel() }}</p>
           <p class="text-3xl font-bold text-primary-600 mt-2">
-            {{ chartRefreshing ? '—' : formatCurrency(revenueStore.yearUnbilledCharges) }}
+            {{ chartRefreshing ? '—' : formatCurrency(yearWon) }}
           </p>
-          <div v-if="!chartRefreshing && comparisonYearUnbilled !== null" class="mt-3 space-y-1">
+          <div v-if="!chartRefreshing" class="space-y-0.5 mt-1">
+            <p class="text-xs text-gray-400 dark:text-gray-500">
+              Recurring: {{ formatCurrency(twelveMonthsRecurring) }}
+            </p>
+            <p class="text-xs text-gray-400 dark:text-gray-500">
+              Charges: {{ formatCurrency(revenueStore.yearUnbilledCharges) }}
+            </p>
+          </div>
+          <div v-if="!chartRefreshing && comparisonYearWon !== null" class="mt-3 space-y-1">
             <p class="text-xs text-gray-500 dark:text-gray-400">
               As of {{ formatCompareDate() }}
             </p>
             <p class="text-xl font-semibold text-gray-700 dark:text-gray-300">
-              {{ formatCurrency(comparisonYearUnbilled) }}
+              {{ formatCurrency(comparisonYearWon) }}
             </p>
-            <p :class="calculateChange(revenueStore.yearUnbilledCharges, comparisonYearUnbilled).dollar >= 0 ? 'text-green-600' : 'text-red-600'" class="text-sm font-medium">
-              {{ calculateChange(revenueStore.yearUnbilledCharges, comparisonYearUnbilled).dollar >= 0 ? '+' : '' }}{{ formatCurrency(calculateChange(revenueStore.yearUnbilledCharges, comparisonYearUnbilled).dollar) }}
-              ({{ calculateChange(revenueStore.yearUnbilledCharges, comparisonYearUnbilled).percent >= 0 ? '+' : '' }}{{ calculateChange(revenueStore.yearUnbilledCharges, comparisonYearUnbilled).percent.toFixed(1) }}%)
+            <p :class="calculateChange(yearWon, comparisonYearWon).dollar >= 0 ? 'text-green-600' : 'text-red-600'" class="text-sm font-medium">
+              {{ calculateChange(yearWon, comparisonYearWon).dollar >= 0 ? '+' : '' }}{{ formatCurrency(calculateChange(yearWon, comparisonYearWon).dollar) }}
+              ({{ calculateChange(yearWon, comparisonYearWon).percent >= 0 ? '+' : '' }}{{ calculateChange(yearWon, comparisonYearWon).percent.toFixed(1) }}%)
             </p>
           </div>
         </div>
@@ -277,6 +285,9 @@
           </div>
           <p v-if="!chartRefreshing" class="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Total: {{ formatCurrency((revenueStore.totalCashOnHand || 0) + (revenueStore.totalReceivables || 0)) }}
+          </p>
+          <p v-if="!chartRefreshing" class="text-xs text-gray-400 dark:text-gray-500">
+            AR: {{ formatCurrency(revenueStore.totalReceivables || 0) }}
           </p>
           <p v-if="!chartRefreshing" class="text-xs text-gray-400 dark:text-gray-500">
             Expenses: {{ formatCurrency(effectiveMonthlyExpenses) }}/mo
@@ -608,6 +619,28 @@ const daysCashPlusAR = computed(() => {
   return Math.round(totalLiquid / dailyExpenses)
 })
 
+// Computed property for 12 months of monthly recurring revenue
+const twelveMonthsRecurring = computed(() => {
+  const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
+  const start = startOfMonth(selectedDate)
+  let total = 0
+
+  for (let i = 0; i < 12; i++) {
+    const month = format(addMonths(start, i), 'yyyy-MM-dd')
+    const monthData = revenueStore.revenueData.find(m => m.month === month)
+    if (monthData) {
+      total += monthData.components.monthlyRecurring
+    }
+  }
+
+  return total
+})
+
+// Computed property for 1-Year Won (12 months recurring + unbilled)
+const yearWon = computed(() => {
+  return twelveMonthsRecurring.value + revenueStore.yearUnbilledCharges
+})
+
 // Comparison metrics computed properties
 const comparisonCurrentMonthRevenue = computed(() => {
   if (!comparisonData.value || !compareAsOfDate.value) return null
@@ -657,6 +690,28 @@ const comparisonThreeMonthRevenue = computed(() => {
 const comparisonYearUnbilled = computed(() => {
   if (!comparisonData.value || !compareAsOfDate.value) return null
   return comparisonData.value.balances.yearUnbilled || 0
+})
+
+const comparisonTwelveMonthsRecurring = computed(() => {
+  if (!comparisonData.value || !compareAsOfDate.value) return null
+  const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
+  const start = startOfMonth(selectedDate)
+  let total = 0
+
+  for (let i = 0; i < 12; i++) {
+    const month = format(addMonths(start, i), 'yyyy-MM-dd')
+    const monthData = comparisonData.value.months.find(m => m.month === month)
+    if (monthData) {
+      total += monthData.components.monthlyRecurring
+    }
+  }
+
+  return total
+})
+
+const comparisonYearWon = computed(() => {
+  if (!comparisonData.value || !compareAsOfDate.value) return null
+  return comparisonTwelveMonthsRecurring.value + comparisonYearUnbilled.value
 })
 
 const comparisonThirtyDaysUnbilled = computed(() => {
@@ -1051,7 +1106,9 @@ function handleBarClick(data) {
 
   // Add modal params to URL
   const query = { ...route.query }
-  query.modalTab = route.query.modalTab || 'transactions'
+  // Check localStorage for last tab if not in URL, to match what modal will actually display
+  const lastTab = localStorage.getItem('transactionModal_lastTab') || 'transactions'
+  query.modalTab = route.query.modalTab || lastTab
   query.modalMonth = data.month
   router.replace({ query })
 }
