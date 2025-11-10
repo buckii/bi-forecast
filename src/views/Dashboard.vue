@@ -611,9 +611,10 @@ const daysCashPlusAR = computed(() => {
 // Comparison metrics computed properties
 const comparisonCurrentMonthRevenue = computed(() => {
   if (!comparisonData.value || !compareAsOfDate.value) return null
-  const compareDate = parse(compareAsOfDate.value, 'yyyy-MM-dd', new Date())
-  const compareMonth = format(startOfMonth(compareDate), 'yyyy-MM-dd')
-  const monthData = comparisonData.value.months.find(m => m.month === compareMonth)
+  // Use the currently selected date's month, not the comparison date's month
+  const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
+  const currentMonth = format(startOfMonth(selectedDate), 'yyyy-MM-dd')
+  const monthData = comparisonData.value.months.find(m => m.month === currentMonth)
   if (!monthData) return 0
 
   const components = monthData.components
@@ -630,8 +631,9 @@ const comparisonCurrentMonthRevenue = computed(() => {
 
 const comparisonThreeMonthRevenue = computed(() => {
   if (!comparisonData.value || !compareAsOfDate.value) return null
-  const compareDate = parse(compareAsOfDate.value, 'yyyy-MM-dd', new Date())
-  const start = startOfMonth(compareDate)
+  // Use the currently selected date's month as the starting point, not the comparison date
+  const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
+  const start = startOfMonth(selectedDate)
   let total = 0
 
   for (let i = 0; i < 3; i++) {
