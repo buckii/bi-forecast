@@ -122,7 +122,11 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 ### 2. Key Metrics
 - **This Month Revenue Forecast**: Sum of all components for current month
 - **3-Month Revenue Forecast**: Rolling 3-month total
-- **1-Year Unbilled Charges**: Total delayed charges for next 12 months
+- **1-Year Won**: 12 months of recurring revenue + won unscheduled + journal entries + unbilled charges
+  - Breakdown shows: Recurring, Won Unsched, Journal, Charges
+- **30-Days Unbilled**: Total delayed charges for next 30 days
+- **Days Cash**: Current cash divided by daily expense burn rate
+- **Days Cash + AR**: (Cash + Accounts Receivable) divided by daily expense burn rate
 - **Toggle**: Exclude/include weighted sales in forecasts
 
 ### 3. Revenue Components
