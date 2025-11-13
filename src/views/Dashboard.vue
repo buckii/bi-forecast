@@ -189,6 +189,12 @@
               Recurring: {{ formatCurrency(twelveMonthsRecurring) }}
             </p>
             <p class="text-xs text-gray-400 dark:text-gray-500">
+              Won Unsched: {{ formatCurrency(twelveMonthsWonUnscheduled) }}
+            </p>
+            <p class="text-xs text-gray-400 dark:text-gray-500">
+              Journal: {{ formatCurrency(twelveMonthsJournalEntries) }}
+            </p>
+            <p class="text-xs text-gray-400 dark:text-gray-500">
               Charges: {{ formatCurrency(revenueStore.yearUnbilledCharges) }}
             </p>
           </div>
@@ -636,9 +642,46 @@ const twelveMonthsRecurring = computed(() => {
   return total
 })
 
-// Computed property for 1-Year Won (12 months recurring + unbilled)
+// Computed property for 12 months of won unscheduled
+const twelveMonthsWonUnscheduled = computed(() => {
+  const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
+  const start = startOfMonth(selectedDate)
+  let total = 0
+
+  for (let i = 0; i < 12; i++) {
+    const month = format(addMonths(start, i), 'yyyy-MM-dd')
+    const monthData = revenueStore.revenueData.find(m => m.month === month)
+    if (monthData) {
+      total += monthData.components.wonUnscheduled
+    }
+  }
+
+  return total
+})
+
+// Computed property for 12 months of journal entries
+const twelveMonthsJournalEntries = computed(() => {
+  const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
+  const start = startOfMonth(selectedDate)
+  let total = 0
+
+  for (let i = 0; i < 12; i++) {
+    const month = format(addMonths(start, i), 'yyyy-MM-dd')
+    const monthData = revenueStore.revenueData.find(m => m.month === month)
+    if (monthData) {
+      total += monthData.components.journalEntries
+    }
+  }
+
+  return total
+})
+
+// Computed property for 1-Year Won (12 months recurring + won unscheduled + journal entries + unbilled charges)
 const yearWon = computed(() => {
-  return twelveMonthsRecurring.value + revenueStore.yearUnbilledCharges
+  return twelveMonthsRecurring.value +
+         twelveMonthsWonUnscheduled.value +
+         twelveMonthsJournalEntries.value +
+         revenueStore.yearUnbilledCharges
 })
 
 // Comparison metrics computed properties
@@ -709,9 +752,46 @@ const comparisonTwelveMonthsRecurring = computed(() => {
   return total
 })
 
+const comparisonTwelveMonthsWonUnscheduled = computed(() => {
+  if (!comparisonData.value || !compareAsOfDate.value) return null
+  const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
+  const start = startOfMonth(selectedDate)
+  let total = 0
+
+  for (let i = 0; i < 12; i++) {
+    const month = format(addMonths(start, i), 'yyyy-MM-dd')
+    const monthData = comparisonData.value.months.find(m => m.month === month)
+    if (monthData) {
+      total += monthData.components.wonUnscheduled
+    }
+  }
+
+  return total
+})
+
+const comparisonTwelveMonthsJournalEntries = computed(() => {
+  if (!comparisonData.value || !compareAsOfDate.value) return null
+  const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
+  const start = startOfMonth(selectedDate)
+  let total = 0
+
+  for (let i = 0; i < 12; i++) {
+    const month = format(addMonths(start, i), 'yyyy-MM-dd')
+    const monthData = comparisonData.value.months.find(m => m.month === month)
+    if (monthData) {
+      total += monthData.components.journalEntries
+    }
+  }
+
+  return total
+})
+
 const comparisonYearWon = computed(() => {
   if (!comparisonData.value || !compareAsOfDate.value) return null
-  return comparisonTwelveMonthsRecurring.value + comparisonYearUnbilled.value
+  return comparisonTwelveMonthsRecurring.value +
+         comparisonTwelveMonthsWonUnscheduled.value +
+         comparisonTwelveMonthsJournalEntries.value +
+         comparisonYearUnbilled.value
 })
 
 const comparisonThirtyDaysUnbilled = computed(() => {
