@@ -72,13 +72,33 @@ const [year, month, day] = dateStr.split('-').map(Number)
 const date = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0))
 ```
 
+**CRITICAL**: When creating journal entries or manipulating dates for QuickBooks:
+```javascript
+// ✅ CORRECT - Use UTC methods exclusively, always use day 1
+const [year, month, day] = recognitionStartDate.split('-').map(Number);
+const recognitionDate = new Date(Date.UTC(year, month - 1, 1)); // Start with first day
+recognitionDate.setUTCMonth(recognitionDate.getUTCMonth() + i); // Add months in UTC
+
+// Format as YYYY-MM-01 (always first day of month)
+const finalYear = recognitionDate.getUTCFullYear();
+const finalMonth = String(recognitionDate.getUTCMonth() + 1).padStart(2, '0');
+const dateStr = `${finalYear}-${finalMonth}-01`;
+
+// ❌ WRONG - Local timezone + setMonth() causes date shifts
+const recognitionDate = new Date(recognitionStartDate); // Local timezone
+recognitionDate.setMonth(recognitionDate.getMonth() + i); // Can cause day shifts
+const dateStr = recognitionDate.toISOString().split('T')[0]; // UTC conversion shifts dates
+```
+
 ### API Optimization (Rate Limiting)
 QuickBooks has a 500 req/min limit. The codebase uses several strategies:
 
-1. **100ms spacing** between API calls in `revenue-calculator.js`
+1. **100-150ms spacing** between API calls in `revenue-calculator.js` and cache prefetching
 2. **Data caching** - QBO/Pipedrive data cached in calculator instance
 3. **Archive reuse** - Pipedrive refresh loads existing QB data from today's archive
 4. **Pass cached data** - `getBalances()` accepts `monthsData` and `qboData` parameters
+5. **Pagination** - Journal entries fetch up to 3 pages (300 entries max) using `STARTPOSITION` and `MAXRESULTS`
+6. **Fallback mode protection** - Pipedrive refresh detects incomplete QB data and prevents overwriting good archive data
 
 When modifying revenue calculations, always pass cached data to avoid N+1 queries:
 ```javascript
@@ -89,6 +109,21 @@ const balances = await calculator.getBalances(
 )
 ```
 
+**QuickBooks Pagination**: The QB API returns max 100 results per query. Use pagination for journal entries:
+```javascript
+const allEntries = []
+const pageSize = 100
+const maxPages = 3
+
+for (let page = 0; page < maxPages; page++) {
+  const startPosition = page * pageSize + 1
+  const query = `SELECT * FROM JournalEntry WHERE ... STARTPOSITION ${startPosition} MAXRESULTS ${pageSize}`
+  // ... fetch and accumulate
+  if (entries.length < pageSize) break; // No more pages
+  await new Promise(resolve => setTimeout(resolve, 100)); // Rate limit delay
+}
+```
+
 ### Authentication Flow
 - **Development**: `BYPASS_AUTH_LOCALHOST=true` skips auth on localhost
 - **Production**: JWT tokens with 7-day expiry
@@ -97,11 +132,31 @@ const balances = await calculator.getBalances(
 ### Revenue Calculation Components
 6 components make up monthly revenue (in order):
 1. Invoiced Revenue (QB invoices)
-2. Journal Entries (QB accounting adjustments)
+2. Journal Entries (QB accounting adjustments - revenue recognition)
 3. Delayed Charges (QB unbilled items)
 4. Monthly Recurring (baseline from previous month)
 5. Won Unscheduled (Pipedrive won deals not yet scheduled)
 6. Weighted Sales (Pipedrive open deals × probability, distributed across duration)
+
+**Journal Entry Filtering**: Only include entries with unearned/deferred revenue accounts:
+```javascript
+// Filter for entries with unearned revenue accounts
+const filteredEntries = journalEntries.filter(entry => {
+  return entry.Line?.some(line => {
+    const accountName = line.JournalEntryLineDetail?.AccountRef?.name?.toLowerCase() || ''
+    return accountName.includes('unearned') || accountName.includes('deferred')
+  })
+})
+
+// Calculate revenue amount (Credits positive, Debits negative)
+const isRevenueAccount = accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
+  !accountName.includes('unearned') && !accountName.includes('deferred')
+
+if (isRevenueAccount) {
+  if (postingType === 'Credit') amount += lineAmount
+  else if (postingType === 'Debit') amount -= lineAmount
+}
+```
 
 ### Transaction Caching Strategy
 - **Prefetch Window**: 6 months (prev 2, current, next 3)
@@ -156,14 +211,19 @@ Required for local development (see `.env.example`):
 
 5. **Debouncing**: Refresh operations have 20-second debounce. Date inputs have 1-second debounce before loading data.
 
+6. **Journal entry dates**: All auto-generated journal entries MUST be on the 1st of the month. Use UTC date methods exclusively when creating entries to avoid timezone shifts. See the Date Handling section for proper UTC usage.
+
+7. **Fallback mode**: If revenue calculator is in fallback mode (archive exists but has no QB data), Pipedrive refresh will NOT update the archive to preserve QB data integrity. Run QB Refresh first to get fresh QuickBooks data.
+
 ## Architecture Decisions
 
 ### Why CommonJS for functions?
 AWS Lambda (which powers Netlify Functions) requires CommonJS. All `netlify/functions/**/*.js` files use `require()` and `module.exports`.
 
 ### Why separate refresh endpoints?
-- `revenue-refresh-qbo.js` - Full QB refresh (8 API calls)
-- `revenue-refresh-pipedrive.js` - PD only, reuses today's QB archive (2 API calls)
+- `revenue-refresh-qbo.js` - Full QB refresh (8 API calls) - fetches fresh QuickBooks data
+- `revenue-refresh-pipedrive.js` - PD only, reuses today's QB archive (2 API calls) - preserves QB data integrity
+- Pipedrive refresh includes fallback mode detection to prevent overwriting good QB data with incomplete filtered data
 - Allows targeted refreshes to minimize API usage
 
 ### Why 6-month transaction cache?
