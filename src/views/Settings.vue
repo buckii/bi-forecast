@@ -109,7 +109,134 @@
           </div>
         </div>
       </div>
-      
+
+      <!-- Journal Entry Accounts -->
+      <div class="card">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Journal Entry Accounts</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Configure default QuickBooks accounts for journal entry creation</p>
+          </div>
+          <button
+            @click="editingJournalAccounts = !editingJournalAccounts"
+            class="btn-secondary text-sm"
+          >
+            {{ editingJournalAccounts ? 'Cancel' : 'Edit' }}
+          </button>
+        </div>
+
+        <div v-if="loadingJournalAccounts" class="text-center py-8">
+          <div class="animate-spin h-8 w-8 border-4 border-primary-600 border-t-transparent rounded-full mx-auto"></div>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">Loading accounts...</p>
+        </div>
+
+        <div v-else-if="!editingJournalAccounts" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Unearned Revenue Account</label>
+              <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+                {{ journalAccounts.unearnedRevenue ? getAccountName(journalAccounts.unearnedRevenue, 'unearned') : 'Not configured' }}
+              </p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project Income - Points</label>
+              <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+                {{ journalAccounts.projectIncomePoints ? getAccountName(journalAccounts.projectIncomePoints, 'revenue') : 'Not configured' }}
+              </p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Recurring Income - Support</label>
+              <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+                {{ journalAccounts.recurringIncomeSupport ? getAccountName(journalAccounts.recurringIncomeSupport, 'revenue') : 'Not configured' }}
+              </p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Recurring Income - Points</label>
+              <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+                {{ journalAccounts.recurringIncomePoints ? getAccountName(journalAccounts.recurringIncomePoints, 'revenue') : 'Not configured' }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Unearned Revenue Account</label>
+              <select
+                v-model="editableJournalAccounts.unearnedRevenue"
+                class="input mt-1"
+              >
+                <option value="">Select account...</option>
+                <option
+                  v-for="account in availableUnearnedAccounts"
+                  :key="account.value"
+                  :value="account.value"
+                >
+                  {{ account.fullyQualifiedName }} (#{{ account.value }})
+                </option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project Income - Points</label>
+              <select
+                v-model="editableJournalAccounts.projectIncomePoints"
+                class="input mt-1"
+              >
+                <option value="">Select account...</option>
+                <option
+                  v-for="account in availableRevenueAccounts"
+                  :key="account.value"
+                  :value="account.value"
+                >
+                  {{ account.fullyQualifiedName }} (#{{ account.value }})
+                </option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Recurring Income - Support</label>
+              <select
+                v-model="editableJournalAccounts.recurringIncomeSupport"
+                class="input mt-1"
+              >
+                <option value="">Select account...</option>
+                <option
+                  v-for="account in availableRevenueAccounts"
+                  :key="account.value"
+                  :value="account.value"
+                >
+                  {{ account.fullyQualifiedName }} (#{{ account.value }})
+                </option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Recurring Income - Points</label>
+              <select
+                v-model="editableJournalAccounts.recurringIncomePoints"
+                class="input mt-1"
+              >
+                <option value="">Select account...</option>
+                <option
+                  v-for="account in availableRevenueAccounts"
+                  :key="account.value"
+                  :value="account.value"
+                >
+                  {{ account.fullyQualifiedName }} (#{{ account.value }})
+                </option>
+              </select>
+            </div>
+          </div>
+          <div class="flex justify-end space-x-3">
+            <button @click="cancelJournalAccountsEdit" class="btn-secondary">
+              Cancel
+            </button>
+            <button @click="saveJournalAccounts" class="btn-primary">
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Financial Settings -->
       <div class="card">
         <div class="flex items-center justify-between mb-4">
@@ -419,6 +546,24 @@ const originalClientAliases = ref([])
 const editingClientId = ref(null)
 let nextClientId = 0
 
+// Journal Entry Accounts
+const editingJournalAccounts = ref(false)
+const loadingJournalAccounts = ref(false)
+const journalAccounts = ref({
+  unearnedRevenue: '',
+  projectIncomePoints: '',
+  recurringIncomeSupport: '',
+  recurringIncomePoints: ''
+})
+const editableJournalAccounts = ref({
+  unearnedRevenue: '',
+  projectIncomePoints: '',
+  recurringIncomeSupport: '',
+  recurringIncomePoints: ''
+})
+const availableRevenueAccounts = ref([])
+const availableUnearnedAccounts = ref([])
+
 // Don't use computed - just reference clientAliases directly
 // We'll sort once on load instead of reactively
 const sortedClientAliases = computed(() => {
@@ -712,6 +857,92 @@ async function loadClientAliases() {
   }
 }
 
+async function loadJournalAccounts() {
+  try {
+    loadingJournalAccounts.value = true
+    const response = await fetch('/.netlify/functions/journal-entry-accounts', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`
+      }
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      availableRevenueAccounts.value = data.data.revenueAccounts || []
+      availableUnearnedAccounts.value = data.data.unearnedRevenueAccounts || []
+
+      // Load current settings
+      if (data.data.currentSettings) {
+        journalAccounts.value = {
+          unearnedRevenue: data.data.currentSettings.unearnedRevenue || '',
+          projectIncomePoints: data.data.currentSettings.projectIncomePoints || '',
+          recurringIncomeSupport: data.data.currentSettings.recurringIncomeSupport || '',
+          recurringIncomePoints: data.data.currentSettings.recurringIncomePoints || ''
+        }
+      }
+    } else {
+      const errorData = await response.json()
+      toast.error(errorData.error || 'Failed to load journal entry accounts')
+    }
+  } catch (error) {
+    console.error('Error loading journal entry accounts:', error)
+    toast.error('Failed to load journal entry accounts')
+  } finally {
+    loadingJournalAccounts.value = false
+  }
+}
+
+async function saveJournalAccounts() {
+  try {
+    // Validate all fields are filled
+    if (!editableJournalAccounts.value.unearnedRevenue ||
+        !editableJournalAccounts.value.projectIncomePoints ||
+        !editableJournalAccounts.value.recurringIncomeSupport ||
+        !editableJournalAccounts.value.recurringIncomePoints) {
+      toast.warning('Please select all required accounts')
+      return
+    }
+
+    const response = await fetch('/.netlify/functions/company-update-journal-accounts', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authStore.token}`
+      },
+      body: JSON.stringify(editableJournalAccounts.value)
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Failed to save journal entry accounts')
+    }
+
+    // Update local values
+    journalAccounts.value = { ...editableJournalAccounts.value }
+    editingJournalAccounts.value = false
+
+    // Refresh user data to get updated company settings
+    await authStore.fetchCurrentUser()
+
+    toast.success('Journal entry accounts saved successfully')
+  } catch (error) {
+    console.error('Error saving journal entry accounts:', error)
+    toast.error(error.message)
+  }
+}
+
+function cancelJournalAccountsEdit() {
+  editableJournalAccounts.value = { ...journalAccounts.value }
+  editingJournalAccounts.value = false
+}
+
+function getAccountName(accountId, type) {
+  const accounts = type === 'unearned' ? availableUnearnedAccounts.value : availableRevenueAccounts.value
+  const account = accounts.find(a => a.value === accountId)
+  return account ? `${account.fullyQualifiedName} (#${accountId})` : `Account #${accountId}`
+}
+
 
 
 
@@ -729,6 +960,13 @@ watch(() => editingFinancials.value, (isEditing) => {
     editableTargetNetMargin.value = targetNetMargin.value
     editableMonthlyExpensesOverride.value = monthlyExpensesOverride.value
     editablePricePerPoint.value = pricePerPoint.value
+  }
+})
+
+// Watch for editing journal accounts to populate the fields
+watch(() => editingJournalAccounts.value, (isEditing) => {
+  if (isEditing) {
+    editableJournalAccounts.value = { ...journalAccounts.value }
   }
 })
 
@@ -754,5 +992,8 @@ onMounted(async () => {
 
   // Load client aliases from separate collection
   await loadClientAliases()
+
+  // Load journal entry accounts
+  await loadJournalAccounts()
 })
 </script>
