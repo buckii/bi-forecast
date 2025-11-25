@@ -2,14 +2,65 @@
   <div v-if="isOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-7xl mx-4 max-h-screen overflow-y-auto">
       <div class="flex items-center justify-between mb-4">
-        <div>
+        <div class="flex-1">
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ formatMonth(month) }}</h3>
+          <!-- Cache/Fetch Info with Refresh Button -->
+          <div v-if="activeTab === 'transactions' && cacheMetadata.transactionsCachedAt" class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <span v-if="cacheMetadata.transactionsFromCache">
+              Cached {{ formatRelativeTime(cacheMetadata.transactionsCachedAt) }}
+            </span>
+            <span v-else>
+              Fetched {{ formatRelativeTime(cacheMetadata.transactionsCachedAt) }}
+            </span>
+            <button
+              @click="refreshData"
+              :disabled="refreshing || loading"
+              class="p-0.5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Refresh data"
+            >
+              <svg
+                class="w-3.5 h-3.5"
+                :class="{ 'animate-spin': refreshing }"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          </div>
+          <div v-if="activeTab === 'clients' && cacheMetadata.clientsCachedAt" class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <span v-if="cacheMetadata.clientsFromCache">
+              Cached {{ formatRelativeTime(cacheMetadata.clientsCachedAt) }}
+            </span>
+            <span v-else>
+              Fetched {{ formatRelativeTime(cacheMetadata.clientsCachedAt) }}
+            </span>
+            <button
+              @click="refreshData"
+              :disabled="refreshing || loading"
+              class="p-0.5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Refresh data"
+            >
+              <svg
+                class="w-3.5 h-3.5"
+                :class="{ 'animate-spin': refreshing }"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          </div>
         </div>
-        <button @click="closeModal" class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        <div class="flex items-center space-x-2">
+          <button @click="closeModal" class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <!-- Tab Navigation -->
@@ -161,14 +212,34 @@
                   <td class="px-3 py-3 text-sm text-gray-900 dark:text-gray-100">
                     <div class="truncate max-w-md">{{ transaction.description }}</div>
                   </td>
-                  <td class="px-3 py-3 text-right font-medium text-gray-900 dark:text-gray-100">
+                  <td class="px-3 py-3 text-right font-medium text-gray-900 dark:text-gray-100 relative">
                     {{ formatCurrency(transaction.amount) }}
+                    <button
+                      v-if="transaction.type === 'invoice' || transaction.type === 'delayedCharge'"
+                      @click.stop="createJournalEntryFromTransaction(transaction)"
+                      class="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors"
+                      title="Create Journal Entry"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                      </svg>
+                    </button>
+                    <button
+                      v-if="transaction.type === 'journalEntry'"
+                      @click.stop="editJournalEntry(transaction)"
+                      class="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                      title="Edit Journal Entry"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
                   </td>
                 </tr>
                 <tr v-if="transaction.type !== 'delayedCharge' && expandedTransactions.has(transaction.id)" class="bg-gray-50 dark:bg-gray-700">
                   <td colspan="6" class="px-3 py-4">
                     <div class="space-y-2">
-                      <h4 class="font-medium text-gray-900 dark:text-gray-100 text-sm">Transaction Details</h4>
+                      <h4 class="font-medium text-gray-900 dark:text-gray-100 text-sm mb-2">Transaction Details</h4>
                       <div class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
                         {{ JSON.stringify(transaction.details, null, 2) }}
                       </div>
@@ -335,8 +406,28 @@
                               <span class="text-gray-700 dark:text-gray-300 truncate max-w-xs">
                                 {{ transaction.description }}
                               </span>
-                              <span class="font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                              <span class="font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap relative">
                                 {{ formatCurrency(transaction.amount) }}
+                                <button
+                                  v-if="transaction.type === 'invoice' || transaction.type === 'delayedCharge'"
+                                  @click.stop="createJournalEntryFromTransaction(transaction)"
+                                  class="inline-flex ml-1 p-1 text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors align-middle"
+                                  title="Create Journal Entry"
+                                >
+                                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                  </svg>
+                                </button>
+                                <button
+                                  v-if="transaction.type === 'journalEntry'"
+                                  @click.stop="editJournalEntry(transaction)"
+                                  class="inline-flex ml-1 p-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors align-middle"
+                                  title="Edit Journal Entry"
+                                >
+                                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
                               </span>
                             </div>
                           </div>
@@ -371,6 +462,25 @@
         </button>
       </div>
     </div>
+
+    <!-- Journal Entry Create Modal -->
+    <JournalEntryCreateModal
+      v-if="showJournalEntryCreateModal"
+      :revenueAccounts="journalEntryAccounts.revenue"
+      :unearnedAccounts="journalEntryAccounts.unearned"
+      :prefillData="journalEntryPrefillData"
+      @close="closeJournalEntryCreateModal"
+      @created="handleJournalEntryCreated"
+    />
+
+    <!-- Journal Entry Detail/Edit Modal -->
+    <JournalEntryDetailModal
+      v-if="selectedJournalEntry"
+      :entry="selectedJournalEntry"
+      @close="selectedJournalEntry = null"
+      @updated="handleJournalEntryUpdated"
+      @delete="handleJournalEntryDeleted"
+    />
   </div>
 </template>
 
@@ -382,6 +492,8 @@ import { useAuthStore } from '../stores/auth'
 import { useRevenueStore } from '../stores/revenue'
 import { Chart, registerables } from 'chart.js'
 import { isDarkModeGlobal } from '../composables/useDarkMode'
+import JournalEntryCreateModal from './JournalEntryCreateModal.vue'
+import JournalEntryDetailModal from './JournalEntryDetailModal.vue'
 
 Chart.register(...registerables)
 
@@ -424,10 +536,26 @@ const loading = ref(false)
 const error = ref(null)
 const allTransactions = ref([])
 const clientData = ref(null)
+const cacheMetadata = ref({
+  transactionsCachedAt: null,
+  transactionsFromCache: false,
+  clientsCachedAt: null,
+  clientsFromCache: false
+})
+const refreshing = ref(false)
 const expandedTransactions = ref(new Set())
 const expandedClients = ref(new Set())
 const pieCanvas = ref(null)
 let pieChartInstance = null
+
+// Journal Entry Modal State
+const showJournalEntryCreateModal = ref(false)
+const journalEntryPrefillData = ref(null)
+const selectedJournalEntry = ref(null)
+const journalEntryAccounts = ref({
+  revenue: [],
+  unearned: []
+})
 
 // Sorting state for Transactions tab
 const sortBy = ref('amount')  // 'amount' | 'date'
@@ -614,7 +742,7 @@ watch(() => props.isOpen, (isOpen) => {
       pieChartInstance = null
     }
   }
-})
+}, { immediate: true })
 
 // Sync weighted sales filter with dashboard toggle and reload data
 watch(() => revenueStore.includeWeightedSales, (newValue) => {
@@ -627,7 +755,7 @@ watch(() => revenueStore.includeWeightedSales, (newValue) => {
   }
 })
 
-async function loadAllData() {
+async function loadAllData(forceRefresh = false) {
   loading.value = true
   error.value = null
 
@@ -636,6 +764,10 @@ async function loadAllData() {
     const params = new URLSearchParams({ month: props.month })
     if (props.asOf) {
       params.append('as_of', props.asOf)
+    }
+    // Add cache-busting parameter if force refresh
+    if (forceRefresh) {
+      params.append('_refresh', Date.now().toString())
     }
 
     // Fetch transaction types based on dashboard toggle
@@ -654,11 +786,15 @@ async function loadAllData() {
         headers: { 'Authorization': `Bearer ${authStore.token}` }
       })
 
-      if (!response.ok) return []
+      if (!response.ok) return { transactions: [], fromCache: false, cachedAt: null }
 
       const result = await response.json()
       const data = result.data || result
-      return data.transactions || []
+      return {
+        transactions: data.transactions || [],
+        fromCache: data.fromCache || false,
+        cachedAt: data.cachedAt || null
+      }
     })
 
     // Fetch client data (respect dashboard toggle)
@@ -673,9 +809,15 @@ async function loadAllData() {
     const clientPromise = fetch(`/.netlify/functions/revenue-by-client?${clientParams.toString()}`, {
       headers: { 'Authorization': `Bearer ${authStore.token}` }
     }).then(async (response) => {
-      if (!response.ok) return null
+      if (!response.ok) return { clients: null, fromCache: false, cachedAt: null }
       const result = await response.json()
-      return result.data || result
+      const data = result.data || result
+      return {
+        clients: data.clients || [],
+        month: data.month,
+        fromCache: data.fromCache || false,
+        cachedAt: data.cachedAt || null
+      }
     })
 
     // Wait for all data
@@ -684,12 +826,31 @@ async function loadAllData() {
       clientPromise
     ])
 
-    // Flatten all transactions
-    allTransactions.value = transactionResults.flat()
-    clientData.value = clientResult
+    // Flatten all transactions and capture cache metadata
+    allTransactions.value = transactionResults.flatMap(r => r.transactions)
+
+    // Determine if any transactions were from cache and get latest cache date
+    const transactionsWithCache = transactionResults.filter(r => r.fromCache)
+    cacheMetadata.value.transactionsFromCache = transactionsWithCache.length > 0
+    if (transactionsWithCache.length > 0) {
+      const cacheDates = transactionsWithCache.map(r => r.cachedAt).filter(Boolean)
+      if (cacheDates.length > 0) {
+        cacheMetadata.value.transactionsCachedAt = cacheDates.sort().reverse()[0]
+      }
+    } else {
+      cacheMetadata.value.transactionsCachedAt = null
+    }
+
+    // Store client data and cache metadata
+    clientData.value = clientResult.clients ? {
+      clients: clientResult.clients,
+      month: clientResult.month
+    } : null
+    cacheMetadata.value.clientsFromCache = clientResult.fromCache
+    cacheMetadata.value.clientsCachedAt = clientResult.cachedAt
 
     // If we're on the clients tab, create the pie chart
-    if (activeTab.value === 'clients' && clientResult?.clients) {
+    if (activeTab.value === 'clients' && clientData.value?.clients) {
       setTimeout(() => createPieChart(), 100)
     }
 
@@ -713,6 +874,17 @@ function toggleClient(clientName) {
     expandedClients.value.delete(clientName)
   } else {
     expandedClients.value.add(clientName)
+  }
+}
+
+async function refreshData() {
+  refreshing.value = true
+  // Add a cache-busting timestamp to force fresh data
+  const originalAsOf = props.asOf
+  try {
+    await loadAllData(true) // Pass true to indicate force refresh
+  } finally {
+    refreshing.value = false
   }
 }
 
@@ -750,6 +922,28 @@ function formatCurrency(amount) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
   }).format(amount)
+}
+
+function formatRelativeTime(dateStr) {
+  if (!dateStr) return ''
+  try {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffMs = now - date
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+
+    if (diffMins < 1) return 'just now'
+    if (diffMins < 60) return `${diffMins} ${diffMins === 1 ? 'minute' : 'minutes'} ago`
+    if (diffHours < 24) return `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`
+    if (diffDays < 7) return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`
+
+    // If more than a week, show the actual date
+    return formatDate(date, 'MMM d, yyyy h:mm a')
+  } catch (e) {
+    return dateStr
+  }
 }
 
 function formatTransactionType(type) {
@@ -874,6 +1068,113 @@ watch(activeTab, (newTab) => {
     pieChartInstance = null
   }
 })
+
+// Load journal entry accounts
+async function loadJournalEntryAccounts() {
+  try {
+    const response = await fetch('/.netlify/functions/journal-entry-accounts', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to load journal entry accounts')
+    }
+
+    const data = await response.json()
+    journalEntryAccounts.value = {
+      revenue: data.data.revenueAccounts || [],
+      unearned: data.data.unearnedRevenueAccounts || []
+    }
+  } catch (err) {
+    console.error('Error loading journal entry accounts:', err)
+  }
+}
+
+// Show create journal entry modal with prefilled data
+async function createJournalEntryFromTransaction(transaction) {
+  // Load accounts if not already loaded
+  if (journalEntryAccounts.value.revenue.length === 0) {
+    await loadJournalEntryAccounts()
+  }
+
+  // Extract invoice number from description if present
+  const description = transaction.description || ''
+  const invoiceMatch = description.match(/Invoice\s+(\d+)/i)
+  const invoiceNumber = invoiceMatch ? invoiceMatch[1] : ''
+
+  // Set prefill data
+  journalEntryPrefillData.value = {
+    clientName: transaction.customer || '',
+    invoiceNumber: invoiceNumber,
+    amount: transaction.amount || null,
+    invoiceDate: transaction.date || ''
+  }
+
+  // Show modal
+  showJournalEntryCreateModal.value = true
+}
+
+// Show edit journal entry modal
+async function editJournalEntry(transaction) {
+  // Load the full journal entry details from the API
+  try {
+    const response = await fetch(`/.netlify/functions/journal-entries-list?view=all`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to load journal entries')
+    }
+
+    const data = await response.json()
+
+    // Find the journal entry by matching transaction data
+    // This is a simplified version - you may need to add an ID to transactions
+    const entry = data.data.unpaired.find(e =>
+      e.TxnDate === transaction.date &&
+      Math.abs(parseFloat(e.Line?.[0]?.Amount || 0) - transaction.amount) < 0.01
+    )
+
+    if (entry) {
+      selectedJournalEntry.value = entry
+    }
+  } catch (err) {
+    console.error('Error loading journal entry:', err)
+  }
+}
+
+// Close journal entry create modal
+function closeJournalEntryCreateModal() {
+  showJournalEntryCreateModal.value = false
+  journalEntryPrefillData.value = null
+}
+
+// Handle journal entry created
+function handleJournalEntryCreated() {
+  closeJournalEntryCreateModal()
+  // Reload transactions
+  loadAllData()
+}
+
+// Handle journal entry updated
+function handleJournalEntryUpdated() {
+  selectedJournalEntry.value = null
+  // Reload transactions
+  loadAllData()
+}
+
+// Handle journal entry deleted
+function handleJournalEntryDeleted() {
+  selectedJournalEntry.value = null
+  // Reload transactions
+  loadAllData()
+}
 
 // Watch for dark mode changes to update chart
 watch(isDarkModeGlobal, () => {
