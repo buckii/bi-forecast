@@ -1,6 +1,6 @@
 const { success, error, cors } = require('./utils/response.js')
 const { getCurrentUser } = require('./utils/auth.js')
-const { getCachedTransactionDetails } = require('./services/transaction-details-cache.js')
+const { getCachedTransactionDetails, cacheTransactionDetails } = require('./services/transaction-details-cache.js')
 
 exports.handler = async function(event, context) {
   // Handle CORS preflight requests
@@ -24,6 +24,9 @@ exports.handler = async function(event, context) {
     // Check for as_of date
     const asOf = event.queryStringParameters?.as_of
 
+    // Check for force refresh
+    const forceRefresh = event.queryStringParameters?._refresh
+
     // Validate as_of date format if provided
     if (asOf && !/^\d{4}-\d{2}-\d{2}$/.test(asOf)) {
       return error('Invalid date format for as_of. Use YYYY-MM-DD', 400)
@@ -36,22 +39,19 @@ exports.handler = async function(event, context) {
     if (asOf) {
       try {
         await calculator.loadFromArchive(asOf)
-        console.log(`[Revenue by Client] Using archived data for ${asOf}`)
       } catch (archiveError) {
-        console.warn(`[Revenue by Client] Archive not found for ${asOf}, using current data`)
         // Continue with current data if archive doesn't exist
       }
     }
 
     if (month) {
-      // Try to get from cache first
+      // Try to get from cache first (unless force refresh is requested)
       const asOfDate = asOf ? new Date(asOf) : new Date()
       asOfDate.setHours(0, 0, 0, 0)
 
-      const cachedData = await getCachedTransactionDetails(company._id, month, asOfDate)
+      const cachedData = !forceRefresh ? await getCachedTransactionDetails(company._id, month, asOfDate) : null
 
       if (cachedData && cachedData.clients) {
-        console.log(`[Revenue by Client] Serving from cache for ${month}`)
         return success({
           month: cachedData.clients.month,
           clients: cachedData.clients.clients || [],
@@ -63,17 +63,30 @@ exports.handler = async function(event, context) {
         })
       }
 
-      console.log(`[Revenue by Client] Cache miss, computing on-demand for ${month}`)
-
       // Get revenue data for a specific month
       const monthData = await calculator.calculateMonthRevenueByClient(month, includeWeightedSales)
+
+      // Cache the computed result for future requests
+      await cacheTransactionDetails(
+        company._id,
+        month,
+        {
+          clients: {
+            month: monthData.month,
+            clients: monthData.clients || []
+          }
+        },
+        asOfDate
+      )
 
       return success({
         month: monthData.month,
         clients: monthData.clients,
         includeWeightedSales,
         dataSourceErrors: monthData.dataSourceErrors || [],
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
+        fromCache: false,
+        cachedAt: new Date()
       })
     } else {
       // Legacy: Get revenue data by client for 15 months (3 months ago to 12 months from now)

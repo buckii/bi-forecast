@@ -74,15 +74,24 @@ class QuickBooksService {
     }
   }
 
-  async makeRequest(endpoint, realmId, accessToken, retryCount = 0) {
+  async makeRequest(endpoint, realmId, accessToken, retryCount = 0, options = {}) {
     const url = `${this.baseUrl}/v3/company/${realmId}/${endpoint}`
-    
-    const response = await fetch(url, {
+
+    const fetchOptions = {
+      method: options.method || 'GET',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        ...(options.headers || {})
       }
-    })
+    }
+
+    // Add body for POST/PUT requests
+    if (options.body) {
+      fetchOptions.body = options.body
+    }
+
+    const response = await fetch(url, fetchOptions)
     
     if (!response.ok) {
       // Capture intuit_tid header for error tracking
@@ -112,9 +121,9 @@ class QuickBooksService {
           if (tokenDoc) {
             // Force refresh by calling refreshToken directly
             const refreshedAuth = await this.refreshToken(tokenDoc)
-            
-            // Retry the request with the new token
-            return await this.makeRequest(endpoint, refreshedAuth.realmId, refreshedAuth.accessToken, retryCount + 1)
+
+            // Retry the request with the new token and same options
+            return await this.makeRequest(endpoint, refreshedAuth.realmId, refreshedAuth.accessToken, retryCount + 1, options)
           }
         } catch (refreshError) {
           console.error('[QBO] Token refresh failed:', refreshError.message)
@@ -139,46 +148,61 @@ class QuickBooksService {
 
   async getJournalEntries(startDate, endDate) {
     const { accessToken, realmId } = await this.getAccessToken()
-    
-    const query = `SELECT * FROM JournalEntry WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}' ORDER BY TxnDate DESC`
-    const data = await this.makeRequest(`query?query=${encodeURIComponent(query)}`, realmId, accessToken)
-    
-    return data.QueryResponse?.JournalEntry || []
+
+    // QuickBooks API returns max 100 results per query
+    // Fetch 3 pages to get up to 300 journal entries
+    const allEntries = []
+    const pageSize = 100
+    const maxPages = 3
+
+    for (let page = 0; page < maxPages; page++) {
+      const startPosition = page * pageSize + 1
+      const query = `SELECT * FROM JournalEntry WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}' ORDER BY TxnDate DESC STARTPOSITION ${startPosition} MAXRESULTS ${pageSize}`
+      const data = await this.makeRequest(`query?query=${encodeURIComponent(query)}`, realmId, accessToken)
+
+      const entries = data.QueryResponse?.JournalEntry || []
+      allEntries.push(...entries)
+
+      // If we got fewer than pageSize results, we've reached the end
+      if (entries.length < pageSize) {
+        break
+      }
+
+      // Add small delay between pagination requests to avoid rate limiting
+      if (page < maxPages - 1) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+    }
+
+    console.log(`[QBO] Fetched ${allEntries.length} journal entries across ${Math.ceil(allEntries.length / pageSize)} pages`)
+    return allEntries
   }
 
   async getDelayedCharges(startDate, endDate) {
     const { accessToken, realmId } = await this.getAccessToken()
 
-
     try {
-      // Use Transaction List Report to get all line items for delayed charges
-      // Each row in the report represents a LINE ITEM, which we'll group by DocNumber
+      // Use TransactionList report - QB doesn't support direct DelayedCharge queries
+      // Explicitly request columns including inv_date to filter uninvoiced charges
       const columns = [
         'tx_date',
         'txn_type',
         'doc_num',
         'name',
-        'sales_cust1',
         'account_name',
-        'category',
         'inv_date',
         'subt_nat_amount'
       ]
-      const reportUrl = `reports/TransactionList?start_date=${startDate}&end_date=${endDate}&transaction_list=Charge&columns=` + columns.join(',')
-
+      const reportUrl = `reports/TransactionList?start_date=${startDate}&end_date=${endDate}&transaction_list=Charge&columns=${columns.join(',')}`
       const reportData = await this.makeRequest(reportUrl, realmId, accessToken)
 
-      // Parse the report to get basic charge info
+      // Parse the report with the specified column structure
       const delayedCharges = this.parseChargeReportBasic(reportData)
 
       return delayedCharges
 
     } catch (error) {
       console.error('[QBO] Error fetching delayed charges:', error.message)
-      if (error.message.includes('intuit_tid')) {
-        console.error('[QBO] intuit_tid from error:', error.message.match(/intuit_tid=([^,\s]+)/)?.[1])
-      }
-
       // Return empty array instead of failing
       return []
     }
@@ -318,9 +342,9 @@ class QuickBooksService {
           } else if (row.type === 'Data' && row.ColData) {
             const colData = row.ColData || []
 
-            // Based on actual API response:
-            // [0] = tx_date, [1] = txn_type, [2] = doc_num, [3] = name (customer)
-            // [4] = account, [5] = inv_date, [6] = subt_nat_amount
+            // Based on requested columns (7 columns):
+            // [0] = tx_date, [1] = txn_type, [2] = doc_num, [3] = name (customer),
+            // [4] = account_name, [5] = inv_date, [6] = subt_nat_amount
             const date = colData[0]?.value || ''
             const transactionType = colData[1]?.value || ''
             const docNumber = colData[2]?.value || ''
@@ -328,7 +352,7 @@ class QuickBooksService {
             const invoiceDate = colData[5]?.value || ''
             const amount = colData[6]?.value || '0.00'
 
-            // Only include uninvoiced charges
+            // Only include uninvoiced charges (inv_date is empty)
             const isNotInvoiced = !invoiceDate || invoiceDate.trim() === '' || invoiceDate === '0-00-00'
 
             if (isNotInvoiced && (transactionType === 'Charge' || !transactionType)) {

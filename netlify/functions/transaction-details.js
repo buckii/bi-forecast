@@ -1,7 +1,7 @@
 const { success, error, cors } = require('./utils/response.js')
 const { getCurrentUser } = require('./utils/auth.js')
 const RevenueCalculator = require('./services/revenue-calculator.js')
-const { getCachedTransactionDetails } = require('./services/transaction-details-cache.js')
+const { getCachedTransactionDetails, cacheTransactionDetails } = require('./services/transaction-details-cache.js')
 const { startOfMonth, endOfMonth, format, addMonths } = require('date-fns')
 
 exports.handler = async function(event, context) {
@@ -21,6 +21,7 @@ exports.handler = async function(event, context) {
     const month = params.get('month') // Format: YYYY-MM-DD
     const component = params.get('component') // invoiced, journalEntries, etc.
     const asOf = params.get('as_of') // Optional: YYYY-MM-DD
+    const forceRefresh = params.get('_refresh') // Cache-busting parameter
 
     if (!month || !component) {
       return error('Missing required parameters: month and component', 400)
@@ -31,11 +32,11 @@ exports.handler = async function(event, context) {
       return error('Invalid date format for as_of. Use YYYY-MM-DD', 400)
     }
 
-    // Try to get from cache first
+    // Try to get from cache first (unless force refresh is requested)
     const asOfDate = asOf ? new Date(asOf) : new Date()
     asOfDate.setHours(0, 0, 0, 0)
 
-    const cachedData = await getCachedTransactionDetails(company._id, month, asOfDate)
+    const cachedData = !forceRefresh ? await getCachedTransactionDetails(company._id, month, asOfDate) : null
 
     if (cachedData && cachedData.transactions && cachedData.transactions[component]) {
       console.log(`[Transaction Details] Serving from cache for ${month} ${component}`)
@@ -52,8 +53,6 @@ exports.handler = async function(event, context) {
         cachedAt: cachedData.cachedAt
       })
     }
-
-    console.log(`[Transaction Details] Cache miss, computing on-demand for ${month} ${component}`)
 
     const calculator = new RevenueCalculator(company._id)
 
@@ -123,9 +122,11 @@ exports.handler = async function(event, context) {
       transactions: transactions,
       totalAmount: totalAmount,
       count: transactions.length,
-      dateRange: { startDate, endDate }
+      dateRange: { startDate, endDate },
+      fromCache: false,
+      cachedAt: new Date()
     }
-    
+
     // Add discrepancy warning if applicable
     if (hasDiscrepancy && graphTotal !== null) {
       result.warning = {
@@ -136,7 +137,19 @@ exports.handler = async function(event, context) {
         difference: graphTotal - totalAmount
       }
     }
-    
+
+    // Cache the computed result for future requests
+    await cacheTransactionDetails(
+      company._id,
+      month,
+      {
+        transactions: {
+          [component]: transactions
+        }
+      },
+      asOfDate
+    )
+
     return success(result)
     
   } catch (err) {

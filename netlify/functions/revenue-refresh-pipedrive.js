@@ -2,7 +2,6 @@ const { success, error, cors } = require('./utils/response.js')
 const { getCurrentUser } = require('./utils/auth.js')
 const RevenueCalculator = require('./services/revenue-calculator.js')
 const { getCollection } = require('./utils/database.js')
-const { prefetchTransactionDetails } = require('./services/transaction-details-cache.js')
 
 exports.handler = async function(event, context) {
   // Handle CORS preflight requests
@@ -53,8 +52,21 @@ exports.handler = async function(event, context) {
       balances = await calculator.getBalances(revenueResult.months || revenueResult)
     }
 
+    // CRITICAL: Don't update archive if calculator is in fallback mode
+    // Fallback mode means the archive exists but has no QB data, so the calculator
+    // fetched fresh QB data and filtered it by CreateTime, which results in incomplete data
+    // Saving this would overwrite the good QB data from QB refresh
+    if (calculator.isUsingFallback) {
+      console.log('[Pipedrive Refresh] ⚠️  Calculator is in fallback mode - NOT updating archive to preserve QB data')
+      console.log('[Pipedrive Refresh] Archive needs fresh QB data - run QB Refresh first')
+      return success({
+        message: 'Pipedrive refresh completed but archive not updated (fallback mode - run QB Refresh first)',
+        lastUpdated: new Date().toISOString(),
+        warning: 'Archive has incomplete QB data. Run QB Refresh to get fresh QuickBooks data.'
+      })
+    }
+
     // Update the current archive with fresh data
-    
     await archivesCollection.updateOne(
       {
         companyId: company._id,
@@ -71,15 +83,10 @@ exports.handler = async function(event, context) {
       { upsert: true }
     )
 
-    // Prefetch transaction details for quick loading (6 months: prev 2, current, next 3)
-    // Run in background - don't wait for it to complete
-    prefetchTransactionDetails(company._id, today)
-      .then(result => {
-        console.log(`[Pipedrive Refresh] Transaction details prefetch completed: ${result.monthsCached} months cached`)
-      })
-      .catch(err => {
-        console.error(`[Pipedrive Refresh] Transaction details prefetch failed:`, err)
-      })
+    // NOTE: We don't prefetch transaction details here because:
+    // 1. Pipedrive refresh reuses QB data from archive (doesn't fetch fresh QB data)
+    // 2. The QB refresh endpoint already prefetches transaction details
+    // 3. Running prefetch twice would make 48 QB API calls and hit rate limits
 
     return success({
       message: 'Pipedrive data refreshed successfully',

@@ -248,6 +248,7 @@ class RevenueCalculator {
         console.error('Error fetching journal entries:', journalEntriesResult.reason.message)
         this.qboDataSourceErrors.push({ source: 'journal entries', error: journalEntriesResult.reason.message })
       }
+
       
       const delayedCharges = delayedChargesResult.status === 'fulfilled' ? delayedChargesResult.value : []
       if (delayedChargesResult.status === 'rejected') {
@@ -272,7 +273,6 @@ class RevenueCalculator {
           }
           return true // Conservative: keep if no CreateTime
         })
-        console.log(`[RevenueCalculator] Fallback: Filtered invoices by CreateTime <= ${this.archiveDate}: ${originalInvoiceCount} → ${filteredInvoices.length}`)
 
         // Filter journal entries by CreateTime
         const originalJECount = filteredJournalEntries.length
@@ -283,10 +283,8 @@ class RevenueCalculator {
           }
           return true
         })
-        console.log(`[RevenueCalculator] Fallback: Filtered journal entries by CreateTime <= ${this.archiveDate}: ${originalJECount} → ${filteredJournalEntries.length}`)
 
         // Filter delayed charges by CreateTime
-        const originalDCCount = filteredDelayedCharges.length
         filteredDelayedCharges = filteredDelayedCharges.filter(charge => {
           if (charge.MetaData && charge.MetaData.CreateTime) {
             const createTime = new Date(charge.MetaData.CreateTime)
@@ -294,8 +292,9 @@ class RevenueCalculator {
           }
           return true
         })
-        console.log(`[RevenueCalculator] Fallback: Filtered delayed charges by CreateTime <= ${this.archiveDate}: ${originalDCCount} → ${filteredDelayedCharges.length}`)
+
       }
+
 
       return {
         invoices: filteredInvoices,
@@ -488,6 +487,8 @@ class RevenueCalculator {
         const txnDateStr = entry.TxnDate // Keep as string for comparison
         return txnDateStr >= format(startDate, 'yyyy-MM-dd') && txnDateStr <= format(endDate, 'yyyy-MM-dd')
       })
+
+
       components.journalEntries = this.sumRevenueJournalEntries(monthJournalEntries)
       
       // Filter and sum delayed charges for this month
@@ -573,34 +574,61 @@ class RevenueCalculator {
   }
 
   sumRevenueJournalEntries(entries) {
-    if (!entries || entries.length === 0) return 0
-    
+    if (!entries || entries.length === 0) {
+      return 0
+    }
+
+    // Filter to only include entries with unearned revenue accounts (same as journal-entries-list endpoint)
+    const entriesWithUnearned = entries.filter(entry => {
+      return entry.Line?.some(line => {
+        const accountName = line.JournalEntryLineDetail?.AccountRef?.name?.toLowerCase() || ''
+        return accountName.includes('unearned') || accountName.includes('deferred')
+      })
+    })
+
+
     let total = 0
-    for (const entry of entries) {
+    for (const entry of entriesWithUnearned) {
       const lines = entry.Line || []
+      let entryRevenue = 0
+      const revenueLines = []
+
       for (const line of lines) {
         const accountRef = line.JournalEntryLineDetail?.AccountRef
         const postingType = line.JournalEntryLineDetail?.PostingType
-        
-        // Look for revenue accounts (typically 4000 series) but exclude unearned revenue
-        if (accountRef?.name?.match(/^4\d{3}|revenue|income/i) && 
-            !accountRef?.name?.toLowerCase().includes('unearned')) {
-          
+        const accountName = accountRef?.name?.toLowerCase() || ''
+
+        // Look for revenue accounts - match account number (^4\d{3}) or name contains revenue/income
+        const isRevenueAccount = accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
+          !accountName.includes('unearned') && !accountName.includes('deferred')
+
+        if (isRevenueAccount) {
           // IMPORTANT: In journal entries, Credits to revenue accounts increase revenue (positive)
           // Debits to revenue accounts decrease revenue (negative)
           const amount = line.Amount || 0
+          let lineAmount = 0
           if (postingType === 'Credit') {
+            lineAmount = amount
             total += amount
           } else if (postingType === 'Debit') {
+            lineAmount = -amount
             total -= amount
           } else {
             // If posting type is not specified, assume credit for revenue accounts
+            lineAmount = amount
             total += amount
           }
+          entryRevenue += lineAmount
+          revenueLines.push({
+            account: accountRef.name,
+            posting: postingType,
+            amount: lineAmount
+          })
         }
       }
+
     }
-    
+
     return total
   }
 
@@ -906,9 +934,16 @@ class RevenueCalculator {
 
     // Process QBO journal entries
     if (qboData && qboData.journalEntries) {
+      // Filter to only include entries with unearned revenue accounts
       const monthJournalEntries = qboData.journalEntries.filter(entry => {
         const txnDateStr = entry.TxnDate
-        return txnDateStr >= format(startDate, 'yyyy-MM-dd') && txnDateStr <= format(endDate, 'yyyy-MM-dd')
+        const hasUnearnedAccount = entry.Line?.some(line => {
+          const accountName = line.JournalEntryLineDetail?.AccountRef?.name?.toLowerCase() || ''
+          return accountName.includes('unearned') || accountName.includes('deferred')
+        })
+        return txnDateStr >= format(startDate, 'yyyy-MM-dd') &&
+               txnDateStr <= format(endDate, 'yyyy-MM-dd') &&
+               hasUnearnedAccount
       })
 
       // Process each journal entry to determine client attribution
@@ -922,11 +957,13 @@ class RevenueCalculator {
           const accountRef = line.JournalEntryLineDetail?.AccountRef
           const postingType = line.JournalEntryLineDetail?.PostingType
           const lineEntity = line.JournalEntryLineDetail?.Entity
+          const accountName = accountRef?.name?.toLowerCase() || ''
 
-          // Look for revenue accounts
-          if (accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
-              !accountRef?.name?.toLowerCase().includes('unearned')) {
+          // Look for revenue accounts - match account number (^4\d{3}) or name contains revenue/income
+          const isRevenueAccount = accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
+            !accountName.includes('unearned') && !accountName.includes('deferred')
 
+          if (isRevenueAccount) {
             const amount = line.Amount || 0
             let lineRevenueAmount = 0
 
