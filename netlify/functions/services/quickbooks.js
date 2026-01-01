@@ -6,7 +6,7 @@ class QuickBooksService {
   constructor(companyId) {
     this.companyId = companyId
     // Use sandbox URL if QBO_SANDBOX env var is set, otherwise use production
-    this.baseUrl = process.env.QBO_SANDBOX === 'true' 
+    this.baseUrl = process.env.QBO_SANDBOX === 'true'
       ? 'https://sandbox-quickbooks.api.intuit.com'
       : 'https://quickbooks.api.intuit.com'
   }
@@ -17,16 +17,16 @@ class QuickBooksService {
       companyId: this.companyId,
       service: 'qbo'
     })
-    
+
     if (!tokenDoc) {
       throw new Error('QuickBooks not connected. Please connect your QuickBooks account.')
     }
-    
+
     // Check if token is expired and refresh if needed
     if (new Date() > new Date(tokenDoc.expiresAt)) {
       return await this.refreshToken(tokenDoc)
     }
-    
+
     return {
       accessToken: decrypt(tokenDoc.accessToken),
       realmId: tokenDoc.realm
@@ -35,7 +35,7 @@ class QuickBooksService {
 
   async refreshToken(tokenDoc) {
     const refreshToken = decrypt(tokenDoc.refreshToken)
-    
+
     const response = await fetch('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', {
       method: 'POST',
       headers: {
@@ -47,13 +47,13 @@ class QuickBooksService {
         refresh_token: refreshToken
       })
     })
-    
+
     if (!response.ok) {
       throw new Error('Failed to refresh QuickBooks token')
     }
-    
+
     const tokenData = await response.json()
-    
+
     // Update token in database
     const tokensCollection = await getCollection('oauth_tokens')
     await tokensCollection.updateOne(
@@ -67,7 +67,7 @@ class QuickBooksService {
         }
       }
     )
-    
+
     return {
       accessToken: tokenData.access_token,
       realmId: tokenDoc.realm
@@ -92,12 +92,12 @@ class QuickBooksService {
     }
 
     const response = await fetch(url, fetchOptions)
-    
+
     if (!response.ok) {
       // Capture intuit_tid header for error tracking
       const intuitTid = response.headers.get('intuit_tid')
       const errorText = await response.text()
-      
+
       console.error('QuickBooks API Error:', {
         status: response.status,
         intuit_tid: intuitTid,
@@ -105,11 +105,11 @@ class QuickBooksService {
         error: errorText,
         retryCount: retryCount
       })
-      
+
       // If we get 401 or 403 (authentication errors) and haven't retried yet, 
       // try to refresh the token and retry the request
       if ((response.status === 401 || response.status === 403) && retryCount === 0) {
-        
+
         try {
           // Force refresh the token by getting a new one
           const tokensCollection = await getCollection('oauth_tokens')
@@ -117,7 +117,7 @@ class QuickBooksService {
             companyId: this.companyId,
             service: 'qbo'
           })
-          
+
           if (tokenDoc) {
             // Force refresh by calling refreshToken directly
             const refreshedAuth = await this.refreshToken(tokenDoc)
@@ -130,30 +130,29 @@ class QuickBooksService {
           // Fall through to throw the original error
         }
       }
-      
+
       throw new Error(`QuickBooks API error: ${response.status} ${errorText}${intuitTid ? ` (intuit_tid=${intuitTid})` : ''}`)
     }
-    
+
     return await response.json()
   }
 
   async getInvoices(startDate, endDate) {
     const { accessToken, realmId } = await this.getAccessToken()
-    
+
     const query = `SELECT * FROM Invoice WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}' ORDER BY TxnDate DESC`
     const data = await this.makeRequest(`query?query=${encodeURIComponent(query)}`, realmId, accessToken)
-    
+
     return data.QueryResponse?.Invoice || []
   }
 
-  async getJournalEntries(startDate, endDate) {
+  async getJournalEntries(startDate, endDate, maxPages = 10) {
     const { accessToken, realmId } = await this.getAccessToken()
 
     // QuickBooks API returns max 100 results per query
-    // Fetch 3 pages to get up to 300 journal entries
+    // Fetch multiple pages to get a larger set of entries
     const allEntries = []
     const pageSize = 100
-    const maxPages = 3
 
     for (let page = 0; page < maxPages; page++) {
       const startPosition = page * pageSize + 1
@@ -210,10 +209,10 @@ class QuickBooksService {
 
   async getProfitAndLoss(startDate, endDate) {
     const { accessToken, realmId } = await this.getAccessToken()
-    
+
     const endpoint = `reports/ProfitAndLoss?start_date=${startDate}&end_date=${endDate}&summarize_column_by=Month`
     const data = await this.makeRequest(endpoint, realmId, accessToken)
-    
+
     return this.parseReportData(data)
   }
 
@@ -221,40 +220,40 @@ class QuickBooksService {
     const startDate = `${year}-${month.toString().padStart(2, '0')}-01`
     const lastDay = new Date(year, month, 0).getDate()
     const endDate = `${year}-${month.toString().padStart(2, '0')}-${lastDay}`
-    
+
     const { accessToken, realmId } = await this.getAccessToken()
     const endpoint = `reports/ProfitAndLoss?start_date=${startDate}&end_date=${endDate}`
     const data = await this.makeRequest(endpoint, realmId, accessToken)
-    
+
     return this.parseExpensesFromProfitLoss(data)
   }
 
   parseExpensesFromProfitLoss(reportData) {
     let totalIncome = 0
     let netOperatingIncome = 0
-    
+
     try {
       const rows = reportData.Rows?.Row || []
-      
+
       for (const row of rows) {
         // Extract Total Income from Income group Summary
         if (row.group === 'Income' && row.Summary?.ColData) {
           const amount = row.Summary.ColData[1]?.value || '0'
           totalIncome = Math.abs(parseFloat(amount.replace(/[,$]/g, '')) || 0)
         }
-        
+
         // Extract Net Operating Income from NetOperatingIncome group Summary
         if (row.group === 'NetOperatingIncome' && row.Summary?.ColData) {
           const amount = row.Summary.ColData[1]?.value || '0'
           netOperatingIncome = parseFloat(amount.replace(/[,$]/g, '')) || 0
         }
       }
-      
+
       // Calculate expenses as the difference
       const totalExpenses = totalIncome - netOperatingIncome
-      
+
       return Math.max(0, totalExpenses)
-      
+
     } catch (error) {
       console.error('Error parsing expenses from P&L:', error)
       return 0
@@ -263,11 +262,11 @@ class QuickBooksService {
 
   async getAgedReceivables() {
     const { accessToken, realmId } = await this.getAccessToken()
-    
+
     try {
       const endpoint = 'reports/AgedReceivables'
       const data = await this.makeRequest(endpoint, realmId, accessToken)
-      
+
       // Try to parse the report data
       let result
       try {
@@ -275,23 +274,23 @@ class QuickBooksService {
       } catch (parseError) {
         return await this.getAgedReceivablesFromInvoices()
       }
-      
+
       // If parsing returned empty data, try alternative approach
       if (result.total === 0 && result.details.length === 0) {
         return await this.getAgedReceivablesFromInvoices()
       }
-      
+
       return result
-      
+
     } catch (error) {
       console.error('QuickBooks aged receivables error:', error.message)
-      
+
       // Try fallback approach
       try {
         return await this.getAgedReceivablesFromInvoices()
       } catch (fallbackError) {
         console.error('Fallback aged receivables also failed:', fallbackError.message)
-        
+
         // Return empty but valid structure
         return {
           current: 0,
@@ -308,20 +307,20 @@ class QuickBooksService {
 
   async getAccounts() {
     const { accessToken, realmId } = await this.getAccessToken()
-    
+
     // Only show Checking, Savings, and UndepositedFunds account types for balances
     const query = "SELECT * FROM Account WHERE AccountSubType IN ('Checking', 'Savings', 'UndepositedFunds') AND Active = true"
     const data = await this.makeRequest(`query?query=${encodeURIComponent(query)}`, realmId, accessToken)
-    
+
     return data.QueryResponse?.Account || []
   }
 
   async getLiabilityAccounts() {
     const { accessToken, realmId } = await this.getAccessToken()
-    
+
     const query = "SELECT * FROM Account WHERE AccountType IN ('Accounts Payable', 'Other Current Liability', 'Long Term Liability', 'Credit Card') AND Active = true"
     const data = await this.makeRequest(`query?query=${encodeURIComponent(query)}`, realmId, accessToken)
-    
+
     return data.QueryResponse?.Account || []
   }
 
@@ -487,7 +486,7 @@ class QuickBooksService {
     // Fallback method for other reports
     const rows = reportData?.report?.Rows || []
     const parsedData = []
-    
+
     for (const row of rows) {
       if (row.type === 'Data' && row.ColData) {
         parsedData.push({
@@ -497,7 +496,7 @@ class QuickBooksService {
         })
       }
     }
-    
+
     return parsedData
   }
 
@@ -511,10 +510,10 @@ class QuickBooksService {
       total: 0,
       details: []
     }
-    
+
     try {
       const rows = reportData.Rows?.Row || []
-      
+
       // Log first few rows for debugging
       if (rows.length > 0) {
         for (let i = 0; i < Math.min(3, rows.length); i++) {
@@ -525,16 +524,16 @@ class QuickBooksService {
           }
         }
       }
-      
+
       // Try to find data in various QB report structures for aged receivables
       let arRows = []
-      
+
       if (reportData.Rows) {
         arRows = reportData.Rows
       } else if (reportData.report?.Rows) {
         arRows = reportData.report.Rows
       } else {
-        
+
         // Try to find any array that might contain data
         for (const [key, value] of Object.entries(reportData)) {
           if (Array.isArray(value) && value.length > 0) {
@@ -543,47 +542,47 @@ class QuickBooksService {
           }
         }
       }
-      
-      
+
+
       if (arRows.length > 0) {
         // Process each row in the report
         this.processAgedReceivablesRows(arRows, summary, 0)
       }
-      
+
       return summary
-      
+
     } catch (error) {
       console.error('[QBO] Error parsing aged receivables:', error.message)
       return summary
     }
   }
-  
+
   processAgedReceivablesRows(rows, summary, depth = 0) {
     if (!Array.isArray(rows) || !rows || rows.length === 0) {
       return
     }
-    
+
     for (const row of rows) {
-      
+
       if (row.type === 'Section' && row.Rows && Array.isArray(row.Rows)) {
         this.processAgedReceivablesRows(row.Rows, summary, depth + 1)
       } else if (row.type === 'Data' && row.ColData) {
         // This is a data row - extract customer receivables data
         const colData = row.ColData || []
-        
+
         colData.forEach((col, index) => {
         })
-        
+
         // Handle variable column structures - QB reports can vary
         // We'll try to identify columns by content rather than position
         let customerName = ''
         let current = 0, days1_30 = 0, days31_60 = 0, days61_90 = 0, days90Plus = 0, total = 0
-        
+
         // First column is typically customer name (non-numeric)
         if (colData[0] && colData[0].value && !colData[0].value.match(/^[\d$,.-]+$/)) {
           customerName = colData[0].value.trim()
         }
-        
+
         // Parse numeric columns (skip first column which is customer name)
         const numericValues = []
         for (let i = 1; i < colData.length; i++) {
@@ -591,7 +590,7 @@ class QuickBooksService {
           const numericVal = parseFloat(val.replace(/[$,]/g, '') || '0')
           numericValues.push(numericVal)
         }
-        
+
         // Assign numeric values based on typical aged receivables structure
         if (numericValues.length >= 6) {
           // Standard format: Current, 1-30, 31-60, 61-90, 90+, Total
@@ -606,13 +605,13 @@ class QuickBooksService {
           if (numericValues.length >= 5) days61_90 = numericValues[3]
           if (numericValues.length >= 6) days90Plus = numericValues[4]
         }
-        
+
         // Skip empty rows or total rows
         if (!customerName || customerName.toLowerCase().includes('total') || total === 0) {
           continue
         }
-        
-        
+
+
         // Add to summary totals
         summary.current += current
         summary.days_1_15 += days1_30  // Map 1-30 to 1-15 bucket 
@@ -620,7 +619,7 @@ class QuickBooksService {
         summary.days_31_45 += days61_90 // Map 61-90 to 31-45 bucket
         summary.days_45_plus += days90Plus
         summary.total += total
-        
+
         // Add customer detail
         summary.details.push({
           customer: customerName,
@@ -636,15 +635,15 @@ class QuickBooksService {
   }
 
   async getAgedReceivablesFromInvoices() {
-    
+
     const { accessToken, realmId } = await this.getAccessToken()
-    
+
     // Get unpaid invoices
     const query = "SELECT * FROM Invoice WHERE Balance != '0.00'"
     const data = await this.makeRequest(`query?query=${encodeURIComponent(query)}`, realmId, accessToken)
     const invoices = data.QueryResponse?.Invoice || []
-    
-    
+
+
     const summary = {
       current: 0,
       days_1_15: 0,
@@ -654,16 +653,16 @@ class QuickBooksService {
       total: 0,
       details: []
     }
-    
+
     const today = new Date()
     const customerTotals = {}
-    
+
     for (const invoice of invoices) {
       const dueDate = new Date(invoice.DueDate)
       const daysDiff = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24))
       const balance = parseFloat(invoice.Balance) || 0
       const customerName = invoice.CustomerRef?.name || 'Unknown Customer'
-      
+
       // Initialize customer if not exists
       if (!customerTotals[customerName]) {
         customerTotals[customerName] = {
@@ -675,7 +674,7 @@ class QuickBooksService {
           total: 0
         }
       }
-      
+
       // Categorize by age
       if (daysDiff <= 0) {
         summary.current += balance
@@ -693,12 +692,12 @@ class QuickBooksService {
         summary.days_45_plus += balance
         customerTotals[customerName].days_45_plus += balance
       }
-      
+
       customerTotals[customerName].total += balance
       summary.total += balance
-      
+
     }
-    
+
     // Convert customer totals to details array
     summary.details = Object.entries(customerTotals)
       .filter(([name, data]) => data.total > 0)
@@ -706,27 +705,27 @@ class QuickBooksService {
         customer: name,
         ...data
       }))
-    
+
     return summary
   }
 
   async getMonthlyRecurringRevenue(month) {
     // Get previous month's revenue with "Monthly" in account name
     const { accessToken, realmId } = await this.getAccessToken()
-    
+
     const prevMonth = new Date(month)
     prevMonth.setMonth(prevMonth.getMonth() - 1)
     const startDate = prevMonth.toISOString().split('T')[0]
     const endDate = new Date(prevMonth.getFullYear(), prevMonth.getMonth() + 1, 0).toISOString().split('T')[0]
-    
+
     const endpoint = `reports/ProfitAndLoss?start_date=${startDate}&end_date=${endDate}`
     const data = await this.makeRequest(endpoint, realmId, accessToken)
-    
+
     // Filter for accounts containing "Monthly"
     const monthlyRevenue = this.parseReportData(data)
       .filter(item => item.name.toLowerCase().includes('monthly'))
       .reduce((sum, item) => sum + item.amount, 0)
-    
+
     return monthlyRevenue
   }
 }

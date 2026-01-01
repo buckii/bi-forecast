@@ -481,17 +481,26 @@
       @updated="handleJournalEntryUpdated"
       @delete="handleJournalEntryDeleted"
     />
+
+    <!-- Journal Entry Bulk Edit Modal -->
+    <JournalEntryBulkEditModal
+      v-if="showBulkEditModal"
+      :initialEntryId="bulkEditEntryId"
+      @close="showBulkEditModal = false"
+      @updated="handleJournalEntryUpdated"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, watch, computed, onUnmounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { Chart, registerables } from 'chart.js'
 import { format as formatDate, parseISO } from 'date-fns'
+import { computed, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { isDarkModeGlobal } from '../composables/useDarkMode'
 import { useAuthStore } from '../stores/auth'
 import { useRevenueStore } from '../stores/revenue'
-import { Chart, registerables } from 'chart.js'
-import { isDarkModeGlobal } from '../composables/useDarkMode'
+import JournalEntryBulkEditModal from './JournalEntryBulkEditModal.vue'
 import JournalEntryCreateModal from './JournalEntryCreateModal.vue'
 import JournalEntryDetailModal from './JournalEntryDetailModal.vue'
 
@@ -552,6 +561,8 @@ let pieChartInstance = null
 const showJournalEntryCreateModal = ref(false)
 const journalEntryPrefillData = ref(null)
 const selectedJournalEntry = ref(null)
+const showBulkEditModal = ref(false)
+const bulkEditEntryId = ref(null)
 const journalEntryAccounts = ref({
   revenue: [],
   unearned: []
@@ -1119,7 +1130,14 @@ async function createJournalEntryFromTransaction(transaction) {
 
 // Show edit journal entry modal
 async function editJournalEntry(transaction) {
-  // Load the full journal entry details from the API
+  // If we have an ID, use the bulk edit modal which also handles single entries
+  if (transaction.id) {
+    bulkEditEntryId.value = transaction.id
+    showBulkEditModal.value = true
+    return
+  }
+
+  // Fallback to searching (for legacy data or entries without ID)
   try {
     const response = await fetch(`/.netlify/functions/journal-entries-list?view=all`, {
       method: 'GET',
@@ -1135,14 +1153,14 @@ async function editJournalEntry(transaction) {
     const data = await response.json()
 
     // Find the journal entry by matching transaction data
-    // This is a simplified version - you may need to add an ID to transactions
     const entry = data.data.unpaired.find(e =>
       e.TxnDate === transaction.date &&
       Math.abs(parseFloat(e.Line?.[0]?.Amount || 0) - transaction.amount) < 0.01
     )
 
     if (entry) {
-      selectedJournalEntry.value = entry
+      bulkEditEntryId.value = entry.Id
+      showBulkEditModal.value = true
     }
   } catch (err) {
     console.error('Error loading journal entry:', err)
