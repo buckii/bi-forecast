@@ -5,7 +5,8 @@
     </div>
 
     <!-- Reference Lines Legend -->
-    <div v-if="referenceLines" class="flex flex-wrap items-center justify-center gap-4 pt-2 border-t border-gray-200 dark:border-gray-700">
+    <div v-if="referenceLines"
+      class="flex flex-wrap items-center justify-center gap-4 pt-2 border-t border-gray-200 dark:border-gray-700">
       <div class="flex items-center space-x-2">
         <div class="w-4 h-0.5 border-t-2 border-dashed border-red-500"></div>
         <span class="text-xs text-gray-600 dark:text-gray-400">
@@ -23,10 +24,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { Chart, registerables } from 'chart.js'
 import annotationPlugin from 'chartjs-plugin-annotation'
 import { format, parse } from 'date-fns'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { isDarkModeGlobal } from '../composables/useDarkMode'
 
 Chart.register(...registerables, annotationPlugin)
@@ -66,19 +67,19 @@ let chartInstance = null
 // Computed property for reference line info
 const referenceLines = computed(() => {
   if (props.monthlyExpenses <= 0) return null
-  
+
   // Calculate target revenue based on the net margin setting
   // Target revenue = expenses / (1 - targetNetMargin/100)
   const marginDecimal = props.targetNetMargin / 100
   const targetRevenue = props.monthlyExpenses / (1 - marginDecimal)
-  
+
   const formatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
   })
-  
+
   return {
     expenses: formatter.format(props.monthlyExpenses),
     target: formatter.format(targetRevenue),
@@ -99,7 +100,7 @@ const chartColors = {
 // Function to get chart annotations (horizontal reference lines)
 function getAnnotations() {
   const annotations = {}
-  
+
   // Monthly Expenses Line
   if (props.monthlyExpenses > 0) {
     annotations.monthlyExpensesLine = {
@@ -113,7 +114,7 @@ function getAnnotations() {
         display: false
       }
     }
-    
+
     // Target Revenue Line based on configured net margin
     const marginDecimal = props.targetNetMargin / 100
     const targetRevenue = props.monthlyExpenses / (1 - marginDecimal)
@@ -129,13 +130,13 @@ function getAnnotations() {
       }
     }
   }
-  
+
   return annotations
 }
 
 const totalLabelPlugin = {
   id: 'totalLabel',
-  afterDatasetsDraw: function(chart) {
+  afterDatasetsDraw: function (chart) {
     const ctx = chart.ctx
 
     // Group datasets by stack
@@ -166,22 +167,32 @@ const totalLabelPlugin = {
 
         stackDatasets.forEach(({ dataset, datasetIndex }) => {
           const value = dataset.data[index] || 0
-          total += value
+
+          // Determine if we should add this value to the total
+          let shouldAdd = true
 
           // Get journal entries value (second dataset in each stack)
           if (dataset.label.includes('Journal Entries')) {
             journalEntriesValue = value
+            // If Journal Entries are negative, DO NOT add them to the total.
+            // Why? Because we have already deducted this amount from the 'Invoiced' dataset 
+            // to adjust the visual bar height. Adding the negative value here would 
+            // deduct it a second time ("double deduction"), making the total label wrong.
+            // The Invoiced bar is already at the "Net Revenue" height.
+            if (value < 0) {
+              shouldAdd = false
+            }
+          }
+
+          if (shouldAdd) {
+            total += value
           }
         })
 
         if (total > 0) {
-          // Adjust position if journal entries are negative
-          let yOffset = -10
-          if (journalEntriesValue < 0) {
-            // Move the label up by the height of the negative value
-            const negativePixelHeight = chart.scales.y.getPixelForValue(0) - chart.scales.y.getPixelForValue(Math.abs(journalEntriesValue))
-            yOffset -= negativePixelHeight
-          }
+          // Standard offset is enough because 'total' represents the top of the positive stack
+          // (Net Revenue), and negative bars are drawn below the zero line, not affecting the top Y position.
+          const yOffset = -10
 
           // Position the text
           const x = dataPoint.x
@@ -242,7 +253,10 @@ function createChart() {
         label: 'Invoiced (Compare)',
         data: props.data.map(d => {
           const comp = comparisonMap.get(d.month)
-          return comp ? (comp.invoiced || 0) : 0
+          const invoiced = comp ? (comp.invoiced || 0) : 0
+          const journalEntries = comp ? (comp.journalEntries || 0) : 0
+          // If journal entries are negative, deduct that from invoiced for the chart visual
+          return journalEntries < 0 ? (invoiced + journalEntries) : invoiced
         }),
         backgroundColor: addOpacity(chartColors.invoiced, 0.5),
         stack: 'comparison',
@@ -311,7 +325,12 @@ function createChart() {
   datasets.push(
     {
       label: 'Invoiced',
-      data: props.data.map(d => d.invoiced || 0),
+      data: props.data.map(d => {
+        const invoiced = d.invoiced || 0
+        const journalEntries = d.journalEntries || 0
+        // If journal entries are negative, deduct that from invoiced for the chart visual
+        return journalEntries < 0 ? (invoiced + journalEntries) : invoiced
+      }),
       backgroundColor: chartColors.invoiced,
       stack: 'current'
     },
@@ -377,7 +396,7 @@ function createChart() {
           },
           ticks: {
             color: isDarkModeGlobal.value ? '#ffffff' : '#374151',
-            callback: function(value) {
+            callback: function (value) {
               return new Intl.NumberFormat('en-US', {
                 style: 'currency',
                 currency: 'USD',
@@ -395,7 +414,7 @@ function createChart() {
             padding: 10,
             usePointStyle: true,
             color: isDarkModeGlobal.value ? '#ffffff' : '#374151',
-            filter: function(legendItem, chartData) {
+            filter: function (legendItem, chartData) {
               // Only show main datasets in legend, hide comparison datasets
               return !legendItem.text.includes('(Compare)')
             }
@@ -403,26 +422,57 @@ function createChart() {
         },
         tooltip: {
           callbacks: {
-            label: function(context) {
+            label: function (context) {
               const label = context.dataset.label || ''
-              const value = new Intl.NumberFormat('en-US', {
+              let value = context.parsed.y
+
+              // Use original data for Invoiced to show the true amount (without adjustment for negative JEs)
+              const dataIndex = context.dataIndex
+              const isComparison = context.dataset.stack === 'comparison'
+
+              if (label.includes('Invoiced')) {
+                if (isComparison && props.comparisonData) {
+                  // Find matching comparison month
+                  const currentMonth = props.data[dataIndex].month
+                  const compData = props.comparisonData.find(d => d.month === currentMonth)
+                  value = compData ? (compData.invoiced || 0) : 0
+                } else {
+                  value = props.data[dataIndex].invoiced || 0
+                }
+              }
+
+              const formattedValue = new Intl.NumberFormat('en-US', {
                 style: 'currency',
                 currency: 'USD',
                 minimumFractionDigits: 0,
                 maximumFractionDigits: 0
-              }).format(context.parsed.y)
-              return `${label}: ${value}`
+              }).format(value)
+              return `${label}: ${formattedValue}`
             },
-            footer: function(tooltipItems) {
+            footer: function (tooltipItems) {
               // Calculate totals for current and comparison stacks separately
               let currentTotal = 0
               let comparisonTotal = 0
 
               tooltipItems.forEach(item => {
+                const dataIndex = item.dataIndex
+                const label = item.dataset.label || ''
+                let value = item.parsed.y
+
+                // Use logic to get total. For chart stacking, the visual height is what matters for "Total" usually,
+                // BUT the user might expect the Sum of Positive amounts or Net Total.
+                // The visual height (Total at top of bar) is calculated by Chart.js automatically for stacking.
+                // Here we want to calculate the logic sum.
+                // If Invoiced was reduced visually, we should add back the reduction amount to get the "Real Total" 
+                // OR we accept that the visual total = Net Revenue.
+                // The request says "deduct that amount from the invoiced revenue for the value charted".
+                // This implies the Bar Total will be lower (Net Revenue). 
+                // So summing parser.y (adjusted values) is actually correct for "Effective Total Revenue".
+
                 if (item.dataset.stack === 'current') {
-                  currentTotal += item.parsed.y
+                  currentTotal += value
                 } else if (item.dataset.stack === 'comparison') {
-                  comparisonTotal += item.parsed.y
+                  comparisonTotal += value
                 }
               })
 
@@ -529,7 +579,11 @@ function updateChart() {
   })
 
   chartInstance.data.labels = labels
-  chartInstance.data.datasets[0].data = props.data.map(d => d.invoiced || 0)
+  chartInstance.data.datasets[0].data = props.data.map(d => {
+    const invoiced = d.invoiced || 0
+    const journalEntries = d.journalEntries || 0
+    return journalEntries < 0 ? (invoiced + journalEntries) : invoiced
+  })
   chartInstance.data.datasets[1].data = props.data.map(d => d.journalEntries || 0)
   chartInstance.data.datasets[2].data = props.data.map(d => d.delayedCharges || 0)
   chartInstance.data.datasets[3].data = props.data.map(d => d.monthlyRecurring || 0)
