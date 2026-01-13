@@ -121,27 +121,40 @@ async function prefetchTransactionDetails(companyId, asOfDate = null) {
 }
 
 /**
- * Get cached transaction details for a specific month
+ * Get cached transaction details for a specific month or range
  *
  * @param {string|ObjectId} companyId - The company ID
- * @param {string} month - Month in YYYY-MM-DD format
+ * @param {string} month - Start Month in YYYY-MM-DD or YYYY-MM format
  * @param {Date} asOfDate - Optional: the date of the snapshot
+ * @param {string} endMonth - Optional: End Month for range requests
  * @returns {Promise<Object|null>} - Cached data or null if not found
  */
-async function getCachedTransactionDetails(companyId, month, asOfDate = null) {
+async function getCachedTransactionDetails(companyId, month, asOfDate = null, endMonth = null) {
   const effectiveDate = asOfDate || new Date()
   effectiveDate.setHours(0, 0, 0, 0)
+
+  // Construct key: if endMonth is provided, use composite key
+  const cacheKey = endMonth ? `${month}:${endMonth}` : month
 
   try {
     const cacheCollection = await getCollection('transaction_details_cache')
 
     const cached = await cacheCollection.findOne({
       companyId: companyId,
-      month: month,
+      month: cacheKey,
       asOfDate: effectiveDate
     })
 
     if (cached) {
+      // Check for 1-day expiration for range requests
+      if (endMonth) {
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+        if (new Date(cached.updatedAt) < oneDayAgo) {
+          console.log(`[Transaction Details Cache] Range cache expired for ${cacheKey}`)
+          return null
+        }
+      }
+
       return {
         transactions: cached.transactions,
         clients: cached.clients,
@@ -157,17 +170,21 @@ async function getCachedTransactionDetails(companyId, month, asOfDate = null) {
 }
 
 /**
- * Cache transaction details for a specific month (for on-demand caching)
+ * Cache transaction details for a specific month or range (for on-demand caching)
  *
  * @param {string|ObjectId} companyId - The company ID
- * @param {string} month - Month in YYYY-MM-DD format
+ * @param {string} month - Start Month in YYYY-MM-DD or YYYY-MM format
  * @param {Object} data - Data to cache { transactions?, clients? }
  * @param {Date} asOfDate - Optional: the date of the snapshot
+ * @param {string} endMonth - Optional: End Month for range requests
  * @returns {Promise<boolean>} - Success status
  */
-async function cacheTransactionDetails(companyId, month, data, asOfDate = null) {
+async function cacheTransactionDetails(companyId, month, data, asOfDate = null, endMonth = null) {
   const effectiveDate = asOfDate || new Date()
   effectiveDate.setHours(0, 0, 0, 0)
+
+  // Construct key: if endMonth is provided, use composite key
+  const cacheKey = endMonth ? `${month}:${endMonth}` : month
 
   try {
     const cacheCollection = await getCollection('transaction_details_cache')
@@ -175,7 +192,7 @@ async function cacheTransactionDetails(companyId, month, data, asOfDate = null) 
     // Get existing cache entry if it exists
     const existing = await cacheCollection.findOne({
       companyId: companyId,
-      month: month,
+      month: cacheKey,
       asOfDate: effectiveDate
     })
 
@@ -200,7 +217,7 @@ async function cacheTransactionDetails(companyId, month, data, asOfDate = null) 
     await cacheCollection.updateOne(
       {
         companyId: companyId,
-        month: month,
+        month: cacheKey,
         asOfDate: effectiveDate
       },
       { $set: updateData },
