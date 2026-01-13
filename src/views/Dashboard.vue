@@ -7,22 +7,16 @@
           <!-- Quick Links -->
           <div class="flex flex-wrap gap-2">
             <!-- First Group -->
-            <button
-              @click="resetToToday"
-              class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors"
-            >
+            <button @click="resetToToday"
+              class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors">
               Reset to Today ({{ format(new Date(), 'MMM d') }})
             </button>
-            <button
-              @click="thisMonthVsPriorMonth"
-              class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors"
-            >
+            <button @click="thisMonthVsPriorMonth"
+              class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors">
               {{ getCurrentMonthName() }} vs {{ getPreviousMonthName() }}
             </button>
-            <button
-              @click="lastMonthVsPriorMonth"
-              class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors"
-            >
+            <button @click="lastMonthVsPriorMonth"
+              class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors">
               {{ getPreviousMonthName() }} vs {{ getTwoMonthsAgoName() }}
             </button>
 
@@ -30,37 +24,27 @@
             <div class="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
 
             <!-- Second Group -->
-            <button
-              @click="todayVsStartOfCurrentMonth"
-              class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors"
-            >
+            <button @click="todayVsStartOfCurrentMonth"
+              class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors">
               Today vs. Start of {{ getCurrentMonthName() }}
             </button>
-            <button
-              @click="todayVsStartOfPriorMonth"
-              class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors"
-            >
+            <button @click="todayVsStartOfPriorMonth"
+              class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors">
               Today vs. Start of {{ getPreviousMonthName() }}
             </button>
-            <button
-              @click="todayVsStartOfTwoMonthsAgo"
-              class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors"
-            >
+            <button @click="todayVsStartOfTwoMonthsAgo"
+              class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors">
               Today vs. Start of {{ getTwoMonthsAgoName() }}
             </button>
           </div>
 
           <!-- Date Inputs, Toggle, and Refresh Buttons -->
-          <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-4 lg:space-y-0 gap-4">
+          <div
+            class="flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-4 lg:space-y-0 gap-4">
             <div class="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-6">
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">View as of</label>
-                <input
-                  type="date"
-                  v-model="selectedDateStr"
-                  @change="handleDateChange"
-                  class="input"
-                />
+                <input type="date" v-model="selectedDateStr" @change="handleDateChange" class="input" />
                 <span v-if="revenueStore.isHistorical" class="ml-2 text-sm text-amber-600">
                   Viewing historical data
                 </span>
@@ -69,17 +53,9 @@
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Compare as of</label>
                 <div class="flex items-center space-x-2">
-                  <input
-                    type="date"
-                    v-model="compareAsOfDate"
-                    @change="handleCompareDateChange"
-                    class="input"
-                  />
-                  <button
-                    v-if="compareAsOfDate"
-                    @click="clearCompareDate"
-                    class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline"
-                  >
+                  <input type="date" v-model="compareAsOfDate" @change="handleCompareDateChange" class="input" />
+                  <button v-if="compareAsOfDate" @click="clearCompareDate"
+                    class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline">
                     Clear
                   </button>
                 </div>
@@ -88,15 +64,12 @@
               <div class="flex items-center">
                 <label class="flex items-center cursor-pointer">
                   <div class="relative">
-                    <input
-                      type="checkbox"
-                      v-model="revenueStore.includeWeightedSales"
-                      class="sr-only"
-                    />
-                    <div class="w-12 h-6 rounded-full shadow-inner transition-colors duration-200 relative flex items-center"
-                         :class="revenueStore.includeWeightedSales ? 'bg-green-500' : 'bg-red-500'">
+                    <input type="checkbox" v-model="revenueStore.includeWeightedSales" class="sr-only" />
+                    <div
+                      class="w-12 h-6 rounded-full shadow-inner transition-colors duration-200 relative flex items-center"
+                      :class="revenueStore.includeWeightedSales ? 'bg-green-500' : 'bg-red-500'">
                       <div class="w-5 h-5 bg-white rounded-full shadow-lg transition-transform duration-200 absolute"
-                           :class="revenueStore.includeWeightedSales ? 'translate-x-6' : 'translate-x-0.5'">
+                        :class="revenueStore.includeWeightedSales ? 'translate-x-6' : 'translate-x-0.5'">
                       </div>
                     </div>
                   </div>
@@ -107,22 +80,25 @@
 
             <div class="flex flex-col items-end">
               <button @click="refreshAll" :disabled="refreshingAll" class="btn-secondary flex items-center space-x-2">
-                <div v-if="refreshingAll" class="animate-spin h-4 w-4 border-2 border-gray-600 border-t-transparent rounded-full"></div>
+                <div v-if="refreshingAll"
+                  class="animate-spin h-4 w-4 border-2 border-gray-600 border-t-transparent rounded-full"></div>
                 <span>{{ refreshingAll ? 'Refreshing...' : 'Refresh All Data' }}</span>
               </button>
               <div class="flex space-x-6 mt-2 text-xs text-gray-500 dark:text-gray-400">
-                <span :title="formatRefreshTooltip(qboLastRefresh)">Last refreshed: {{ formatLastRefresh(qboLastRefresh) }}</span>
+                <span :title="formatRefreshTooltip(qboLastRefresh)">Last refreshed: {{ formatLastRefresh(qboLastRefresh)
+                }}</span>
               </div>
             </div>
           </div>
         </div>
       </div>
-      
+
       <!-- Key Metrics -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <div class="card relative">
           <!-- Loading overlay -->
-          <div v-if="chartRefreshing" class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg">
+          <div v-if="chartRefreshing"
+            class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">This Month</h3>
@@ -140,16 +116,22 @@
             <p class="text-xl font-semibold text-gray-700 dark:text-gray-300">
               {{ formatCurrency(comparisonCurrentMonthRevenue) }}
             </p>
-            <p :class="calculateChange(revenueStore.currentMonthRevenue, comparisonCurrentMonthRevenue).dollar >= 0 ? 'text-green-600' : 'text-red-600'" class="text-sm font-medium">
-              {{ calculateChange(revenueStore.currentMonthRevenue, comparisonCurrentMonthRevenue).dollar >= 0 ? '+' : '' }}{{ formatCurrency(calculateChange(revenueStore.currentMonthRevenue, comparisonCurrentMonthRevenue).dollar) }}
-              ({{ calculateChange(revenueStore.currentMonthRevenue, comparisonCurrentMonthRevenue).percent >= 0 ? '+' : '' }}{{ calculateChange(revenueStore.currentMonthRevenue, comparisonCurrentMonthRevenue).percent.toFixed(1) }}%)
+            <p :class="calculateChange(revenueStore.currentMonthRevenue, comparisonCurrentMonthRevenue).dollar >= 0 ? 'text-green-600' : 'text-red-600'"
+              class="text-sm font-medium">
+              {{ calculateChange(revenueStore.currentMonthRevenue, comparisonCurrentMonthRevenue).dollar >= 0 ? '+' : ''
+              }}{{ formatCurrency(calculateChange(revenueStore.currentMonthRevenue,
+                comparisonCurrentMonthRevenue).dollar) }}
+              ({{ calculateChange(revenueStore.currentMonthRevenue, comparisonCurrentMonthRevenue).percent >= 0 ? '+' :
+                '' }}{{ calculateChange(revenueStore.currentMonthRevenue,
+                comparisonCurrentMonthRevenue).percent.toFixed(1) }}%)
             </p>
           </div>
         </div>
-        
+
         <div class="card relative">
           <!-- Loading overlay -->
-          <div v-if="chartRefreshing" class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg">
+          <div v-if="chartRefreshing"
+            class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">3-Month Forecast</h3>
@@ -167,16 +149,21 @@
             <p class="text-xl font-semibold text-gray-700 dark:text-gray-300">
               {{ formatCurrency(comparisonThreeMonthRevenue) }}
             </p>
-            <p :class="calculateChange(revenueStore.threeMonthRevenue, comparisonThreeMonthRevenue).dollar >= 0 ? 'text-green-600' : 'text-red-600'" class="text-sm font-medium">
-              {{ calculateChange(revenueStore.threeMonthRevenue, comparisonThreeMonthRevenue).dollar >= 0 ? '+' : '' }}{{ formatCurrency(calculateChange(revenueStore.threeMonthRevenue, comparisonThreeMonthRevenue).dollar) }}
-              ({{ calculateChange(revenueStore.threeMonthRevenue, comparisonThreeMonthRevenue).percent >= 0 ? '+' : '' }}{{ calculateChange(revenueStore.threeMonthRevenue, comparisonThreeMonthRevenue).percent.toFixed(1) }}%)
+            <p :class="calculateChange(revenueStore.threeMonthRevenue, comparisonThreeMonthRevenue).dollar >= 0 ? 'text-green-600' : 'text-red-600'"
+              class="text-sm font-medium">
+              {{ calculateChange(revenueStore.threeMonthRevenue, comparisonThreeMonthRevenue).dollar >= 0 ? '+' : ''
+              }}{{ formatCurrency(calculateChange(revenueStore.threeMonthRevenue, comparisonThreeMonthRevenue).dollar)
+              }}
+              ({{ calculateChange(revenueStore.threeMonthRevenue, comparisonThreeMonthRevenue).percent >= 0 ? '+' : ''
+              }}{{ calculateChange(revenueStore.threeMonthRevenue, comparisonThreeMonthRevenue).percent.toFixed(1) }}%)
             </p>
           </div>
         </div>
-        
-          <div class="card relative">
+
+        <div class="card relative">
           <!-- Loading overlay -->
-          <div v-if="chartRefreshing" class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg">
+          <div v-if="chartRefreshing"
+            class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">1-Year Forecast</h3>
@@ -208,16 +195,20 @@
             <p class="text-xl font-semibold text-gray-700 dark:text-gray-300">
               {{ formatCurrency(comparisonYearForecast) }}
             </p>
-            <p :class="calculateChange(yearForecast, comparisonYearForecast).dollar >= 0 ? 'text-green-600' : 'text-red-600'" class="text-sm font-medium">
-              {{ calculateChange(yearForecast, comparisonYearForecast).dollar >= 0 ? '+' : '' }}{{ formatCurrency(calculateChange(yearForecast, comparisonYearForecast).dollar) }}
-              ({{ calculateChange(yearForecast, comparisonYearForecast).percent >= 0 ? '+' : '' }}{{ calculateChange(yearForecast, comparisonYearForecast).percent.toFixed(1) }}%)
+            <p :class="calculateChange(yearForecast, comparisonYearForecast).dollar >= 0 ? 'text-green-600' : 'text-red-600'"
+              class="text-sm font-medium">
+              {{ calculateChange(yearForecast, comparisonYearForecast).dollar >= 0 ? '+' : '' }}{{
+                formatCurrency(calculateChange(yearForecast, comparisonYearForecast).dollar) }}
+              ({{ calculateChange(yearForecast, comparisonYearForecast).percent >= 0 ? '+' : '' }}{{
+                calculateChange(yearForecast, comparisonYearForecast).percent.toFixed(1) }}%)
             </p>
           </div>
         </div>
 
         <div class="card relative">
           <!-- Loading overlay -->
-          <div v-if="chartRefreshing" class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg">
+          <div v-if="chartRefreshing"
+            class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">30-Days Unbilled</h3>
@@ -232,16 +223,22 @@
             <p class="text-xl font-semibold text-gray-700 dark:text-gray-300">
               {{ formatCurrency(comparisonThirtyDaysUnbilled) }}
             </p>
-            <p :class="calculateChange(revenueStore.thirtyDaysUnbilled, comparisonThirtyDaysUnbilled).dollar >= 0 ? 'text-green-600' : 'text-red-600'" class="text-sm font-medium">
-              {{ calculateChange(revenueStore.thirtyDaysUnbilled, comparisonThirtyDaysUnbilled).dollar >= 0 ? '+' : '' }}{{ formatCurrency(calculateChange(revenueStore.thirtyDaysUnbilled, comparisonThirtyDaysUnbilled).dollar) }}
-              ({{ calculateChange(revenueStore.thirtyDaysUnbilled, comparisonThirtyDaysUnbilled).percent >= 0 ? '+' : '' }}{{ calculateChange(revenueStore.thirtyDaysUnbilled, comparisonThirtyDaysUnbilled).percent.toFixed(1) }}%)
+            <p :class="calculateChange(revenueStore.thirtyDaysUnbilled, comparisonThirtyDaysUnbilled).dollar >= 0 ? 'text-green-600' : 'text-red-600'"
+              class="text-sm font-medium">
+              {{ calculateChange(revenueStore.thirtyDaysUnbilled, comparisonThirtyDaysUnbilled).dollar >= 0 ? '+' : ''
+              }}{{ formatCurrency(calculateChange(revenueStore.thirtyDaysUnbilled, comparisonThirtyDaysUnbilled).dollar)
+              }}
+              ({{ calculateChange(revenueStore.thirtyDaysUnbilled, comparisonThirtyDaysUnbilled).percent >= 0 ? '+' : ''
+              }}{{ calculateChange(revenueStore.thirtyDaysUnbilled, comparisonThirtyDaysUnbilled).percent.toFixed(1)
+              }}%)
             </p>
           </div>
         </div>
 
         <div class="card relative">
           <!-- Loading overlay -->
-          <div v-if="chartRefreshing" class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg">
+          <div v-if="chartRefreshing"
+            class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Days Cash</h3>
@@ -256,9 +253,12 @@
             <p class="text-xl font-semibold text-gray-700 dark:text-gray-300">
               {{ comparisonDaysCash }}
             </p>
-            <p :class="calculateChange(daysCash, comparisonDaysCash).dollar >= 0 ? 'text-green-600' : 'text-red-600'" class="text-sm font-medium">
-              {{ calculateChange(daysCash, comparisonDaysCash).dollar >= 0 ? '+' : '' }}{{ calculateChange(daysCash, comparisonDaysCash).dollar.toFixed(0) }} days
-              ({{ calculateChange(daysCash, comparisonDaysCash).percent >= 0 ? '+' : '' }}{{ calculateChange(daysCash, comparisonDaysCash).percent.toFixed(1) }}%)
+            <p :class="calculateChange(daysCash, comparisonDaysCash).dollar >= 0 ? 'text-green-600' : 'text-red-600'"
+              class="text-sm font-medium">
+              {{ calculateChange(daysCash, comparisonDaysCash).dollar >= 0 ? '+' : '' }}{{ calculateChange(daysCash,
+                comparisonDaysCash).dollar.toFixed(0) }} days
+              ({{ calculateChange(daysCash, comparisonDaysCash).percent >= 0 ? '+' : '' }}{{ calculateChange(daysCash,
+                comparisonDaysCash).percent.toFixed(1) }}%)
             </p>
           </div>
           <p v-if="!chartRefreshing" class="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -272,7 +272,8 @@
 
         <div class="card relative">
           <!-- Loading overlay -->
-          <div v-if="chartRefreshing" class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg">
+          <div v-if="chartRefreshing"
+            class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Days Cash + AR</h3>
@@ -287,9 +288,12 @@
             <p class="text-xl font-semibold text-gray-700 dark:text-gray-300">
               {{ comparisonDaysCashPlusAR }}
             </p>
-            <p :class="calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).dollar >= 0 ? 'text-green-600' : 'text-red-600'" class="text-sm font-medium">
-              {{ calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).dollar >= 0 ? '+' : '' }}{{ calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).dollar.toFixed(0) }} days
-              ({{ calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).percent >= 0 ? '+' : '' }}{{ calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).percent.toFixed(1) }}%)
+            <p :class="calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).dollar >= 0 ? 'text-green-600' : 'text-red-600'"
+              class="text-sm font-medium">
+              {{ calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).dollar >= 0 ? '+' : '' }}{{
+                calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).dollar.toFixed(0) }} days
+              ({{ calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).percent >= 0 ? '+' : '' }}{{
+                calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).percent.toFixed(1) }}%)
             </p>
           </div>
           <p v-if="!chartRefreshing" class="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -304,7 +308,7 @@
           </p>
         </div>
       </div>
-      
+
       <!-- Revenue Chart -->
       <div class="card">
         <div class="flex flex-col space-y-4 mb-4">
@@ -314,72 +318,94 @@
               <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Monthly Revenue Forecast</h2>
               <p v-if="!chartRefreshing" class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 <span>Viewing data as of: <strong>{{ actualDataDates.mainDate }}</strong></span>
-                <span v-if="actualDataDates.compareDate"> | Comparing to: <strong>{{ actualDataDates.compareDate }}</strong></span>
+                <span v-if="actualDataDates.compareDate"> | Comparing to: <strong>{{ actualDataDates.compareDate
+                }}</strong></span>
               </p>
             </div>
-            <button
-              @click="shareChartToSlack"
-              :disabled="sharingToSlack || revenueStore.loading"
-              class="btn-secondary inline-flex items-center"
-            >
-              <svg v-if="sharingToSlack" class="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <svg v-else class="-ml-1 mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 10.12h6.481v2.522H5.042a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 7.597h6.481V5.074c0-1.393 1.135-2.523 2.52-2.523a2.528 2.528 0 0 1 2.52 2.523v2.523h2.515c1.393 0 2.52 1.135 2.52 2.523a2.528 2.528 0 0 1-2.52 2.523h-2.515v2.522h2.515a2.528 2.528 0 0 1 2.52 2.523A2.528 2.528 0 0 1 16.558 18.88h-2.515v2.523c0 1.393-1.135 2.523-2.52 2.523a2.528 2.528 0 0 1-2.52-2.523V18.88H5.042a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 15.835h6.481v-2.522H5.042z"/>
-              </svg>
-              {{ sharingToSlack ? 'Sending...' : 'Send to Slack' }}
-            </button>
+            <div class="flex items-center space-x-3">
+              <button @click="showDetail" class="btn-secondary inline-flex items-center"
+                title="Show details for current range">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                Show Detail
+              </button>
+              <button @click="shareChartToSlack" :disabled="sharingToSlack || revenueStore.loading"
+                class="btn-secondary inline-flex items-center">
+                <svg v-if="sharingToSlack" class="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg"
+                  fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor"
+                    d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                  </path>
+                </svg>
+                <svg v-else class="-ml-1 mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path
+                    d="M5.042 15.165a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 10.12h6.481v2.522H5.042a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 7.597h6.481V5.074c0-1.393 1.135-2.523 2.52-2.523a2.528 2.528 0 0 1 2.52 2.523v2.523h2.515c1.393 0 2.52 1.135 2.52 2.523a2.528 2.528 0 0 1-2.52 2.523h-2.515v2.522h2.515a2.528 2.528 0 0 1 2.52 2.523A2.528 2.528 0 0 1 16.558 18.88h-2.515v2.523c0 1.393-1.135 2.523-2.52 2.523a2.528 2.528 0 0 1-2.52-2.523V18.88H5.042a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 15.835h6.481v-2.522H5.042z" />
+                </svg>
+                {{ sharingToSlack ? 'Sending...' : 'Send to Slack' }}
+              </button>
+            </div>
           </div>
-          
+
           <!-- Date Range Selector -->
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-4">
               <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Date Range:</label>
               <div class="flex items-center space-x-2">
-                <input
-                  type="date"
-                  v-model="chartStartDateStr"
-                  @change="handleStartDateChange"
-                  class="input text-sm"
-                />
+                <input type="date" v-model="chartStartDateStr" @change="handleStartDateChange" class="input text-sm" />
                 <span class="text-gray-500 dark:text-gray-400">to</span>
-                <input
-                  type="date"
-                  v-model="chartEndDateStr"
-                  @change="handleEndDateChange"
-                  class="input text-sm"
-                />
+                <input type="date" v-model="chartEndDateStr" @change="handleEndDateChange" class="input text-sm" />
               </div>
             </div>
-            <button 
-              @click="resetDateRange"
-              class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            >
-              Reset to Default
-            </button>
+            <div class="relative inline-block text-left">
+              <button @click="showRangeMenu = !showRangeMenu"
+                class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex items-center bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-1.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                Quick Ranges
+                <ChevronDownIcon class="w-4 h-4 ml-2" />
+              </button>
+              <div v-if="showRangeMenu"
+                class="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-700 ring-1 ring-black ring-opacity-5 focus:outline-none z-10 transition-all transform origin-top-right">
+                <div class="py-1">
+                  <button @click="setQuickRange('default')"
+                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600">
+                    Default (6 Months)
+                  </button>
+                  <button @click="setQuickRange('3months')"
+                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600">
+                    3 Months (Current + 2)
+                  </button>
+                  <button @click="setQuickRange('1year')"
+                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600">
+                    1-Year Forecast
+                  </button>
+                  <button @click="setQuickRange('thisYear')"
+                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600">
+                    This Year (Jan-Dec)
+                  </button>
+                  <button @click="setQuickRange('lastYear')"
+                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600">
+                    Last Year (Jan-Dec)
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <div class="relative" ref="chartContainer" style="height: 60vh">
           <!-- Loading State inside chart area -->
-          <div v-if="revenueStore.loading || chartRefreshing" class="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75">
+          <div v-if="revenueStore.loading || chartRefreshing"
+            class="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75">
             <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
           </div>
           <!-- Chart content -->
-          <RevenueChart
-            ref="revenueChart"
-            :data="chartData"
-            :comparison-data="comparisonChartData"
-            :selected-date="selectedDateStr"
-            :compare-as-of-date="compareAsOfDate"
-            :monthly-expenses="effectiveMonthlyExpenses"
-            :target-net-margin="targetNetMargin"
-            @bar-click="handleBarClick"
-          />
+          <RevenueChart ref="revenueChart" :data="chartData" :comparison-data="comparisonChartData"
+            :selected-date="selectedDateStr" :compare-as-of-date="compareAsOfDate"
+            :monthly-expenses="effectiveMonthlyExpenses" :target-net-margin="targetNetMargin"
+            @bar-click="handleBarClick" />
         </div>
       </div>
-      
+
       <!-- Error State -->
       <div v-if="revenueStore.error" class="card bg-red-50 border-red-200">
         <p class="text-red-600">{{ revenueStore.error }}</p>
@@ -387,32 +413,22 @@
     </div>
 
     <!-- Transaction Details Modal -->
-    <TransactionDetailsModal
-      :is-open="showTransactionModal"
-      :month="selectedTransaction.month"
-      :as-of="revenueStore.isHistorical ? selectedDateStr : ''"
-      @close="closeTransactionModal"
-    />
+    <TransactionDetailsModal :is-open="showTransactionModal" :month="selectedTransaction.month"
+      :start-date="selectedTransaction.startDate" :end-date="selectedTransaction.endDate"
+      :as-of="revenueStore.isHistorical ? selectedDateStr : ''" @close="closeTransactionModal" />
 
     <!-- Chart Share Modal -->
-    <StatusModal
-      :show="showShareModal"
-      :state="shareModalState"
-      loading-title="Sharing to Slack..."
-      loading-message="Capturing chart and uploading to Slack..."
-      success-title="Chart Shared Successfully!"
-      success-message="Your revenue forecast chart has been posted to Slack."
-      error-title="Failed to Share Chart"
-      :error-message="shareModalError"
-      :error-details="shareModalErrorDetails"
-      @close="closeShareModal"
-      @retry="shareChartToSlack"
-    />
+    <StatusModal :show="showShareModal" :state="shareModalState" loading-title="Sharing to Slack..."
+      loading-message="Capturing chart and uploading to Slack..." success-title="Chart Shared Successfully!"
+      success-message="Your revenue forecast chart has been posted to Slack." error-title="Failed to Share Chart"
+      :error-message="shareModalError" :error-details="shareModalErrorDetails" @close="closeShareModal"
+      @retry="shareChartToSlack" />
   </AppLayout>
 </template>
 
 <script setup>
-import { addMonths, endOfMonth, format, parse, startOfMonth, subMonths } from 'date-fns'
+import { ChevronDownIcon } from '@heroicons/vue/24/outline'
+import { addMonths, endOfMonth, endOfYear, format, parse, startOfMonth, startOfYear, subMonths, subYears } from 'date-fns'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '../components/AppLayout.vue'
@@ -488,8 +504,9 @@ const dateChangeTimeout = ref(null)
 const compareDateChangeTimeout = ref(null)
 const startDateChangeTimeout = ref(null)
 const endDateChangeTimeout = ref(null)
+
 const showTransactionModal = ref(false)
-const selectedTransaction = ref({ month: '', component: '' })
+const selectedTransaction = ref({ month: '', startDate: '', endDate: '', component: '' })
 const sharingToSlack = ref(false)
 const chartContainer = ref(null)
 const revenueChart = ref(null)
@@ -573,12 +590,12 @@ const comparisonChartData = computed(() => {
 // Computed property for effective monthly expenses (override or auto)
 const effectiveMonthlyExpenses = computed(() => {
   const settings = authStore.company?.settings
-  
+
   // If there's an override, use it
   if (settings?.monthlyExpensesOverride) {
     return settings.monthlyExpensesOverride
   }
-  
+
   // Otherwise, use the previous month's expenses from balances
   return revenueStore.balances?.monthlyExpenses || 0
 })
@@ -608,12 +625,27 @@ const threeMonthMargin = computed(() => {
   return (threeMonthProfit.value / revenueStore.threeMonthRevenue) * 100
 })
 
+// Button handler for Export Detail on chart
+function handleExportDetail() {
+  const today = new Date()
+  const start = format(startOfMonth(today), 'yyyy-MM-dd')
+  const end = format(endOfMonth(addMonths(today, 11)), 'yyyy-MM-dd')
+
+  selectedTransaction.value = {
+    startDate: start,
+    endDate: end,
+    title: '12 Month Forecast Detail',
+    autoExport: true
+  }
+  showTransactionModal.value = true
+}
+
 // Computed property for days cash using effective monthly expenses
 const daysCash = computed(() => {
   const monthlyExpenses = effectiveMonthlyExpenses.value
   const dailyExpenses = monthlyExpenses / 30
   const cashOnHand = revenueStore.totalCashOnHand
-  
+
   if (dailyExpenses === 0 || cashOnHand === 0) return 0
   return Math.round(cashOnHand / dailyExpenses)
 })
@@ -682,7 +714,7 @@ const twelveMonthsJournalEntries = computed(() => {
 // Computed property for 12 months of weighted sales
 const twelveMonthsWeightedSales = computed(() => {
   if (!revenueStore.includeWeightedSales) return 0
-  
+
   const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
   const start = startOfMonth(selectedDate)
   let total = 0
@@ -701,10 +733,10 @@ const twelveMonthsWeightedSales = computed(() => {
 // Computed property for 1-Year Forecast (12 months recurring + won unscheduled + weighted sales (if enabled) + journal entries + unbilled charges)
 const yearForecast = computed(() => {
   return twelveMonthsRecurring.value +
-         twelveMonthsWonUnscheduled.value +
-         twelveMonthsWeightedSales.value +
-         twelveMonthsJournalEntries.value +
-         revenueStore.yearUnbilledCharges
+    twelveMonthsWonUnscheduled.value +
+    twelveMonthsWeightedSales.value +
+    twelveMonthsJournalEntries.value +
+    revenueStore.yearUnbilledCharges
 })
 
 // Comparison metrics computed properties
@@ -718,8 +750,8 @@ const comparisonCurrentMonthRevenue = computed(() => {
 
   const components = monthData.components
   let total = components.invoiced + components.journalEntries +
-              components.delayedCharges + components.monthlyRecurring +
-              components.wonUnscheduled
+    components.delayedCharges + components.monthlyRecurring +
+    components.wonUnscheduled
 
   if (revenueStore.includeWeightedSales) {
     total += components.weightedSales
@@ -741,8 +773,8 @@ const comparisonThreeMonthRevenue = computed(() => {
     if (monthData) {
       const components = monthData.components
       total += components.invoiced + components.journalEntries +
-               components.delayedCharges + components.monthlyRecurring +
-               components.wonUnscheduled
+        components.delayedCharges + components.monthlyRecurring +
+        components.wonUnscheduled
 
       if (revenueStore.includeWeightedSales) {
         total += components.weightedSales
@@ -829,10 +861,10 @@ const comparisonTwelveMonthsWeightedSales = computed(() => {
 const comparisonYearForecast = computed(() => {
   if (!comparisonData.value || !compareAsOfDate.value) return null
   return comparisonTwelveMonthsRecurring.value +
-         comparisonTwelveMonthsWonUnscheduled.value +
-         comparisonTwelveMonthsWeightedSales.value +
-         comparisonTwelveMonthsJournalEntries.value +
-         comparisonYearUnbilled.value
+    comparisonTwelveMonthsWonUnscheduled.value +
+    comparisonTwelveMonthsWeightedSales.value +
+    comparisonTwelveMonthsJournalEntries.value +
+    comparisonYearUnbilled.value
 })
 
 const comparisonThirtyDaysUnbilled = computed(() => {
@@ -881,10 +913,10 @@ const comparisonTotalReceivables = computed(() => {
 
   if (receivables.current !== undefined) {
     return (receivables.current || 0) +
-           (receivables.days1to30 || 0) +
-           (receivables.days31to60 || 0) +
-           (receivables.days61to90 || 0) +
-           (receivables.over90 || 0)
+      (receivables.days1to30 || 0) +
+      (receivables.days31to60 || 0) +
+      (receivables.days61to90 || 0) +
+      (receivables.over90 || 0)
   }
 
   return 0
@@ -1211,9 +1243,41 @@ function handleEndDateChange() {
   }, 1000)
 }
 
-function resetDateRange() {
-  chartStartDateStr.value = format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd')
-  chartEndDateStr.value = format(endOfMonth(addMonths(new Date(), 4)), 'yyyy-MM-dd')
+const showRangeMenu = ref(false)
+
+function setQuickRange(type) {
+  const now = new Date()
+  let start, end
+
+  switch (type) {
+    case 'default': // Last month + next 5 (6 total)
+      start = startOfMonth(subMonths(now, 1))
+      end = endOfMonth(addMonths(now, 4))
+      break
+    case '3months': // This month + next 2 (3 total)
+      start = startOfMonth(now)
+      end = endOfMonth(addMonths(now, 2))
+      break
+    case '1year': // This month + next 11 (12 total)
+      start = startOfMonth(now)
+      end = endOfMonth(addMonths(now, 11))
+      break
+    case 'thisYear': // Jan 1 to Dec 31 of current year
+      start = startOfYear(now)
+      end = endOfYear(now)
+      break
+    case 'lastYear': // Jan 1 to Dec 31 of last year
+      const lastYear = subYears(now, 1)
+      start = startOfYear(lastYear)
+      end = endOfYear(lastYear)
+      break
+  }
+
+  if (start && end) {
+    chartStartDateStr.value = format(start, 'yyyy-MM-dd')
+    chartEndDateStr.value = format(end, 'yyyy-MM-dd')
+  }
+  showRangeMenu.value = false
 }
 
 // Refresh functions are now handled by useDataRefresh composable
@@ -1221,6 +1285,8 @@ function resetDateRange() {
 function handleBarClick(data) {
   selectedTransaction.value = {
     month: data.month,
+    startDate: '', // Clear range when selecting single month
+    endDate: '',
     component: data.component
   }
   showTransactionModal.value = true
@@ -1236,7 +1302,7 @@ function handleBarClick(data) {
 
 function closeTransactionModal() {
   showTransactionModal.value = false
-  selectedTransaction.value = { month: '', component: '' }
+  selectedTransaction.value = { month: '', startDate: '', endDate: '', component: '' }
 
   // Remove modal params from URL when closing
   const query = { ...route.query }
@@ -1245,30 +1311,40 @@ function closeTransactionModal() {
   router.replace({ query })
 }
 
+function showDetail() {
+  selectedTransaction.value = {
+    month: '', // Clear specific month to indicate range mode
+    startDate: chartStartDateStr.value,
+    endDate: chartEndDateStr.value,
+    component: '' // All components
+  }
+  showTransactionModal.value = true
+}
+
 async function shareChartToSlack() {
   if (!chartContainer.value) return
-  
+
   // Show modal in loading state
   shareModalState.value = 'loading'
   shareModalError.value = ''
   shareModalErrorDetails.value = ''
   showShareModal.value = true
   sharingToSlack.value = true
-  
+
   try {
     // Step 1: Capture chart
     const html2canvas = (await import('html2canvas')).default
-    
+
     const canvas = await html2canvas(chartContainer.value, {
       backgroundColor: null,
       scale: 2, // Higher resolution
       useCORS: true,
       logging: false
     })
-    
+
     // Step 2: Convert to base64
     const imageData = canvas.toDataURL('image/png', 1.0)
-    
+
     // Step 3: Send to backend with auth token
     const response = await fetch('/.netlify/functions/share-chart', {
       method: 'POST',
@@ -1281,33 +1357,33 @@ async function shareChartToSlack() {
         chartTitle: 'Monthly Revenue Forecast'
       })
     })
-    
+
     const responseData = await response.json()
-    
+
     if (!response.ok) {
       throw new Error(responseData.message || `HTTP ${response.status}: ${response.statusText}`)
     }
-    
+
     // Success!
     shareModalState.value = 'success'
-    
+
   } catch (error) {
     console.error('Error sharing chart to Slack:', error)
-    
+
     // Show error in modal
     shareModalState.value = 'error'
     shareModalError.value = error.message || 'An unexpected error occurred'
-    
+
     // Add technical details for debugging
     const details = []
     details.push(`Error: ${error.message}`)
     details.push(`Auth token: ${authStore.token ? 'Present' : 'Missing'}`)
     details.push(`Chart container: ${chartContainer.value ? 'Found' : 'Missing'}`)
-    
+
     if (error.stack) {
       details.push(`Stack trace: ${error.stack}`)
     }
-    
+
     shareModalErrorDetails.value = details.join('\n\n')
   } finally {
     sharingToSlack.value = false
@@ -1419,7 +1495,12 @@ onMounted(async () => {
         component: ''
       }
       showTransactionModal.value = true
+    } else if (route.query.exportStart && route.query.exportEnd) {
+      // Auto-open for export
+      handleExportDetail()
     }
+
+    // Initial data loaded successfully
 
     // Initial data loaded successfully
   } catch (err) {

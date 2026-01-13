@@ -4,7 +4,7 @@ const RevenueCalculator = require('./services/revenue-calculator.js')
 const { getCachedTransactionDetails, cacheTransactionDetails } = require('./services/transaction-details-cache.js')
 const { startOfMonth, endOfMonth, format, addMonths } = require('date-fns')
 
-exports.handler = async function(event, context) {
+exports.handler = async function (event, context) {
   // Handle CORS preflight requests
   if (event.httpMethod === 'OPTIONS') {
     return cors()
@@ -18,13 +18,17 @@ exports.handler = async function(event, context) {
     const { company } = await getCurrentUser(event)
 
     const params = new URLSearchParams(event.queryStringParameters)
-    const month = params.get('month') // Format: YYYY-MM-DD
+
+    // Support new range parameters, fallback to 'month' for single month
+    const monthStart = params.get('month_start') || params.get('month')
+    const monthEnd = params.get('month_end') || (params.get('month_start') ? params.get('month_start') : params.get('month'))
+
     const component = params.get('component') // invoiced, journalEntries, etc.
     const asOf = params.get('as_of') // Optional: YYYY-MM-DD
     const forceRefresh = params.get('_refresh') // Cache-busting parameter
 
-    if (!month || !component) {
-      return error('Missing required parameters: month and component', 400)
+    if (!monthStart || !component) {
+      return error('Missing required parameters: month_start (or month) and component', 400)
     }
 
     // Validate as_of date format if provided
@@ -32,29 +36,47 @@ exports.handler = async function(event, context) {
       return error('Invalid date format for as_of. Use YYYY-MM-DD', 400)
     }
 
+    // Parse start month
+    const [startYear, startMonthNum, startDay] = monthStart.split('-').map(Number)
+    const startMonthDate = new Date(startYear, startMonthNum - 1, startDay || 1)
+
+    // Parse end month
+    const [endYear, endMonthNum, endDay] = monthEnd.split('-').map(Number)
+    const endMonthDate = new Date(endYear, endMonthNum - 1, endDay || 1)
+
+    // Check if it's a single month request or range
+    const isSingleMonth = monthStart === monthEnd
+    const monthEndForCache = isSingleMonth ? null : monthEnd
+
     // Try to get from cache first (unless force refresh is requested)
-    const asOfDate = asOf ? new Date(asOf) : new Date()
-    asOfDate.setHours(0, 0, 0, 0)
+    if (!forceRefresh) {
+      const asOfDate = asOf ? new Date(asOf) : new Date()
+      asOfDate.setHours(0, 0, 0, 0)
 
-    const cachedData = !forceRefresh ? await getCachedTransactionDetails(company._id, month, asOfDate) : null
+      const cachedData = await getCachedTransactionDetails(company._id, monthStart, asOfDate, monthEndForCache)
 
-    if (cachedData && cachedData.transactions && cachedData.transactions[component]) {
-      console.log(`[Transaction Details] Serving from cache for ${month} ${component}`)
-      const transactions = cachedData.transactions[component]
-      const totalAmount = transactions.reduce((sum, txn) => sum + (txn.amount || 0), 0)
+      if (cachedData && cachedData.transactions && cachedData.transactions[component]) {
+        console.log(`[Transaction Details] Serving from cache for ${monthStart}${isSingleMonth ? '' : ' to ' + monthEnd} ${component}`)
+        const transactions = cachedData.transactions[component]
+        const totalAmount = transactions.reduce((sum, txn) => sum + (txn.amount || 0), 0)
 
-      return success({
-        month: month,
-        component: component,
-        transactions: transactions,
-        totalAmount: totalAmount,
-        count: transactions.length,
-        fromCache: true,
-        cachedAt: cachedData.cachedAt
-      })
+        return success({
+          month_start: monthStart,
+          month_end: monthEnd,
+          component: component,
+          transactions: transactions,
+          totalAmount: totalAmount,
+          count: transactions.length,
+          fromCache: true,
+          cachedAt: cachedData.cachedAt
+        })
+      }
     }
 
     const calculator = new RevenueCalculator(company._id)
+
+    // Load client aliases for matching
+    await calculator.loadClientAliases()
 
     // Load from archive if as_of date is provided
     if (asOf) {
@@ -66,92 +88,128 @@ exports.handler = async function(event, context) {
         // Continue with current data if archive doesn't exist
       }
     }
-    
-    // Parse the month and get the date range (use explicit parsing to avoid timezone issues)
-    const [year, monthNum, day] = month.split('-').map(Number)
-    const monthDate = new Date(year, monthNum - 1, day) // month is 0-indexed in Date constructor
-    const startDate = format(startOfMonth(monthDate), 'yyyy-MM-dd')
-    const endDate = format(endOfMonth(monthDate), 'yyyy-MM-dd')
-    
-    
-    let transactions = []
-    let totalAmount = 0
-    
-    switch (component) {
-      case 'invoiced':
-        transactions = await getInvoicedTransactions(calculator, startDate, endDate, asOf)
-        break
-      case 'journalEntries':
-        transactions = await getJournalEntryTransactions(calculator, startDate, endDate, asOf)
-        break
-      case 'delayedCharges':
-        transactions = await getDelayedChargeTransactions(calculator, startDate, endDate, asOf)
-        break
-      case 'monthlyRecurring':
-        transactions = await getMonthlyRecurringTransactions(calculator, startDate, endDate, monthDate, asOf)
-        break
-      case 'wonUnscheduled':
-        transactions = await getWonUnscheduledTransactions(calculator, monthDate, asOf)
-        break
-      case 'weightedSales':
-        transactions = await getWeightedSalesTransactions(calculator, monthDate, asOf)
-        break
-      default:
-        return error(`Invalid component: ${component}`, 400)
+
+    let allTransactions = []
+    let currentMonth = new Date(startMonthDate)
+
+    // Safety check for infinite loop
+    let loops = 0
+    const maxLoops = 60 // Max 5 years
+
+    // Iterate through months from start to end
+    while (currentMonth <= endMonthDate && loops < maxLoops) {
+      loops++
+      // For each month in the range
+      const currentMonthStr = format(currentMonth, 'yyyy-MM-dd')
+      const startDate = format(startOfMonth(currentMonth), 'yyyy-MM-dd')
+      const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd')
+
+      let transactions = []
+
+      switch (component) {
+        case 'invoiced':
+          transactions = await getInvoicedTransactions(calculator, startDate, endDate, asOf)
+          break
+        case 'journalEntries':
+          transactions = await getJournalEntryTransactions(calculator, startDate, endDate, asOf)
+          break
+        case 'delayedCharges':
+          transactions = await getDelayedChargeTransactions(calculator, startDate, endDate, asOf)
+          break
+        case 'monthlyRecurring':
+          transactions = await getMonthlyRecurringTransactions(calculator, startDate, endDate, currentMonth, asOf)
+          break
+        case 'wonUnscheduled':
+          transactions = await getWonUnscheduledTransactions(calculator, currentMonth, asOf)
+          break
+        case 'weightedSales':
+          transactions = await getWeightedSalesTransactions(calculator, currentMonth, asOf)
+          break
+        default:
+          return error(`Invalid component: ${component}`, 400)
+      }
+
+      allTransactions = allTransactions.concat(transactions)
+
+      // Move to next month
+      currentMonth = addMonths(currentMonth, 1)
     }
-    
-    totalAmount = transactions.reduce((sum, txn) => sum + (txn.amount || 0), 0)
-    
-    // For weighted sales, compare with the graph total to detect discrepancies
-    let graphTotal = null
-    let hasDiscrepancy = false
-    if (component === 'weightedSales') {
+
+    // Sort all transactions by date (descending) then amount (descending)
+    allTransactions.sort((a, b) => {
+      const dateA = new Date(a.date)
+      const dateB = new Date(b.date)
+      if (dateA > dateB) return -1
+      if (dateA < dateB) return 1
+      return (b.amount || 0) - (a.amount || 0)
+    })
+
+    const totalAmount = allTransactions.reduce((sum, txn) => sum + (txn.amount || 0), 0)
+
+    // Discrepancy check: Only relevant for single month (weighted sales)
+    let warning = null
+    if (isSingleMonth && component === 'weightedSales') {
+      // ... existing warning logic ...
+      // For weighted sales, compare with the graph total to detect discrepancies
+      let graphTotal = null
+      let hasDiscrepancy = false
       try {
         // Calculate what the graph shows using the same logic as revenue calculator
-        graphTotal = calculator.calculateWeightedSalesForMonth(monthDate, await getOpenDealsForComparison(calculator))
+        graphTotal = calculator.calculateWeightedSalesForMonth(startMonthDate, await getOpenDealsForComparison(calculator))
         const difference = Math.abs(graphTotal - totalAmount)
         hasDiscrepancy = difference > 1 // Allow for small rounding differences
       } catch (error) {
         console.error('Error comparing with graph total:', error)
       }
+
+      if (hasDiscrepancy && graphTotal !== null) {
+        warning = {
+          type: 'discrepancy',
+          message: `Transaction details total ($${totalAmount.toLocaleString()}) differs from graph total ($${graphTotal.toLocaleString()})`,
+          graphTotal: graphTotal,
+          transactionTotal: totalAmount,
+          difference: graphTotal - totalAmount
+        }
+      }
     }
-    
+
+    // Calculate final date range for the entire period
+    const resultStartDate = format(startOfMonth(startMonthDate), 'yyyy-MM-dd')
+    const resultEndDate = format(endOfMonth(endMonthDate), 'yyyy-MM-dd')
+
     const result = {
-      month: month,
+      month_start: monthStart,
+      month_end: monthEnd,
       component: component,
-      transactions: transactions,
+      transactions: allTransactions,
       totalAmount: totalAmount,
-      count: transactions.length,
-      dateRange: { startDate, endDate },
+      count: allTransactions.length,
+      dateRange: { startDate: resultStartDate, endDate: resultEndDate },
       fromCache: false,
       cachedAt: new Date()
     }
 
-    // Add discrepancy warning if applicable
-    if (hasDiscrepancy && graphTotal !== null) {
-      result.warning = {
-        type: 'discrepancy',
-        message: `Transaction details total ($${totalAmount.toLocaleString()}) differs from graph total ($${graphTotal.toLocaleString()})`,
-        graphTotal: graphTotal,
-        transactionTotal: totalAmount,
-        difference: graphTotal - totalAmount
-      }
+    if (warning) {
+      result.warning = warning
     }
 
-    // Cache the computed result for future requests
+    // Cache the computed result (for both single and range requests)
+    const asOfDate = asOf ? new Date(asOf) : new Date()
+    asOfDate.setHours(0, 0, 0, 0)
     await cacheTransactionDetails(
       company._id,
-      month,
+      monthStart,
       {
         transactions: {
-          [component]: transactions
+          [component]: allTransactions
         }
       },
-      asOfDate
+      asOfDate,
+      monthEndForCache
     )
 
     return success(result)
-    
+
   } catch (err) {
     console.error('Transaction details error:', err)
     return error(err.message || 'Failed to get transaction details', 500)
@@ -191,6 +249,8 @@ async function getInvoicedTransactions(calculator, startDate, endDate, asOf = nu
     date: invoice.TxnDate,
     amount: invoice.TotalAmt || 0,
     customer: invoice.CustomerRef?.name || 'Unknown Customer',
+    clientRaw: invoice.CustomerRef?.name || 'Unknown Customer',
+    clientNormalized: calculator.resolveClientName(invoice.CustomerRef?.name || 'Unknown Customer'),
     description: `Invoice ${invoice.DocNumber}`,
     details: {
       balance: invoice.Balance || 0,
@@ -199,11 +259,11 @@ async function getInvoicedTransactions(calculator, startDate, endDate, asOf = nu
       // Add detailed line items like in the September test
       lines: (invoice.Line || []).filter(line => line.DetailType === 'SalesItemLineDetail').map(line => {
         const salesDetail = line.SalesItemLineDetail
-        
+
         // Use the income account from the product mapping if available, 
         // otherwise fall back to the line's account reference
         const incomeAccount = salesDetail?.IncomeAccountRef || salesDetail?.AccountRef
-        
+
         return {
           lineNum: line.LineNum,
           description: line.Description,
@@ -254,7 +314,7 @@ async function getJournalEntryTransactions(calculator, startDate, endDate, asOf 
   await calculator.loadClientAliases()
 
   const transactions = []
-  
+
   for (const entry of filteredEntries) {
     const lines = entry.Line || []
     let revenueAmount = 0
@@ -283,7 +343,7 @@ async function getJournalEntryTransactions(calculator, startDate, endDate, asOf 
 
       // Track revenue lines separately for amount calculation
       if (accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
-          !accountRef?.name?.toLowerCase().includes('unearned')) {
+        !accountRef?.name?.toLowerCase().includes('unearned')) {
 
         // For journal entries: Credits are positive revenue, Debits are negative
         const lineAmount = amount * (postingType === 'Credit' ? 1 : -1)
@@ -352,6 +412,8 @@ async function getJournalEntryTransactions(calculator, startDate, endDate, asOf 
         date: entry.TxnDate,
         amount: revenueAmount,
         customer: matchedClient,
+        clientRaw: matchedClient, // For JE, we often synthesize the name, so raw might be the same or entity based
+        clientNormalized: calculator.resolveClientName(matchedClient),
         description: description,
         details: {
           totalLines: lines.length,
@@ -365,7 +427,7 @@ async function getJournalEntryTransactions(calculator, startDate, endDate, asOf 
       })
     }
   }
-  
+
   return transactions
 }
 
@@ -401,6 +463,8 @@ async function getDelayedChargeTransactions(calculator, startDate, endDate, asOf
     date: charge.TxnDate,
     amount: charge.TotalAmt || 0,
     customer: charge.CustomerRef?.name || 'Unknown Customer',
+    clientRaw: charge.CustomerRef?.name || 'Unknown Customer',
+    clientNormalized: calculator.resolveClientName(charge.CustomerRef?.name || 'Unknown Customer'),
     description: '',
     details: {
       balance: charge.Balance || 0,
@@ -436,17 +500,17 @@ async function getMonthlyRecurringTransactions(calculator, startDate, endDate, m
   if (!isFutureMonth) {
     return []
   }
-  
-  
+
+
   const transactions = []
-  
+
   // First, get detailed baseline monthly recurring from previous month
   const previousMonth = addMonths(startOfMonth(new Date()), -1)
   const previousMonthStart = format(startOfMonth(previousMonth), 'yyyy-MM-dd')
   const previousMonthEnd = format(endOfMonth(previousMonth), 'yyyy-MM-dd')
-  
+
   const baselineTransactions = await getHistoricalMonthlyRecurringTransactions(calculator, previousMonthStart, previousMonthEnd)
-  
+
   // Add each baseline transaction with updated dates and descriptions for future projection
   for (const baselineTxn of baselineTransactions) {
     transactions.push({
@@ -462,24 +526,24 @@ async function getMonthlyRecurringTransactions(calculator, startDate, endDate, m
       }
     })
   }
-  
+
   // Then, get any additional monthly recurring from current month's invoices
   const invoices = await calculator.qbo.getInvoices(startDate, endDate)
-  
+
   for (const invoice of invoices) {
     const lines = invoice.Line || []
     let monthlyAmount = 0
     let monthlyLines = []
-    
+
     for (const line of lines) {
       const accountRef = line.SalesItemLineDetail?.AccountRef
       const itemRef = line.SalesItemLineDetail?.ItemRef
-      
-      const hasMonthly = 
+
+      const hasMonthly =
         accountRef?.name?.toLowerCase().includes('monthly') ||
         itemRef?.name?.toLowerCase().includes('monthly') ||
         line.Description?.toLowerCase().includes('monthly')
-      
+
       if (hasMonthly) {
         monthlyAmount += line.Amount || 0
         monthlyLines.push({
@@ -490,7 +554,7 @@ async function getMonthlyRecurringTransactions(calculator, startDate, endDate, m
         })
       }
     }
-    
+
     if (monthlyAmount > 0) {
       transactions.push({
         id: `mr-${invoice.Id}`,
@@ -499,6 +563,8 @@ async function getMonthlyRecurringTransactions(calculator, startDate, endDate, m
         date: invoice.TxnDate,
         amount: monthlyAmount,
         customer: invoice.CustomerRef?.name || 'Unknown Customer',
+        clientRaw: invoice.CustomerRef?.name || 'Unknown Customer',
+        clientNormalized: calculator.resolveClientName(invoice.CustomerRef?.name || 'Unknown Customer'),
         description: `Additional Monthly Recurring (from Invoice ${invoice.DocNumber})`,
         details: {
           totalInvoiceAmount: invoice.TotalAmt || 0,
@@ -508,10 +574,10 @@ async function getMonthlyRecurringTransactions(calculator, startDate, endDate, m
       })
     }
   }
-  
+
   // Sort by amount descending (highest value first)
   transactions.sort((a, b) => (b.amount || 0) - (a.amount || 0))
-  
+
   return transactions
 }
 
@@ -522,7 +588,7 @@ async function getBaselineMonthlyRecurringAmount(calculator) {
     const previousMonth = addMonths(startOfMonth(currentDate), -1)
     const previousMonthStart = format(startOfMonth(previousMonth), 'yyyy-MM-dd')
     const previousMonthEnd = format(endOfMonth(previousMonth), 'yyyy-MM-dd')
-    
+
     const transactions = await getHistoricalMonthlyRecurringTransactions(calculator, previousMonthStart, previousMonthEnd)
     return transactions.reduce((sum, txn) => sum + (txn.amount || 0), 0)
   } catch (error) {
@@ -565,22 +631,22 @@ async function getHistoricalMonthlyRecurringTransactions(calculator, startDate, 
     }
 
     const transactions = []
-    
+
     // Process invoices for monthly recurring items
     for (const invoice of invoices) {
       const lines = invoice.Line || []
       let monthlyAmount = 0
       let monthlyLines = []
-      
+
       for (const line of lines) {
         const accountRef = line.SalesItemLineDetail?.AccountRef
         const itemRef = line.SalesItemLineDetail?.ItemRef
-        
-        const hasMonthly = 
+
+        const hasMonthly =
           accountRef?.name?.toLowerCase().includes('monthly') ||
           itemRef?.name?.toLowerCase().includes('monthly') ||
           line.Description?.toLowerCase().includes('monthly')
-        
+
         if (hasMonthly) {
           monthlyAmount += line.Amount || 0
           monthlyLines.push({
@@ -591,7 +657,7 @@ async function getHistoricalMonthlyRecurringTransactions(calculator, startDate, 
           })
         }
       }
-      
+
       if (monthlyAmount > 0) {
         transactions.push({
           id: `mr-${invoice.Id}`,
@@ -609,24 +675,24 @@ async function getHistoricalMonthlyRecurringTransactions(calculator, startDate, 
         })
       }
     }
-    
+
     // Process journal entries for monthly revenue accounts
     for (const entry of journalEntries) {
       const lines = entry.Line || []
       let monthlyAmount = 0
       let monthlyLines = []
-      
+
       for (const line of lines) {
         const accountRef = line.JournalEntryLineDetail?.AccountRef
         const postingType = line.JournalEntryLineDetail?.PostingType
-        
-        if (accountRef?.name?.match(/^4\d{3}|revenue|income/i) && 
-            accountRef?.name?.toLowerCase().includes('monthly') && 
-            !accountRef?.name?.toLowerCase().includes('unearned')) {
-          
+
+        if (accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
+          accountRef?.name?.toLowerCase().includes('monthly') &&
+          !accountRef?.name?.toLowerCase().includes('unearned')) {
+
           const lineAmount = (line.Amount || 0) * (postingType === 'Credit' ? 1 : -1)
           monthlyAmount += lineAmount
-          
+
           monthlyLines.push({
             description: line.Description || 'No description',
             amount: lineAmount,
@@ -635,13 +701,13 @@ async function getHistoricalMonthlyRecurringTransactions(calculator, startDate, 
           })
         }
       }
-      
+
       if (monthlyAmount > 0) {
         const description = monthlyLines
           .filter(line => line.description && line.description !== 'No description')
           .map(line => line.description)
           .join('; ') || `Journal Entry ${entry.DocNumber}`
-        
+
         transactions.push({
           id: `mr-je-${entry.Id}`,
           type: 'monthlyRecurring',
@@ -657,10 +723,10 @@ async function getHistoricalMonthlyRecurringTransactions(calculator, startDate, 
         })
       }
     }
-    
+
     // Sort by amount descending (highest value first)
     transactions.sort((a, b) => (b.amount || 0) - (a.amount || 0))
-    
+
     return transactions
   } catch (error) {
     console.error('Error getting historical monthly recurring transactions:', error)
@@ -678,19 +744,19 @@ async function getWonUnscheduledTransactions(calculator, monthDate, asOf = null)
     const wonUnscheduledDeals = await calculator.pipedrive.getWonUnscheduledDeals()
     const monthStr = format(monthDate, 'yyyy-MM')
     const transactions = []
-    
+
     for (const deal of wonUnscheduledDeals) {
       // Use string-based date parsing to avoid timezone issues
       const startDateStr = deal.projectStartDate || deal.wonTime || deal.expectedCloseDate
       if (!startDateStr) continue
-      
+
       // Parse date components to avoid timezone conversion
       const [year, month, day] = startDateStr.split('T')[0].split('-').map(Number)
       const startDate = new Date(year, month - 1, day) // Local time construction
-      
+
       const duration = Math.max(1, deal.duration || 1)
       const monthlyAmount = (deal.value || 0) / duration
-      
+
       // Check if this month falls within the project duration
       for (let i = 0; i < duration; i++) {
         const projectMonth = new Date(startDate)
@@ -703,6 +769,8 @@ async function getWonUnscheduledTransactions(calculator, monthDate, asOf = null)
             date: deal.wonTime || deal.expectedCloseDate,
             amount: Math.round(monthlyAmount),
             customer: deal.orgName || 'Unknown Organization',
+            clientRaw: deal.orgName || 'Unknown Organization',
+            clientNormalized: calculator.resolveClientName(deal.orgName || 'Unknown Organization'),
             description: deal.title,
             details: {
               totalValue: deal.value,
@@ -720,7 +788,7 @@ async function getWonUnscheduledTransactions(calculator, monthDate, asOf = null)
         }
       }
     }
-    
+
     return transactions
   } catch (error) {
     console.error('Error getting won unscheduled transactions:', error)
@@ -746,43 +814,43 @@ async function getWeightedSalesTransactions(calculator, monthDate, asOf = null) 
 
     const monthStr = format(monthDate, 'yyyy-MM')
     const transactions = []
-    
-    
+
+
     let dealsForMonth = 0
     for (const deal of openDeals) {
       if (!deal.expectedCloseDate) {
         continue
       }
-      
+
       // Check if this deal should contribute to the current month
       // For multi-month deals, distribute across all months starting from close month forward
       const expectedCloseDate = new Date(deal.expectedCloseDate + 'T00:00:00')
       const duration = Math.max(1, deal.duration || 1)
-      
+
       let shouldIncludeDeal = false
-      
+
       // Check if current month falls within the project duration
       // Start from the close month and go forward for the duration
       const closeMonthDate = new Date(expectedCloseDate.getFullYear(), expectedCloseDate.getMonth(), 1)
-      
+
       for (let i = 0; i < duration; i++) {
         const projectMonth = new Date(closeMonthDate)
         projectMonth.setMonth(projectMonth.getMonth() + i)
         const projectMonthStr = format(projectMonth, 'yyyy-MM')
-        
+
         if (projectMonthStr === monthStr) {
           shouldIncludeDeal = true
           dealsForMonth++
           break
         }
       }
-      
+
       if (!shouldIncludeDeal) continue
-      
+
       // Calculate monthly weighted value: total weighted value / duration
       const baseWeightedValue = deal.weightedValue || (deal.value * (deal.probability || 0) / 100)
       const monthlyWeightedValue = baseWeightedValue / duration
-      
+
       transactions.push({
         id: `ws-${deal.id}`,
         type: 'weightedSales',
@@ -790,6 +858,8 @@ async function getWeightedSalesTransactions(calculator, monthDate, asOf = null) 
         date: deal.expectedCloseDate,
         amount: Math.round(monthlyWeightedValue),
         customer: deal.orgName || 'Unknown Organization',
+        clientRaw: deal.orgName || 'Unknown Organization',
+        clientNormalized: calculator.resolveClientName(deal.orgName || 'Unknown Organization'),
         description: deal.title,
         details: {
           totalValue: deal.value,
@@ -807,10 +877,10 @@ async function getWeightedSalesTransactions(calculator, monthDate, asOf = null) 
         }
       })
     }
-    
+
     // Sort by weighted value descending (highest value first)
     transactions.sort((a, b) => b.amount - a.amount)
-    
+
     return transactions
   } catch (error) {
     console.error('Error getting weighted sales transactions:', error)

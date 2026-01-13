@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@google-cloud/local-auth": "^3.0.1",
+    "@heroicons/vue": "^2.2.0",
     "@netlify/functions": "^4.2.2",
     "@vueuse/core": "^13.7.0",
     "autoprefixer": "^10.4.21",

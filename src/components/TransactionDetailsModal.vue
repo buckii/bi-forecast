@@ -3,89 +3,90 @@
     <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-7xl mx-4 max-h-screen overflow-y-auto">
       <div class="flex items-center justify-between mb-4">
         <div class="flex-1">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ formatMonth(month) }}</h3>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ modalTitle }}</h3>
           <!-- Cache/Fetch Info with Refresh Button -->
-          <div v-if="activeTab === 'transactions' && cacheMetadata.transactionsCachedAt" class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <div v-if="activeTab === 'transactions' && cacheMetadata.transactionsCachedAt"
+            class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1">
             <span v-if="cacheMetadata.transactionsFromCache">
               Cached {{ formatRelativeTime(cacheMetadata.transactionsCachedAt) }}
             </span>
             <span v-else>
               Fetched {{ formatRelativeTime(cacheMetadata.transactionsCachedAt) }}
             </span>
-            <button
-              @click="refreshData"
-              :disabled="refreshing || loading"
+            <button @click="refreshData" :disabled="refreshing || loading"
               class="p-0.5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Refresh data"
-            >
-              <svg
-                class="w-3.5 h-3.5"
-                :class="{ 'animate-spin': refreshing }"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              title="Refresh data">
+              <svg class="w-3.5 h-3.5" :class="{ 'animate-spin': refreshing }" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
           </div>
-          <div v-if="activeTab === 'clients' && cacheMetadata.clientsCachedAt" class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <div v-if="activeTab === 'clients' && cacheMetadata.clientsCachedAt"
+            class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1">
             <span v-if="cacheMetadata.clientsFromCache">
               Cached {{ formatRelativeTime(cacheMetadata.clientsCachedAt) }}
             </span>
             <span v-else>
               Fetched {{ formatRelativeTime(cacheMetadata.clientsCachedAt) }}
             </span>
-            <button
-              @click="refreshData"
-              :disabled="refreshing || loading"
+            <button @click="refreshData" :disabled="refreshing || loading"
               class="p-0.5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Refresh data"
-            >
-              <svg
-                class="w-3.5 h-3.5"
-                :class="{ 'animate-spin': refreshing }"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              title="Refresh data">
+              <svg class="w-3.5 h-3.5" :class="{ 'animate-spin': refreshing }" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
           </div>
         </div>
         <div class="flex items-center space-x-2">
-          <button @click="closeModal" class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+          <button @click="exportToCSV"
+            class="hidden sm:inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 disabled:opacity-50"
+            :disabled="loading || allTransactions.length === 0" title="Export list to CSV">
+            <ArrowDownTrayIcon class="h-4 w-4 mr-1.5 text-gray-500 dark:text-gray-400" />
+            Export
           </button>
+          <button @click="$emit('close')" class="text-gray-400 hover:text-gray-500 focus:outline-none">
+            <span class="sr-only">Close</span>
+            <XMarkIcon class="h-6 w-6" />
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading Progress -->
+      <!-- Loading Progress -->
+      <div v-if="loading" class="mb-4 bg-blue-50 dark:bg-blue-900/20 p-2 rounded-md">
+        <div class="flex justify-between items-center mb-1">
+          <span class="text-xs font-semibold text-blue-700 dark:text-blue-300">{{ loadingStatus || 'Loading...'
+            }}</span>
+          <span class="text-xs font-semibold text-blue-700 dark:text-blue-300">{{ loadingProgress }}%</span>
+        </div>
+        <div class="w-full bg-blue-200 dark:bg-blue-800/40 rounded-full h-1.5">
+          <div class="bg-blue-600 dark:bg-blue-500 h-1.5 rounded-full transition-all duration-300 ease-out"
+            :style="{ width: loadingProgress + '%' }"></div>
         </div>
       </div>
 
       <!-- Tab Navigation -->
       <div class="border-b border-gray-200 dark:border-gray-700 mb-6">
         <nav class="-mb-px flex space-x-8">
-          <button
-            @click="activeTab = 'transactions'"
-            :class="[
-              'py-2 px-1 border-b-2 font-medium text-sm',
-              activeTab === 'transactions'
-                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-            ]"
-          >
+          <button @click="activeTab = 'transactions'" :class="[
+            'py-2 px-1 border-b-2 font-medium text-sm',
+            activeTab === 'transactions'
+              ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+          ]">
             Transactions
           </button>
-          <button
-            @click="activeTab = 'clients'"
-            :class="[
-              'py-2 px-1 border-b-2 font-medium text-sm',
-              activeTab === 'clients'
-                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-            ]"
-          >
+          <button @click="activeTab = 'clients'" :class="[
+            'py-2 px-1 border-b-2 font-medium text-sm',
+            activeTab === 'clients'
+              ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+          ]">
             Clients
           </button>
         </nav>
@@ -120,19 +121,15 @@
         <!-- Filter Toggles -->
         <div class="space-y-3">
           <div class="flex flex-wrap gap-3 items-center">
-            <button
-              @click="toggleAllFilters"
-              class="text-sm text-primary-600 dark:text-primary-400 hover:underline font-medium w-20 text-left"
-            >
+            <button @click="toggleAllFilters"
+              class="text-sm text-primary-600 dark:text-primary-400 hover:underline font-medium w-20 text-left">
               {{ allFiltersEnabled ? 'Hide All' : 'Show All' }}
             </button>
             <div class="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
-            <label v-for="type in transactionTypes" :key="type.value" class="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="checkbox"
-                v-model="enabledTypes[type.value]"
-                class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-              />
+            <label v-for="type in transactionTypes" :key="type.value"
+              class="flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" v-model="enabledTypes[type.value]"
+                class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
               <span class="text-sm text-gray-700 dark:text-gray-300">{{ type.label }}</span>
               <span class="text-xs text-gray-500 dark:text-gray-400">({{ getTypeCount(type.value) }})</span>
             </label>
@@ -141,22 +138,16 @@
           <!-- Sort Options -->
           <div class="flex items-center space-x-4 text-sm">
             <span class="text-gray-500 dark:text-gray-400">Sort by:</span>
-            <button
-              @click="toggleSort('amount')"
-              :class="[
-                'hover:underline font-medium',
-                sortBy === 'amount' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300'
-              ]"
-            >
+            <button @click="toggleSort('amount')" :class="[
+              'hover:underline font-medium',
+              sortBy === 'amount' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300'
+            ]">
               Amount {{ sortBy === 'amount' ? (sortDirection === 'desc' ? '↓' : '↑') : '' }}
             </button>
-            <button
-              @click="toggleSort('date')"
-              :class="[
-                'hover:underline font-medium',
-                sortBy === 'date' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300'
-              ]"
-            >
+            <button @click="toggleSort('date')" :class="[
+              'hover:underline font-medium',
+              sortBy === 'date' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300'
+            ]">
               Date {{ sortBy === 'date' ? (sortDirection === 'desc' ? '↓' : '↑') : '' }}
             </button>
           </div>
@@ -177,25 +168,23 @@
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
               <template v-for="transaction in filteredTransactions" :key="transaction.id">
-                <tr
-                  @click="transaction.type !== 'delayedCharge' ? toggleDetails(transaction.id) : null"
-                  :class="[
-                    transaction.type !== 'delayedCharge' ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700' : '',
-                    'transition-colors',
-                    transaction.description?.toLowerCase().includes('annual') ? 'opacity-60' : ''
-                  ]"
-                >
+                <tr @click="transaction.type !== 'delayedCharge' ? toggleDetails(transaction.id) : null" :class="[
+                  transaction.type !== 'delayedCharge' ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700' : '',
+                  'transition-colors',
+                  transaction.description?.toLowerCase().includes('annual') ? 'opacity-60' : ''
+                ]">
                   <td class="px-3 py-3">
                     <div class="flex items-center">
                       <svg v-if="transaction.type !== 'delayedCharge'"
-                           class="w-4 h-4 text-gray-400 mr-2 transform transition-transform duration-200"
-                           :class="{ 'rotate-90': expandedTransactions.has(transaction.id) }"
-                           fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        class="w-4 h-4 text-gray-400 mr-2 transform transition-transform duration-200"
+                        :class="{ 'rotate-90': expandedTransactions.has(transaction.id) }" fill="none"
+                        stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                       </svg>
-                      <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap"
-                            :class="[getTypeColor(transaction.type), transaction.type === 'delayedCharge' ? '' : 'ml-0']"
-                            :style="transaction.type === 'delayedCharge' ? 'margin-left: 24px' : ''">
+                      <span
+                        class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap"
+                        :class="[getTypeColor(transaction.type), transaction.type === 'delayedCharge' ? '' : 'ml-0']"
+                        :style="transaction.type === 'delayedCharge' ? 'margin-left: 24px' : ''">
                         {{ formatTransactionType(transaction.type) }}
                       </span>
                     </div>
@@ -214,29 +203,26 @@
                   </td>
                   <td class="px-3 py-3 text-right font-medium text-gray-900 dark:text-gray-100 relative">
                     {{ formatCurrency(transaction.amount) }}
-                    <button
-                      v-if="transaction.type === 'invoice' || transaction.type === 'delayedCharge'"
+                    <button v-if="transaction.type === 'invoice' || transaction.type === 'delayedCharge'"
                       @click.stop="createJournalEntryFromTransaction(transaction)"
                       class="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors"
-                      title="Create Journal Entry"
-                    >
+                      title="Create Journal Entry">
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                       </svg>
                     </button>
-                    <button
-                      v-if="transaction.type === 'journalEntry'"
-                      @click.stop="editJournalEntry(transaction)"
+                    <button v-if="transaction.type === 'journalEntry'" @click.stop="editJournalEntry(transaction)"
                       class="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
-                      title="Edit Journal Entry"
-                    >
+                      title="Edit Journal Entry">
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                     </button>
                   </td>
                 </tr>
-                <tr v-if="transaction.type !== 'delayedCharge' && expandedTransactions.has(transaction.id)" class="bg-gray-50 dark:bg-gray-700">
+                <tr v-if="transaction.type !== 'delayedCharge' && expandedTransactions.has(transaction.id)"
+                  class="bg-gray-50 dark:bg-gray-700">
                   <td colspan="6" class="px-3 py-4">
                     <div class="space-y-2">
                       <h4 class="font-medium text-gray-900 dark:text-gray-100 text-sm mb-2">Transaction Details</h4>
@@ -277,19 +263,15 @@
         <div class="space-y-3">
           <!-- Transaction Type Filters -->
           <div class="flex flex-wrap gap-3 items-center">
-            <button
-              @click="toggleAllClientFilters"
-              class="text-sm text-primary-600 dark:text-primary-400 hover:underline font-medium w-20 text-left"
-            >
+            <button @click="toggleAllClientFilters"
+              class="text-sm text-primary-600 dark:text-primary-400 hover:underline font-medium w-20 text-left">
               {{ allClientFiltersEnabled ? 'Hide All' : 'Show All' }}
             </button>
             <div class="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
-            <label v-for="type in transactionTypes" :key="type.value" class="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="checkbox"
-                v-model="clientEnabledTypes[type.value]"
-                class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-              />
+            <label v-for="type in transactionTypes" :key="type.value"
+              class="flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" v-model="clientEnabledTypes[type.value]"
+                class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
               <span class="text-sm text-gray-700 dark:text-gray-300">{{ type.label }}</span>
             </label>
           </div>
@@ -297,22 +279,16 @@
           <!-- Sort Options -->
           <div class="flex items-center space-x-4 text-sm">
             <span class="text-gray-500 dark:text-gray-400">Sort by:</span>
-            <button
-              @click="toggleClientSort('amount')"
-              :class="[
-                'hover:underline font-medium',
-                clientSortBy === 'amount' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300'
-              ]"
-            >
+            <button @click="toggleClientSort('amount')" :class="[
+              'hover:underline font-medium',
+              clientSortBy === 'amount' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300'
+            ]">
               Amount {{ clientSortBy === 'amount' ? (clientSortDirection === 'desc' ? '↓' : '↑') : '' }}
             </button>
-            <button
-              @click="toggleClientSort('client')"
-              :class="[
-                'hover:underline font-medium',
-                clientSortBy === 'client' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300'
-              ]"
-            >
+            <button @click="toggleClientSort('client')" :class="[
+              'hover:underline font-medium',
+              clientSortBy === 'client' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300'
+            ]">
               Client (alpha) {{ clientSortBy === 'client' ? (clientSortDirection === 'desc' ? '↓' : '↑') : '' }}
             </button>
           </div>
@@ -333,31 +309,33 @@
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead class="bg-gray-100 dark:bg-gray-800">
                 <tr>
-                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th scope="col"
+                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Client Name
                   </th>
-                  <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th scope="col"
+                    class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Revenue
                   </th>
-                  <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th scope="col"
+                    class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Approx. Points
                   </th>
-                  <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th scope="col"
+                    class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     % of Total
                   </th>
                 </tr>
               </thead>
               <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                 <template v-for="client in sortedClients" :key="client.client">
-                  <tr
-                    @click="toggleClient(client.client)"
-                    class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                  >
+                  <tr @click="toggleClient(client.client)"
+                    class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                       <div class="flex items-center">
                         <svg class="w-4 h-4 text-gray-400 mr-2 transform transition-transform duration-200"
-                             :class="{ 'rotate-90': expandedClients.has(client.client) }"
-                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          :class="{ 'rotate-90': expandedClients.has(client.client) }" fill="none" stroke="currentColor"
+                          viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                         </svg>
                         {{ client.client }}
@@ -381,18 +359,16 @@
                         <h5 class="font-medium text-gray-900 dark:text-gray-100 text-sm mb-3">
                           Transactions for {{ client.client }}
                         </h5>
-                        <div v-if="getClientTransactions(client.client).length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+                        <div v-if="getClientTransactions(client.client).length === 0"
+                          class="text-sm text-gray-500 dark:text-gray-400">
                           No transactions found
                         </div>
                         <div v-else class="space-y-1">
-                          <div
-                            v-for="transaction in getClientTransactions(client.client)"
-                            :key="transaction.id"
-                            class="flex items-center justify-between py-2 px-3 bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 text-xs"
-                          >
+                          <div v-for="transaction in getClientTransactions(client.client)" :key="transaction.id"
+                            class="flex items-center justify-between py-2 px-3 bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 text-xs">
                             <div class="flex items-center space-x-3 flex-1">
                               <span class="inline-flex items-center px-2 py-1 rounded-full font-medium"
-                                    :class="getTypeColor(transaction.type)">
+                                :class="getTypeColor(transaction.type)">
                                 {{ formatTransactionType(transaction.type) }}
                               </span>
                               <span class="font-medium text-gray-900 dark:text-gray-100">
@@ -408,24 +384,22 @@
                               </span>
                               <span class="font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap relative">
                                 {{ formatCurrency(transaction.amount) }}
-                                <button
-                                  v-if="transaction.type === 'invoice' || transaction.type === 'delayedCharge'"
+                                <button v-if="transaction.type === 'invoice' || transaction.type === 'delayedCharge'"
                                   @click.stop="createJournalEntryFromTransaction(transaction)"
                                   class="inline-flex ml-1 p-1 text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors align-middle"
-                                  title="Create Journal Entry"
-                                >
+                                  title="Create Journal Entry">
                                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M12 4v16m8-8H4" />
                                   </svg>
                                 </button>
-                                <button
-                                  v-if="transaction.type === 'journalEntry'"
+                                <button v-if="transaction.type === 'journalEntry'"
                                   @click.stop="editJournalEntry(transaction)"
                                   class="inline-flex ml-1 p-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors align-middle"
-                                  title="Edit Journal Entry"
-                                >
+                                  title="Edit Journal Entry">
                                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                   </svg>
                                 </button>
                               </span>
@@ -457,6 +431,12 @@
       </div>
 
       <div class="flex justify-end space-x-3 mt-6 pt-4 border-t">
+        <button @click="exportToCSV"
+          class="hidden sm:inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800"
+          :disabled="loading">
+          <ArrowDownTrayIcon class="h-4 w-4 mr-1.5 text-gray-500 dark:text-gray-400" />
+          Export Detail
+        </button>
         <button @click="closeModal" class="btn-secondary">
           Close
         </button>
@@ -464,37 +444,27 @@
     </div>
 
     <!-- Journal Entry Create Modal -->
-    <JournalEntryCreateModal
-      v-if="showJournalEntryCreateModal"
-      :revenueAccounts="journalEntryAccounts.revenue"
-      :unearnedAccounts="journalEntryAccounts.unearned"
-      :prefillData="journalEntryPrefillData"
-      @close="closeJournalEntryCreateModal"
-      @created="handleJournalEntryCreated"
-    />
+    <JournalEntryCreateModal v-if="showJournalEntryCreateModal" :revenueAccounts="journalEntryAccounts.revenue"
+      :unearnedAccounts="journalEntryAccounts.unearned" :prefillData="journalEntryPrefillData"
+      @close="closeJournalEntryCreateModal" @created="handleJournalEntryCreated" />
 
     <!-- Journal Entry Detail/Edit Modal -->
-    <JournalEntryDetailModal
-      v-if="selectedJournalEntry"
-      :entry="selectedJournalEntry"
-      @close="selectedJournalEntry = null"
-      @updated="handleJournalEntryUpdated"
-      @delete="handleJournalEntryDeleted"
-    />
+    <JournalEntryDetailModal v-if="selectedJournalEntry" :entry="selectedJournalEntry"
+      @close="selectedJournalEntry = null" @updated="handleJournalEntryUpdated" @delete="handleJournalEntryDeleted" />
 
     <!-- Journal Entry Bulk Edit Modal -->
-    <JournalEntryBulkEditModal
-      v-if="showBulkEditModal"
-      :initialEntryId="bulkEditEntryId"
-      @close="showBulkEditModal = false"
-      @updated="handleJournalEntryUpdated"
-    />
+    <JournalEntryBulkEditModal v-if="showBulkEditModal" :initialEntryId="bulkEditEntryId"
+      @close="showBulkEditModal = false" @updated="handleJournalEntryUpdated" />
   </div>
 </template>
 
 <script setup>
+import {
+  ArrowDownTrayIcon,
+  XMarkIcon
+} from '@heroicons/vue/24/outline'
 import { Chart, registerables } from 'chart.js'
-import { format as formatDate, parseISO } from 'date-fns'
+import { addMonths, format as formatDate, isBefore, parseISO, startOfMonth } from 'date-fns'
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { isDarkModeGlobal } from '../composables/useDarkMode'
@@ -503,6 +473,7 @@ import { useRevenueStore } from '../stores/revenue'
 import JournalEntryBulkEditModal from './JournalEntryBulkEditModal.vue'
 import JournalEntryCreateModal from './JournalEntryCreateModal.vue'
 import JournalEntryDetailModal from './JournalEntryDetailModal.vue'
+
 
 Chart.register(...registerables)
 
@@ -522,10 +493,28 @@ const props = defineProps({
   asOf: {
     type: String,
     default: ''
+  },
+  title: {
+    type: String,
+    default: ''
+  },
+  startDate: {
+    type: String,
+    default: ''
+  },
+  endDate: {
+    type: String,
+    default: ''
+  },
+  autoExport: {
+    type: Boolean,
+    default: false
   }
 })
 
 const emit = defineEmits(['close'])
+
+
 
 const authStore = useAuthStore()
 
@@ -539,9 +528,21 @@ const getInitialTab = () => {
   if (route.query.modalTab) return route.query.modalTab
   return localStorage.getItem('transactionModal_lastTab') || 'transactions'
 }
-
 const activeTab = ref(getInitialTab())
-const loading = ref(false)
+
+// Auto-export logic
+const loading = ref(true)
+
+// Auto-export logic
+watch(loading, (newLoading) => {
+  if (!newLoading && props.isOpen && props.autoExport && allTransactions.value.length > 0) {
+    setTimeout(() => {
+      exportToCSV()
+    }, 500)
+  }
+})
+const loadingProgress = ref(0)
+const loadingStatus = ref('')
 const error = ref(null)
 const allTransactions = ref([])
 const clientData = ref(null)
@@ -729,7 +730,7 @@ function toggleClientSort(field) {
 }
 
 watch(() => props.isOpen, (isOpen) => {
-  if (isOpen && props.month) {
+  if (isOpen && (props.month || (props.startDate && props.endDate))) {
     loadAllData()
   } else {
     // Reset state when modal closes (but preserve activeTab for next open)
@@ -761,104 +762,202 @@ watch(() => revenueStore.includeWeightedSales, (newValue) => {
   clientEnabledTypes.value.weightedSales = newValue
 
   // Reload data if modal is open to fetch/exclude weighted sales transactions
-  if (props.isOpen && props.month) {
+  if (props.isOpen && (props.month || (props.startDate && props.endDate))) {
     loadAllData()
   }
 })
 
 async function loadAllData(forceRefresh = false) {
   loading.value = true
+  loadingStatus.value = 'Preparing to load data...'
+  loadingProgress.value = 0
   error.value = null
 
   try {
-    // Build params
-    const params = new URLSearchParams({ month: props.month })
-    if (props.asOf) {
-      params.append('as_of', props.asOf)
-    }
-    // Add cache-busting parameter if force refresh
-    if (forceRefresh) {
-      params.append('_refresh', Date.now().toString())
+    // List of months to fetch
+    const monthsToFetch = []
+    if (props.startDate && props.endDate) {
+      monthsToFetch.push(...getMonthsInRange(props.startDate, props.endDate))
+    } else {
+      monthsToFetch.push(props.month)
     }
 
     // Fetch transaction types based on dashboard toggle
     const components = ['invoiced', 'journalEntries', 'delayedCharges', 'monthlyRecurring', 'wonUnscheduled']
 
-    // Only include weighted sales if enabled on dashboard
-    if (revenueStore.includeWeightedSales) {
-      components.push('weightedSales')
+    const totalSteps = components.length + 1 // +1 for client data
+    let completedSteps = 0
+    const updateProgress = (stepName) => {
+      completedSteps++
+      loadingProgress.value = Math.round((completedSteps / totalSteps) * 100)
+      loadingStatus.value = `Loading ${stepName}... (${completedSteps}/${totalSteps})`
     }
 
-    const transactionPromises = components.map(async (component) => {
+
+    // Build common params
+    const startMonth = monthsToFetch[0]
+    const endMonth = monthsToFetch[monthsToFetch.length - 1]
+
+    // Determine if we are doing a range request
+    const isRangeRequest = monthsToFetch.length > 1
+
+    const params = new URLSearchParams()
+
+    if (isRangeRequest) {
+      params.append('month_start', startMonth)
+      params.append('month_end', endMonth)
+    } else {
+      params.append('month', startMonth)
+    }
+
+    if (props.asOf) {
+      params.append('as_of', props.asOf)
+    }
+    if (forceRefresh) {
+      params.append('_refresh', Date.now().toString())
+    }
+
+    // Fetch components
+    const transactionResults = []
+
+    // We can run these in parallel now since we only make one request per component for the whole range
+    // But to be safe with QBO concurrency, we can still stagger them slightly or just await sequentially
+    for (const component of components) {
+      // Small delay between components
+      await new Promise(r => setTimeout(r, 100))
+
       const componentParams = new URLSearchParams(params)
       componentParams.append('component', component)
 
-      const response = await fetch(`/.netlify/functions/transaction-details?${componentParams.toString()}`, {
-        headers: { 'Authorization': `Bearer ${authStore.token}` }
-      })
+      try {
+        const response = await fetch(`/.netlify/functions/transaction-details?${componentParams.toString()}`, {
+          headers: { 'Authorization': `Bearer ${authStore.token}` }
+        })
 
-      if (!response.ok) return { transactions: [], fromCache: false, cachedAt: null }
+        if (!response.ok) {
+          transactionResults.push({ transactions: [], fromCache: false, cachedAt: null })
+          updateProgress(component)
+          continue
+        }
 
-      const result = await response.json()
-      const data = result.data || result
-      return {
-        transactions: data.transactions || [],
-        fromCache: data.fromCache || false,
-        cachedAt: data.cachedAt || null
+        const result = await response.json()
+        const data = result.data || result
+        transactionResults.push({
+          transactions: data.transactions || [],
+          fromCache: data.fromCache || false,
+          cachedAt: data.cachedAt || null
+        })
+        updateProgress(component)
+      } catch (e) {
+        console.error(`Error fetching ${component} for range ${startMonth}-${endMonth}:`, e)
+        transactionResults.push({ transactions: [], fromCache: false, cachedAt: null })
+        updateProgress(component)
       }
-    })
+    }
 
-    // Fetch client data (respect dashboard toggle)
+    // Fetch client data
     const clientParams = new URLSearchParams({
-      month: props.month,
       includeWeightedSales: revenueStore.includeWeightedSales.toString()
     })
+
+    if (isRangeRequest) {
+      clientParams.append('month_start', startMonth)
+      clientParams.append('month_end', endMonth)
+    } else {
+      clientParams.append('month', startMonth)
+    }
+
     if (props.asOf) {
       clientParams.append('as_of', props.asOf)
     }
 
-    const clientPromise = fetch(`/.netlify/functions/revenue-by-client?${clientParams.toString()}`, {
-      headers: { 'Authorization': `Bearer ${authStore.token}` }
-    }).then(async (response) => {
-      if (!response.ok) return { clients: null, fromCache: false, cachedAt: null }
-      const result = await response.json()
-      const data = result.data || result
-      return {
-        clients: data.clients || [],
-        month: data.month,
-        fromCache: data.fromCache || false,
-        cachedAt: data.cachedAt || null
+    let clientResult = { clients: null, fromCache: false, cachedAt: null }
+    try {
+      const response = await fetch(`/.netlify/functions/revenue-by-client?${clientParams.toString()}`, {
+        headers: { 'Authorization': `Bearer ${authStore.token}` }
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        const data = result.data || result
+        clientResult = {
+          clients: data.clients || [],
+          month: data.month,
+          fromCache: data.fromCache || false,
+          cachedAt: data.cachedAt || null
+        }
       }
-    })
-
-    // Wait for all data
-    const [transactionResults, clientResult] = await Promise.all([
-      Promise.all(transactionPromises),
-      clientPromise
-    ])
-
-    // Flatten all transactions and capture cache metadata
-    allTransactions.value = transactionResults.flatMap(r => r.transactions)
-
-    // Determine if any transactions were from cache and get latest cache date
-    const transactionsWithCache = transactionResults.filter(r => r.fromCache)
-    cacheMetadata.value.transactionsFromCache = transactionsWithCache.length > 0
-    if (transactionsWithCache.length > 0) {
-      const cacheDates = transactionsWithCache.map(r => r.cachedAt).filter(Boolean)
-      if (cacheDates.length > 0) {
-        cacheMetadata.value.transactionsCachedAt = cacheDates.sort().reverse()[0]
-      }
-    } else {
-      cacheMetadata.value.transactionsCachedAt = null
+      updateProgress('Client Data')
+    } catch (e) {
+      console.error(`Error fetching client data for range ${startMonth}-${endMonth}:`, e)
+      updateProgress('Client Data')
     }
 
-    // Store client data and cache metadata
-    clientData.value = clientResult.clients ? {
-      clients: clientResult.clients,
-      month: clientResult.month
+    // Since we now have single results covering the whole range, we put them in a list of 1 to match aggregation logic or just assign directly
+    const allResults = [{
+      transactionResults,
+      clientResult
+    }]
+
+
+
+    // Aggregate results
+    let aggregatedTransactions = []
+    let aggregatedClients = {} // Map by client name to sum totals
+    let hasCache = false
+    let latestCacheDate = null
+    let clientHasCache = false
+    let latestClientCacheDate = null
+
+    for (const result of allResults) {
+      // Aggregate transactions
+      const txns = result.transactionResults.flatMap(r => r.transactions)
+      aggregatedTransactions.push(...txns)
+
+      // Check cache metadata for transactions
+      const transactionsWithCache = result.transactionResults.filter(r => r.fromCache)
+      if (transactionsWithCache.length > 0) hasCache = true
+      const date = transactionsWithCache.map(r => r.cachedAt).filter(Boolean).sort().reverse()[0]
+      if (date && (!latestCacheDate || new Date(date) > new Date(latestCacheDate))) {
+        latestCacheDate = date
+      }
+
+      // Aggregate clients
+      if (result.clientResult.clients) {
+        if (result.clientResult.fromCache) clientHasCache = true
+        if (result.clientResult.cachedAt && (!latestClientCacheDate || new Date(result.clientResult.cachedAt) > new Date(latestClientCacheDate))) {
+          latestClientCacheDate = result.clientResult.cachedAt
+        }
+
+        for (const client of result.clientResult.clients) {
+          if (!aggregatedClients[client.client]) {
+            aggregatedClients[client.client] = { ...client, total: 0 }
+            // Note: We might want to aggregate breakdown fields too (invoiced, recurring, etc.) 
+            // but 'total' is the most critical for the pie chart.
+            // Currently revenue-by-client returns breakdown. Detailed aggregation might be needed if detail view relies on it.
+            // For now, let's assume 'total' is primary.
+          }
+          aggregatedClients[client.client].total += client.total || 0
+        }
+      }
+    }
+
+    allTransactions.value = aggregatedTransactions
+
+    // Set cache metadata
+    cacheMetadata.value = {
+      transactionsFromCache: hasCache,
+      transactionsCachedAt: latestCacheDate,
+      clientsFromCache: clientHasCache,
+      clientsCachedAt: latestClientCacheDate
+    }
+
+    // Set client data
+    const aggregatedClientList = Object.values(aggregatedClients)
+    clientData.value = aggregatedClientList.length > 0 ? {
+      clients: aggregatedClientList,
+      month: props.month || 'Multiple Months'
     } : null
-    cacheMetadata.value.clientsFromCache = clientResult.fromCache
-    cacheMetadata.value.clientsCachedAt = clientResult.cachedAt
 
     // If we're on the clients tab, create the pie chart
     if (activeTab.value === 'clients' && clientData.value?.clients) {
@@ -914,6 +1013,42 @@ function formatMonth(monthStr) {
   }
 }
 
+const modalTitle = computed(() => {
+  if (props.startDate && props.endDate) {
+    try {
+      const start = parseISO(props.startDate)
+      const end = parseISO(props.endDate)
+      // Check if start and end are the same month
+      if (formatDate(start, 'yyyy-MM') === formatDate(end, 'yyyy-MM')) {
+        return formatDate(start, 'MMMM yyyy')
+      }
+      return `${formatDate(start, 'MMM yyyy')} - ${formatDate(end, 'MMM yyyy')}`
+    } catch (e) {
+      return `${props.startDate} - ${props.endDate}`
+    }
+  }
+  return formatMonth(props.month)
+})
+
+function getMonthsInRange(startStr, endStr) {
+  const months = []
+  try {
+    let current = startOfMonth(parseISO(startStr))
+    const end = startOfMonth(parseISO(endStr))
+
+    // Safety break to prevent infinite loops
+    let iterations = 0
+    while ((isBefore(current, end) || current.getTime() === end.getTime()) && iterations < 36) {
+      months.push(formatDate(current, 'yyyy-MM'))
+      current = addMonths(current, 1)
+      iterations++
+    }
+  } catch (e) {
+    console.error('Error generating months range:', e)
+  }
+  return months
+}
+
 function formatTransactionDate(dateStr) {
   if (!dateStr) return 'N/A'
   try {
@@ -967,6 +1102,52 @@ function formatTransactionType(type) {
     weightedSales: 'Weighted Sales'
   }
   return typeMap[type] || type
+}
+
+function formatType(type) {
+  const types = {
+    invoice: 'Invoice',
+    journalEntry: 'Journal Entry',
+    delayedCharge: 'Delayed Charge',
+    monthlyRecurring: 'Monthly Recurring',
+    wonUnscheduled: 'Won Unscheduled',
+    weightedSales: 'Weighted Sales'
+  }
+  return types[type] || type
+}
+
+function exportToCSV() {
+  if (allTransactions.value.length === 0) return
+
+  // Define headers
+  const headers = ['Type', 'Doc #', 'Date', 'Client (Raw)', 'Client (Normalized)', 'Description', 'Amount']
+
+  // Format rows
+  const rows = allTransactions.value.map(txn => {
+    return [
+      formatType(txn.type),
+      txn.docNumber || '',
+      txn.date || '',
+      `"${(txn.clientRaw || txn.customer || '').replace(/"/g, '""')}"`, // Quote and escape quotes
+      `"${(txn.clientNormalized || txn.customer || '').replace(/"/g, '""')}"`,
+      `"${(txn.description || '').replace(/"/g, '""')}"`,
+      txn.amount || 0
+    ].join(',')
+  })
+
+  // Combine headers and rows
+  const csvContent = [headers.join(','), ...rows].join('\n')
+
+  // Create blob and download link
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.setAttribute('href', url)
+  link.setAttribute('download', `transaction_details_${props.startDate || props.month}${props.endDate ? '_to_' + props.endDate : ''}.csv`)
+  link.style.visibility = 'hidden'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 }
 
 function getTypeColor(type) {
@@ -1050,7 +1231,7 @@ function createPieChart() {
         },
         tooltip: {
           callbacks: {
-            label: function(context) {
+            label: function (context) {
               const label = context.label || ''
               const value = formatCurrency(context.parsed)
               const percent = formatPercent(context.parsed, total)
