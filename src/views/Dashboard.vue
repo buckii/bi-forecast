@@ -345,6 +345,11 @@
                 </svg>
                 {{ sharingToSlack ? 'Sending...' : 'Send to Slack' }}
               </button>
+              <button @click="downloadChart" :disabled="revenueStore.loading"
+                class="btn-secondary inline-flex items-center" title="Download chart as image">
+                <ArrowDownTrayIcon class="-ml-1 mr-2 h-4 w-4" aria-hidden="true" />
+                Download
+              </button>
             </div>
           </div>
 
@@ -392,7 +397,7 @@
             </div>
           </div>
         </div>
-        <div class="relative" ref="chartContainer" style="height: 60vh">
+        <div class="relative pb-10" ref="chartContainer" style="height: 60vh">
           <!-- Loading State inside chart area -->
           <div v-if="revenueStore.loading || chartRefreshing"
             class="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75">
@@ -427,7 +432,7 @@
 </template>
 
 <script setup>
-import { ChevronDownIcon } from '@heroicons/vue/24/outline'
+import { ArrowDownTrayIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
 import { addMonths, endOfMonth, endOfYear, format, parse, startOfMonth, startOfYear, subMonths, subYears } from 'date-fns'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -435,6 +440,7 @@ import AppLayout from '../components/AppLayout.vue'
 import RevenueChart from '../components/RevenueChart.vue'
 import StatusModal from '../components/StatusModal.vue'
 import TransactionDetailsModal from '../components/TransactionDetailsModal.vue'
+import { isDarkModeGlobal } from '../composables/useDarkMode'
 import { useDataRefresh } from '../composables/useDataRefresh'
 import revenueService from '../services/revenue'
 import { useAuthStore } from '../stores/auth'
@@ -1336,10 +1342,19 @@ async function shareChartToSlack() {
     const html2canvas = (await import('html2canvas')).default
 
     const canvas = await html2canvas(chartContainer.value, {
-      backgroundColor: null,
+      backgroundColor: isDarkModeGlobal.value ? '#111827' : '#ffffff', // Use theme background color
       scale: 2, // Higher resolution
       useCORS: true,
-      logging: false
+      logging: false,
+      onclone: (clonedDoc) => {
+        // Find the container in the cloned document and add padding
+        const clonedContainer = clonedDoc.querySelector('[style*="60vh"]');
+        if (clonedContainer) {
+          clonedContainer.style.height = 'auto'; // Allow growing
+          clonedContainer.style.paddingBottom = '60px'; // Substantial padding
+          clonedContainer.style.backgroundColor = isDarkModeGlobal.value ? '#111827' : '#ffffff';
+        }
+      }
     })
 
     // Step 2: Convert to base64
@@ -1392,6 +1407,40 @@ async function shareChartToSlack() {
 
 function closeShareModal() {
   showShareModal.value = false
+}
+
+async function downloadChart() {
+  if (!chartContainer.value) return
+
+  try {
+    const html2canvas = (await import('html2canvas')).default
+    const canvas = await html2canvas(chartContainer.value, {
+      backgroundColor: isDarkModeGlobal.value ? '#111827' : '#ffffff', // Use theme background color
+      scale: 2, // Higher resolution
+      useCORS: true,
+      logging: false,
+      onclone: (clonedDoc) => {
+        // Find the container in the cloned document and add padding
+        const clonedContainer = clonedDoc.querySelector('[style*="60vh"]');
+        if (clonedContainer) {
+          clonedContainer.style.height = 'auto'; // Allow growing
+          clonedContainer.style.paddingBottom = '60px'; // Substantial padding
+          clonedContainer.style.backgroundColor = isDarkModeGlobal.value ? '#111827' : '#ffffff';
+        }
+      }
+    })
+
+    const imageData = canvas.toDataURL('image/png', 1.0)
+
+    const link = document.createElement('a')
+    link.href = imageData
+    link.download = `revenue-forecast-${format(new Date(), 'yyyy-MM-dd')}.png`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  } catch (error) {
+    console.error('Error downloading chart:', error)
+  }
 }
 
 // Function to update URL query parameters
