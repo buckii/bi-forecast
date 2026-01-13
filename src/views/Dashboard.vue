@@ -174,19 +174,22 @@
           </div>
         </div>
         
-        <div class="card relative">
+          <div class="card relative">
           <!-- Loading overlay -->
           <div v-if="chartRefreshing" class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">1-Year Won</h3>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">1-Year Forecast</h3>
           <p class="text-xs text-gray-500 dark:text-gray-400">{{ getCurrentDateLabel() }}</p>
           <p class="text-3xl font-bold text-primary-600 mt-2">
-            {{ chartRefreshing ? '—' : formatCurrency(yearWon) }}
+            {{ chartRefreshing ? '—' : formatCurrency(yearForecast) }}
           </p>
           <div v-if="!chartRefreshing" class="space-y-0.5 mt-1">
             <p class="text-xs text-gray-400 dark:text-gray-500">
               Recurring: {{ formatCurrency(twelveMonthsRecurring) }}
+            </p>
+            <p v-if="revenueStore.includeWeightedSales" class="text-xs text-gray-400 dark:text-gray-500">
+              Weighted Sales: {{ formatCurrency(twelveMonthsWeightedSales) }}
             </p>
             <p class="text-xs text-gray-400 dark:text-gray-500">
               Won Unsched: {{ formatCurrency(twelveMonthsWonUnscheduled) }}
@@ -198,16 +201,16 @@
               Charges: {{ formatCurrency(revenueStore.yearUnbilledCharges) }}
             </p>
           </div>
-          <div v-if="!chartRefreshing && comparisonYearWon !== null" class="mt-3 space-y-1">
+          <div v-if="!chartRefreshing && comparisonYearForecast !== null" class="mt-3 space-y-1">
             <p class="text-xs text-gray-500 dark:text-gray-400">
               As of {{ formatCompareDate() }}
             </p>
             <p class="text-xl font-semibold text-gray-700 dark:text-gray-300">
-              {{ formatCurrency(comparisonYearWon) }}
+              {{ formatCurrency(comparisonYearForecast) }}
             </p>
-            <p :class="calculateChange(yearWon, comparisonYearWon).dollar >= 0 ? 'text-green-600' : 'text-red-600'" class="text-sm font-medium">
-              {{ calculateChange(yearWon, comparisonYearWon).dollar >= 0 ? '+' : '' }}{{ formatCurrency(calculateChange(yearWon, comparisonYearWon).dollar) }}
-              ({{ calculateChange(yearWon, comparisonYearWon).percent >= 0 ? '+' : '' }}{{ calculateChange(yearWon, comparisonYearWon).percent.toFixed(1) }}%)
+            <p :class="calculateChange(yearForecast, comparisonYearForecast).dollar >= 0 ? 'text-green-600' : 'text-red-600'" class="text-sm font-medium">
+              {{ calculateChange(yearForecast, comparisonYearForecast).dollar >= 0 ? '+' : '' }}{{ formatCurrency(calculateChange(yearForecast, comparisonYearForecast).dollar) }}
+              ({{ calculateChange(yearForecast, comparisonYearForecast).percent >= 0 ? '+' : '' }}{{ calculateChange(yearForecast, comparisonYearForecast).percent.toFixed(1) }}%)
             </p>
           </div>
         </div>
@@ -409,17 +412,17 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { useRevenueStore } from '../stores/revenue'
-import { useAuthStore } from '../stores/auth'
-import { useDataRefresh } from '../composables/useDataRefresh'
-import revenueService from '../services/revenue'
+import { addMonths, endOfMonth, format, parse, startOfMonth, subMonths } from 'date-fns'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '../components/AppLayout.vue'
 import RevenueChart from '../components/RevenueChart.vue'
-import TransactionDetailsModal from '../components/TransactionDetailsModal.vue'
 import StatusModal from '../components/StatusModal.vue'
-import { format, parse, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns'
+import TransactionDetailsModal from '../components/TransactionDetailsModal.vue'
+import { useDataRefresh } from '../composables/useDataRefresh'
+import revenueService from '../services/revenue'
+import { useAuthStore } from '../stores/auth'
+import { useRevenueStore } from '../stores/revenue'
 
 const revenueStore = useRevenueStore()
 const authStore = useAuthStore()
@@ -676,10 +679,30 @@ const twelveMonthsJournalEntries = computed(() => {
   return total
 })
 
-// Computed property for 1-Year Won (12 months recurring + won unscheduled + journal entries + unbilled charges)
-const yearWon = computed(() => {
+// Computed property for 12 months of weighted sales
+const twelveMonthsWeightedSales = computed(() => {
+  if (!revenueStore.includeWeightedSales) return 0
+  
+  const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
+  const start = startOfMonth(selectedDate)
+  let total = 0
+
+  for (let i = 0; i < 12; i++) {
+    const month = format(addMonths(start, i), 'yyyy-MM-dd')
+    const monthData = revenueStore.revenueData.find(m => m.month === month)
+    if (monthData) {
+      total += monthData.components.weightedSales
+    }
+  }
+
+  return total
+})
+
+// Computed property for 1-Year Forecast (12 months recurring + won unscheduled + weighted sales (if enabled) + journal entries + unbilled charges)
+const yearForecast = computed(() => {
   return twelveMonthsRecurring.value +
          twelveMonthsWonUnscheduled.value +
+         twelveMonthsWeightedSales.value +
          twelveMonthsJournalEntries.value +
          revenueStore.yearUnbilledCharges
 })
@@ -786,10 +809,28 @@ const comparisonTwelveMonthsJournalEntries = computed(() => {
   return total
 })
 
-const comparisonYearWon = computed(() => {
+const comparisonTwelveMonthsWeightedSales = computed(() => {
+  if (!comparisonData.value || !compareAsOfDate.value || !revenueStore.includeWeightedSales) return 0
+  const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
+  const start = startOfMonth(selectedDate)
+  let total = 0
+
+  for (let i = 0; i < 12; i++) {
+    const month = format(addMonths(start, i), 'yyyy-MM-dd')
+    const monthData = comparisonData.value.months.find(m => m.month === month)
+    if (monthData) {
+      total += monthData.components.weightedSales
+    }
+  }
+
+  return total
+})
+
+const comparisonYearForecast = computed(() => {
   if (!comparisonData.value || !compareAsOfDate.value) return null
   return comparisonTwelveMonthsRecurring.value +
          comparisonTwelveMonthsWonUnscheduled.value +
+         comparisonTwelveMonthsWeightedSales.value +
          comparisonTwelveMonthsJournalEntries.value +
          comparisonYearUnbilled.value
 })
