@@ -501,15 +501,15 @@ async function getMonthlyRecurringTransactions(calculator, startDate, endDate, m
     return []
   }
 
-
   const transactions = []
 
-  // First, get detailed baseline monthly recurring from previous month
-  const previousMonth = addMonths(startOfMonth(new Date()), -1)
-  const previousMonthStart = format(startOfMonth(previousMonth), 'yyyy-MM-dd')
-  const previousMonthEnd = format(endOfMonth(previousMonth), 'yyyy-MM-dd')
+  // Get baseline monthly recurring transactions from latest source month (current or previous)
+  const sourceResult = await getLatestSourceMonthForMRR(calculator)
+  const sourceMonthStart = sourceResult.start
+  const sourceMonthEnd = sourceResult.end
+  const sourceMonthName = sourceResult.name
 
-  const baselineTransactions = await getHistoricalMonthlyRecurringTransactions(calculator, previousMonthStart, previousMonthEnd)
+  const baselineTransactions = await getHistoricalMonthlyRecurringTransactions(calculator, sourceMonthStart, sourceMonthEnd)
 
   // Add each baseline transaction with updated dates and descriptions for future projection
   for (const baselineTxn of baselineTransactions) {
@@ -517,10 +517,10 @@ async function getMonthlyRecurringTransactions(calculator, startDate, endDate, m
       ...baselineTxn,
       id: `projected-${baselineTxn.id}-${format(monthDate, 'yyyy-MM')}`,
       date: format(monthDate, 'yyyy-MM-dd'),
-      description: `${baselineTxn.description} (Projected from ${format(previousMonth, 'MMM yyyy')})`,
+      description: `${baselineTxn.description} (Projected from ${sourceMonthName})`,
       details: {
         ...baselineTxn.details,
-        note: `Projected recurring revenue based on ${format(previousMonth, 'MMM yyyy')} actuals`,
+        note: `Projected recurring revenue based on ${sourceMonthName} actuals`,
         originalDate: baselineTxn.date,
         projectedFor: format(monthDate, 'MMM yyyy')
       }
@@ -581,15 +581,46 @@ async function getMonthlyRecurringTransactions(calculator, startDate, endDate, m
   return transactions
 }
 
-async function getBaselineMonthlyRecurringAmount(calculator) {
-  try {
-    // Get previous month date range
-    const currentDate = new Date()
-    const previousMonth = addMonths(startOfMonth(currentDate), -1)
-    const previousMonthStart = format(startOfMonth(previousMonth), 'yyyy-MM-dd')
-    const previousMonthEnd = format(endOfMonth(previousMonth), 'yyyy-MM-dd')
+async function getLatestSourceMonthForMRR(calculator) {
+  const currentDate = new Date()
+  const currentMonthStart = startOfMonth(currentDate)
+  const currentMonthEnd = endOfMonth(currentDate)
 
-    const transactions = await getHistoricalMonthlyRecurringTransactions(calculator, previousMonthStart, previousMonthEnd)
+  // 1. Try Current Month
+  const currentTransactions = await getHistoricalMonthlyRecurringTransactions(
+    calculator,
+    format(currentMonthStart, 'yyyy-MM-dd'),
+    format(currentMonthEnd, 'yyyy-MM-dd')
+  )
+
+  if (currentTransactions.length > 0) {
+    return {
+      start: format(currentMonthStart, 'yyyy-MM-dd'),
+      end: format(currentMonthEnd, 'yyyy-MM-dd'),
+      name: format(currentMonthStart, 'MMM yyyy')
+    }
+  }
+
+  // 2. Fallback to Previous Month
+  const previousMonth = addMonths(currentMonthStart, -1)
+  const previousMonthStart = startOfMonth(previousMonth)
+  const previousMonthEnd = endOfMonth(previousMonth)
+
+  return {
+    start: format(previousMonthStart, 'yyyy-MM-dd'),
+    end: format(previousMonthEnd, 'yyyy-MM-dd'),
+    name: format(previousMonth, 'MMM yyyy') // Corrected from previousMonthName
+  }
+}
+
+async function calculateBaselineMonthlyRecurringAmount(calculator) {
+  try {
+    const sourceResult = await getLatestSourceMonthForMRR(calculator)
+    const transactions = await getHistoricalMonthlyRecurringTransactions(
+      calculator,
+      sourceResult.start,
+      sourceResult.end
+    )
     return transactions.reduce((sum, txn) => sum + (txn.amount || 0), 0)
   } catch (error) {
     console.error('Error calculating baseline monthly recurring amount:', error)

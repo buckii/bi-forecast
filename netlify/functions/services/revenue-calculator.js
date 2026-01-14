@@ -140,8 +140,10 @@ class RevenueCalculator {
     this.cachedPipedriveData = pipedriveData
 
 
-    // Calculate baseline monthly recurring from previous month
-    const baselineMonthlyRecurring = await this.calculateBaselineMonthlyRecurring(qboData)
+    // Calculate baseline monthly recurring from current month (with fallback to previous)
+    const baselineResult = await this.calculateBaselineMonthlyRecurring(qboData)
+    const baselineMonthlyRecurring = baselineResult.amount
+    this.baselineMRRMonth = baselineResult.monthName
 
     // Process data into monthly buckets
     const result = []
@@ -385,75 +387,123 @@ class RevenueCalculator {
   }
 
   async calculateBaselineMonthlyRecurring(qboData) {
-
     try {
-      // Get previous month date range
+      // 1. Try Current Month first
       const currentDate = new Date()
-      const previousMonth = addMonths(startOfMonth(currentDate), -1)
-      const previousMonthStart = startOfMonth(previousMonth)
-      const previousMonthEnd = endOfMonth(previousMonth)
+      const currentMonthStart = startOfMonth(currentDate)
+      const currentMonthEnd = endOfMonth(currentDate)
 
+      let currentTotal = 0
+      const currentMonthName = format(currentMonthStart, 'MMM yyyy')
 
-      let totalMonthlyRecurring = 0
-
-      // Check invoices from previous month for monthly accounts
+      // Check current month invoices
       if (qboData && qboData.invoices) {
-        const previousMonthInvoices = qboData.invoices.filter(invoice => {
+        const currentInvoices = qboData.invoices.filter(invoice => {
           const txnDate = new Date(invoice.TxnDate)
-          return txnDate >= previousMonthStart && txnDate <= previousMonthEnd
+          return txnDate >= currentMonthStart && txnDate <= currentMonthEnd
         })
 
-
-        for (const invoice of previousMonthInvoices) {
+        for (const invoice of currentInvoices) {
           const lines = invoice.Line || []
           for (const line of lines) {
             const accountRef = line.SalesItemLineDetail?.AccountRef || line.AccountBasedExpenseLineDetail?.AccountRef
             const itemRef = line.SalesItemLineDetail?.ItemRef
-
-            // Check if account name or item name contains "monthly" (case insensitive)
             const hasMonthly =
               accountRef?.name?.toLowerCase().includes('monthly') ||
               itemRef?.name?.toLowerCase().includes('monthly') ||
               line.Description?.toLowerCase().includes('monthly')
 
             if (hasMonthly) {
-              const lineAmount = line.Amount || 0
-              totalMonthlyRecurring += lineAmount
+              currentTotal += (line.Amount || 0)
             }
           }
         }
       }
 
-      // Also check journal entries from previous month for monthly accounts
+      // Check current month journal entries
+      if (qboData && qboData.journalEntries) {
+        const currentEntries = qboData.journalEntries.filter(entry => {
+          const txnDate = new Date(entry.TxnDate)
+          return txnDate >= currentMonthStart && txnDate <= currentMonthEnd
+        })
+
+        for (const entry of currentEntries) {
+          const lines = entry.Line || []
+          for (const line of lines) {
+            const accountRef = line.JournalEntryLineDetail?.AccountRef
+            if (accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
+              accountRef?.name?.toLowerCase().includes('monthly') &&
+              !accountRef?.name?.toLowerCase().includes('unearned')) {
+              currentTotal += (line.Amount || 0)
+            }
+          }
+        }
+      }
+
+      // 2. If current month has data, use it
+      if (currentTotal > 0) {
+        console.log(`[RevenueCalculator] Using current month (${currentMonthName}) for MRR baseline: $${currentTotal}`)
+        return { amount: currentTotal, monthName: currentMonthName }
+      }
+
+      // 3. Fallback to Previous Month
+      const previousMonth = addMonths(currentMonthStart, -1)
+      const previousMonthStart = startOfMonth(previousMonth)
+      const previousMonthEnd = endOfMonth(previousMonth)
+      const previousMonthName = format(previousMonthStart, 'MMM yyyy')
+
+      let prevTotal = 0
+
+      // Check previous month invoices
+      if (qboData && qboData.invoices) {
+        const previousMonthInvoices = qboData.invoices.filter(invoice => {
+          const txnDate = new Date(invoice.TxnDate)
+          return txnDate >= previousMonthStart && txnDate <= previousMonthEnd
+        })
+
+        for (const invoice of previousMonthInvoices) {
+          const lines = invoice.Line || []
+          for (const line of lines) {
+            const accountRef = line.SalesItemLineDetail?.AccountRef || line.AccountBasedExpenseLineDetail?.AccountRef
+            const itemRef = line.SalesItemLineDetail?.ItemRef
+            const hasMonthly =
+              accountRef?.name?.toLowerCase().includes('monthly') ||
+              itemRef?.name?.toLowerCase().includes('monthly') ||
+              line.Description?.toLowerCase().includes('monthly')
+
+            if (hasMonthly) {
+              prevTotal += (line.Amount || 0)
+            }
+          }
+        }
+      }
+
+      // Check previous month journal entries
       if (qboData && qboData.journalEntries) {
         const previousMonthEntries = qboData.journalEntries.filter(entry => {
           const txnDate = new Date(entry.TxnDate)
           return txnDate >= previousMonthStart && txnDate <= previousMonthEnd
         })
 
-
         for (const entry of previousMonthEntries) {
           const lines = entry.Line || []
           for (const line of lines) {
             const accountRef = line.JournalEntryLineDetail?.AccountRef
-
-            // Look for revenue accounts with "monthly" in the name
             if (accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
               accountRef?.name?.toLowerCase().includes('monthly') &&
               !accountRef?.name?.toLowerCase().includes('unearned')) {
-
-              const lineAmount = line.Amount || 0
-              totalMonthlyRecurring += lineAmount
+              prevTotal += (line.Amount || 0)
             }
           }
         }
       }
 
-      return totalMonthlyRecurring
+      console.log(`[RevenueCalculator] Current month MRR was zero. Falling back to previous month (${previousMonthName}) for MRR baseline: $${prevTotal}`)
+      return { amount: prevTotal, monthName: previousMonthName }
 
     } catch (error) {
-      console.error('[Revenue Calculator] Error calculating baseline monthly recurring:', error)
-      return 0
+      console.error('Error calculating baseline monthly recurring amount:', error)
+      return { amount: 0, monthName: 'Error' }
     }
   }
 
@@ -507,25 +557,18 @@ class RevenueCalculator {
         })
       }
 
-      // Calculate monthly recurring ONLY for future months (current/past months already have invoiced amounts)
+      // Calculate monthly recurring ONLY for future months
       if (isFutureMonth) {
-        // Start with baseline monthly recurring from previous month
+        // Start with baseline monthly recurring (latest known month, calculated once)
         components.monthlyRecurring = baselineMonthlyRecurring
 
-        // Add any additional monthly recurring found in this month's data
+        // Add any additional monthly recurring found SPECIFICALLY in this target month's invoices
+        // (This handles the case where a future invoice already exists)
         const additionalMonthlyRecurring = this.calculateMonthlyRecurring(monthInvoices)
         components.monthlyRecurring += additionalMonthlyRecurring
 
-        // Also try to get monthly recurring revenue using QBO method for future months only
-        try {
-          const qboMRR = await this.qbo.getMonthlyRecurringRevenue(monthDate)
-          if (qboMRR > (components.monthlyRecurring - baselineMonthlyRecurring)) {
-            // Replace the additional amount but keep the baseline
-            components.monthlyRecurring = baselineMonthlyRecurring + qboMRR
-          }
-        } catch (err) {
-          console.error('Error getting QBO monthly recurring revenue:', err.message)
-        }
+        // We REMOVED the redundant QBO P&L check here because the baseline already 
+        // prioritizes the current month, which contains the latest P&L/Invoice totals.
       }
 
       // Debug logging for key months
@@ -540,6 +583,7 @@ class RevenueCalculator {
       if (isFutureMonth) {
         components.monthlyRecurringBreakdown = {
           baseline: baselineMonthlyRecurring,
+          baselineMonth: this.baselineMRRMonth,
           additional: components.monthlyRecurring - baselineMonthlyRecurring,
           total: components.monthlyRecurring
         }
