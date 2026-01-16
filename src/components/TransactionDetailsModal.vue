@@ -61,7 +61,7 @@
       <div v-if="loading" class="mb-4 bg-blue-50 dark:bg-blue-900/20 p-2 rounded-md">
         <div class="flex justify-between items-center mb-1">
           <span class="text-xs font-semibold text-blue-700 dark:text-blue-300">{{ loadingStatus || 'Loading...'
-            }}</span>
+          }}</span>
           <span class="text-xs font-semibold text-blue-700 dark:text-blue-300">{{ loadingProgress }}%</span>
         </div>
         <div class="w-full bg-blue-200 dark:bg-blue-800/40 rounded-full h-1.5">
@@ -784,6 +784,9 @@ async function loadAllData(forceRefresh = false) {
 
     // Fetch transaction types based on dashboard toggle
     const components = ['invoiced', 'journalEntries', 'delayedCharges', 'monthlyRecurring', 'wonUnscheduled']
+    if (revenueStore.includeWeightedSales) {
+      components.push('weightedSales')
+    }
 
     const totalSteps = components.length + 1 // +1 for client data
     let completedSteps = 0
