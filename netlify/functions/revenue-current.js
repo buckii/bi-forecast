@@ -62,7 +62,9 @@ exports.handler = async function(event, context) {
     const calculator = new RevenueCalculator(company._id)
 
     // Calculate revenue first (this caches QBO data in calculator instance)
-    const revenueResult = await calculator.calculateMonthlyRevenue(15, -3)
+    // 16 months: 3 prior + current + 12 forward (through Jun next year) so the
+    // 1-Year Forecast (first of next month → +12mo) has its final month of data.
+    const revenueResult = await calculator.calculateMonthlyRevenue(16, -3)
     const months = revenueResult.months || revenueResult // Handle both old and new return format
 
     // Fetch exceptions and balances in parallel, passing months data to getBalances

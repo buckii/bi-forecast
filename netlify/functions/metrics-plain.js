@@ -1,6 +1,13 @@
 const { getCollection } = require('./utils/database.js')
-
-const CASH_ACCOUNT_TYPES = ['Checking', 'Savings', 'UndepositedFunds']
+// Shared metrics module is ESM; load it via dynamic import() (works natively
+// from a CommonJS Lambda function). Cached after first load.
+let formulasPromise
+function getFormulas() {
+  if (!formulasPromise) {
+    formulasPromise = import('../../src/lib/metrics-formulas.js')
+  }
+  return formulasPromise
+}
 
 function todayInET() {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -20,52 +27,6 @@ function monthKeyFromDateStr(dateStr) {
   return `${y}-${m}-01`
 }
 
-function getMonthKey(currentMonthKey, offset) {
-  const [y, m] = currentMonthKey.split('-').map(Number)
-  const date = new Date(Date.UTC(y, m - 1 + offset, 1))
-  const yy = date.getUTCFullYear()
-  const mm = String(date.getUTCMonth() + 1).padStart(2, '0')
-  return `${yy}-${mm}-01`
-}
-
-function sumComponents(months, currentMonthKey, count, includeKeys) {
-  let total = 0
-  for (let i = 0; i < count; i++) {
-    const key = getMonthKey(currentMonthKey, i)
-    const monthData = months.find(m => m.month === key)
-    if (!monthData) continue
-    for (const k of includeKeys) {
-      total += monthData.components[k] || 0
-    }
-  }
-  return total
-}
-
-function totalReceivables(receivables) {
-  if (!receivables) return 0
-  if (typeof receivables === 'number') return receivables
-  if (receivables.total !== undefined) return receivables.total
-  if (receivables.current !== undefined) {
-    return (receivables.current || 0) +
-      (receivables.days1to30 || 0) +
-      (receivables.days31to60 || 0) +
-      (receivables.days61to90 || 0) +
-      (receivables.over90 || 0)
-  }
-  return 0
-}
-
-function cashOnHand(assets) {
-  if (!Array.isArray(assets)) return 0
-  return assets.reduce((sum, account) => {
-    const accountType = account.subType || account.name
-    if (CASH_ACCOUNT_TYPES.includes(accountType)) {
-      return sum + (parseFloat(account.balance) || 0)
-    }
-    return sum
-  }, 0)
-}
-
 exports.handler = async function(event) {
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -80,6 +41,8 @@ exports.handler = async function(event) {
   }
 
   try {
+    const formulas = await getFormulas()
+
     const asOfParam =
       event.queryStringParameters?.as_of ||
       event.queryStringParameters?.date ||
@@ -126,7 +89,8 @@ exports.handler = async function(event) {
     } else if (asOfParam === todayInET()) {
       const RevenueCalculator = require('./services/revenue-calculator.js')
       const calculator = new RevenueCalculator(company._id)
-      const revenueResult = await calculator.calculateMonthlyRevenue(15, -3)
+      // 16 months so the 1-Year Forecast's final month (Jun next year) has data
+      const revenueResult = await calculator.calculateMonthlyRevenue(16, -3)
       months = revenueResult.months || revenueResult
       balances = await calculator.getBalances(months)
     } else {
@@ -138,50 +102,23 @@ exports.handler = async function(event) {
     }
 
     const currentMonthKey = monthKeyFromDateStr(asOfParam)
+    // 1-Year Forecast starts the first of next month (matches the dashboard)
+    const forecastStartKey = formulas.monthKeyFromOffset(currentMonthKey, 1)
 
-    const thirtyDaysUnbilled = balances.thirtyDaysUnbilled || 0
-
-    const yearForecast =
-      sumComponents(months, currentMonthKey, 12, [
-        'monthlyRecurring',
-        'wonUnscheduled',
-        'weightedSales',
-        'journalEntries'
-      ]) + (balances.yearUnbilled || 0)
-
-    const threeMonthRevenue = sumComponents(months, currentMonthKey, 3, [
-      'invoiced',
-      'journalEntries',
-      'delayedCharges',
-      'monthlyRecurring',
-      'wonUnscheduled',
-      'weightedSales'
-    ])
-
-    const threeMonthWon = sumComponents(months, currentMonthKey, 3, [
-      'invoiced',
-      'journalEntries',
-      'delayedCharges',
-      'monthlyRecurring',
-      'wonUnscheduled'
-    ])
-
-    const accountsReceivable = totalReceivables(balances.receivables)
-
-    const cash = cashOnHand(balances.assets)
-    const monthlyExpenses =
-      company.settings?.monthlyExpensesOverride || balances.monthlyExpenses || 0
-    const dailyExpenses = monthlyExpenses / 30
-    const daysCash =
-      dailyExpenses > 0 && cash > 0 ? Math.round(cash / dailyExpenses) : 0
+    const cash = formulas.totalCashOnHand(balances.assets)
+    const receivables = formulas.totalReceivables(balances.receivables)
+    const monthlyExpenses = formulas.effectiveMonthlyExpenses(
+      company.settings,
+      balances
+    )
 
     const output = [
-      Math.round(thirtyDaysUnbilled),
-      Math.round(yearForecast),
-      Math.round(threeMonthRevenue),
-      Math.round(threeMonthWon),
-      Math.round(accountsReceivable),
-      daysCash
+      Math.round(formulas.thirtyDaysUnbilled(balances)),
+      Math.round(formulas.yearForecast(months, balances, forecastStartKey, true)),
+      Math.round(formulas.threeMonthRevenue(months, currentMonthKey, true)),
+      Math.round(formulas.threeMonthRevenue(months, currentMonthKey, false)),
+      Math.round(receivables),
+      formulas.daysCash(cash, monthlyExpenses)
     ].join('\n')
 
     return {

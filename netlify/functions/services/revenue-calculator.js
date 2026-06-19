@@ -1339,7 +1339,7 @@ class RevenueCalculator {
       if (!months) {
         // Fallback: calculate monthly revenue (less optimal but maintains backwards compatibility)
         console.log('[Revenue Calculator] Fetching monthly revenue for yearUnbilled (fallback path)')
-        const revenueResult = await this.calculateMonthlyRevenue(18, -6)
+        const revenueResult = await this.calculateMonthlyRevenue(19, -6)
         months = revenueResult.months || revenueResult
       } else {
         console.log('[Revenue Calculator] Using provided months data for yearUnbilled calculation')
@@ -1347,15 +1347,18 @@ class RevenueCalculator {
 
       let oneYearTotal = 0
 
-      // For 1-year: include next 12 months from current month
-      const currentMonth = format(new Date(), 'yyyy-MM-dd')
-      const oneYearFromNow = format(addMonths(new Date(), 12), 'yyyy-MM-dd')
+      // For 1-year: the forecast window is the first of next month through the
+      // 12th month out (e.g. 2026-07-01 .. 2027-06-01), matching the dashboard's
+      // 1-Year Forecast. Anchor to month starts so it's exactly 12 calendar
+      // months regardless of today's day-of-month.
+      const startKey = format(startOfMonth(addMonths(new Date(), 1)), 'yyyy-MM-dd')
+      const endKey = format(startOfMonth(addMonths(new Date(), 12)), 'yyyy-MM-dd')
 
       for (const monthData of months) {
-        const monthDate = monthData.month // Format: YYYY-MM-DD
+        const monthDate = monthData.month // Format: YYYY-MM-DD (always YYYY-MM-01)
         const delayedCharges = monthData.components.delayedCharges || 0
 
-        if (monthDate >= currentMonth && monthDate <= oneYearFromNow) {
+        if (monthDate >= startKey && monthDate <= endKey) {
           oneYearTotal += delayedCharges
         }
       }

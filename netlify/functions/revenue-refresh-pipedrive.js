@@ -40,7 +40,9 @@ exports.handler = async function(event, context) {
     }
 
     // Recalculate revenue with fresh Pipedrive data (QB data from archive if available)
-    const revenueResult = await calculator.calculateMonthlyRevenue(18, -6)
+    // 19 months: 6 prior + current + 12 forward so the 1-Year Forecast's final
+    // month (Jun next year) has data.
+    const revenueResult = await calculator.calculateMonthlyRevenue(19, -6)
 
     // Fetch exceptions and balances in parallel
     // Use existing balances if available to avoid QB calls

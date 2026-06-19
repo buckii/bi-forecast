@@ -21,9 +21,11 @@ exports.handler = async function(event, context) {
         
         const calculator = new RevenueCalculator(company._id)
 
-        // Calculate current revenue data (18 months: 6 months ago to 12 months from now)
+        // Calculate current revenue data (19 months: 6 months ago to 12 months
+        // from now). The extra forward month ensures the daily archive carries the
+        // 1-Year Forecast's final month (first of next month → +12mo).
         // This caches QBO data in calculator instance
-        const revenueResult = await calculator.calculateMonthlyRevenue(18, -6)
+        const revenueResult = await calculator.calculateMonthlyRevenue(19, -6)
         const months = revenueResult.months || revenueResult // Handle both old and new return format
         const dataSourceErrors = revenueResult.dataSourceErrors || []
 

@@ -167,7 +167,7 @@
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">1-Year Forecast</h3>
-          <p class="text-xs text-gray-500 dark:text-gray-400">{{ getCurrentDateLabel() }}</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">{{ getYearForecastRange() }}</p>
           <p class="text-3xl font-bold text-primary-600 mt-2">
             {{ chartRefreshing ? '—' : formatCurrency(yearForecast) }}
           </p>
@@ -380,6 +380,10 @@
                     class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600">
                     3 Months (Current + 2)
                   </button>
+                  <button @click="setQuickRange('next3months')"
+                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600">
+                    Next 3 Months
+                  </button>
                   <button @click="setQuickRange('1year')"
                     class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600">
                     1-Year Forecast
@@ -445,6 +449,7 @@ import { useDataRefresh } from '../composables/useDataRefresh'
 import revenueService from '../services/revenue'
 import { useAuthStore } from '../stores/auth'
 import { useRevenueStore } from '../stores/revenue'
+import formulas from '../lib/metrics-formulas.js'
 
 const revenueStore = useRevenueStore()
 const authStore = useAuthStore()
@@ -646,104 +651,61 @@ function handleExportDetail() {
   showTransactionModal.value = true
 }
 
-// Computed property for days cash using effective monthly expenses
-const daysCash = computed(() => {
-  const monthlyExpenses = effectiveMonthlyExpenses.value
-  const dailyExpenses = monthlyExpenses / 30
-  const cashOnHand = revenueStore.totalCashOnHand
+// Month key (YYYY-MM-01) for the currently selected as-of date
+const selectedMonthKey = computed(() =>
+  format(startOfMonth(parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())), 'yyyy-MM-dd')
+)
 
-  if (dailyExpenses === 0 || cashOnHand === 0) return 0
-  return Math.round(cashOnHand / dailyExpenses)
-})
+// The 1-Year Forecast starts on the first of the month AFTER the as-of month and
+// spans a full 12 months. The current month's recurring revenue is already billed
+// (it lands in `invoiced`, which the forecast excludes), so starting "this month"
+// would only capture 11 months of recurring.
+const forecastStartMonthKey = computed(() =>
+  formulas.monthKeyFromOffset(selectedMonthKey.value, 1)
+)
+
+// Computed property for days cash using effective monthly expenses
+const daysCash = computed(() =>
+  formulas.daysCash(revenueStore.totalCashOnHand, effectiveMonthlyExpenses.value)
+)
 
 // Computed property for days cash + AR using effective monthly expenses
-const daysCashPlusAR = computed(() => {
-  const monthlyExpenses = effectiveMonthlyExpenses.value
-  const dailyExpenses = monthlyExpenses / 30
-  if (dailyExpenses === 0) return 0
-  const totalLiquid = revenueStore.totalCashOnHand + revenueStore.totalReceivables
-  if (totalLiquid === 0) return 0
-  return Math.round(totalLiquid / dailyExpenses)
-})
+const daysCashPlusAR = computed(() =>
+  formulas.daysCashPlusAR(
+    revenueStore.totalCashOnHand,
+    revenueStore.totalReceivables,
+    effectiveMonthlyExpenses.value
+  )
+)
 
-// Computed property for 12 months of monthly recurring revenue
-const twelveMonthsRecurring = computed(() => {
-  const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
-  const start = startOfMonth(selectedDate)
-  let total = 0
+// 12-month component breakdowns (shown beneath the 1-Year Forecast card).
+// All anchored to the first of next month — see forecastStartMonthKey.
+const twelveMonthsRecurring = computed(() =>
+  formulas.sumMonths(revenueStore.revenueData, forecastStartMonthKey.value, 12, ['monthlyRecurring'])
+)
 
-  for (let i = 0; i < 12; i++) {
-    const month = format(addMonths(start, i), 'yyyy-MM-dd')
-    const monthData = revenueStore.revenueData.find(m => m.month === month)
-    if (monthData) {
-      total += monthData.components.monthlyRecurring
-    }
-  }
+const twelveMonthsWonUnscheduled = computed(() =>
+  formulas.sumMonths(revenueStore.revenueData, forecastStartMonthKey.value, 12, ['wonUnscheduled'])
+)
 
-  return total
-})
+const twelveMonthsJournalEntries = computed(() =>
+  formulas.sumMonths(revenueStore.revenueData, forecastStartMonthKey.value, 12, ['journalEntries'])
+)
 
-// Computed property for 12 months of won unscheduled
-const twelveMonthsWonUnscheduled = computed(() => {
-  const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
-  const start = startOfMonth(selectedDate)
-  let total = 0
-
-  for (let i = 0; i < 12; i++) {
-    const month = format(addMonths(start, i), 'yyyy-MM-dd')
-    const monthData = revenueStore.revenueData.find(m => m.month === month)
-    if (monthData) {
-      total += monthData.components.wonUnscheduled
-    }
-  }
-
-  return total
-})
-
-// Computed property for 12 months of journal entries
-const twelveMonthsJournalEntries = computed(() => {
-  const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
-  const start = startOfMonth(selectedDate)
-  let total = 0
-
-  for (let i = 0; i < 12; i++) {
-    const month = format(addMonths(start, i), 'yyyy-MM-dd')
-    const monthData = revenueStore.revenueData.find(m => m.month === month)
-    if (monthData) {
-      total += monthData.components.journalEntries
-    }
-  }
-
-  return total
-})
-
-// Computed property for 12 months of weighted sales
 const twelveMonthsWeightedSales = computed(() => {
   if (!revenueStore.includeWeightedSales) return 0
-
-  const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
-  const start = startOfMonth(selectedDate)
-  let total = 0
-
-  for (let i = 0; i < 12; i++) {
-    const month = format(addMonths(start, i), 'yyyy-MM-dd')
-    const monthData = revenueStore.revenueData.find(m => m.month === month)
-    if (monthData) {
-      total += monthData.components.weightedSales
-    }
-  }
-
-  return total
+  return formulas.sumMonths(revenueStore.revenueData, forecastStartMonthKey.value, 12, ['weightedSales'])
 })
 
 // Computed property for 1-Year Forecast (12 months recurring + won unscheduled + weighted sales (if enabled) + journal entries + unbilled charges)
-const yearForecast = computed(() => {
-  return twelveMonthsRecurring.value +
-    twelveMonthsWonUnscheduled.value +
-    twelveMonthsWeightedSales.value +
-    twelveMonthsJournalEntries.value +
-    revenueStore.yearUnbilledCharges
-})
+const yearForecast = computed(() =>
+  formulas.yearForecast(
+    revenueStore.revenueData,
+    revenueStore.balances,
+    forecastStartMonthKey.value,
+    revenueStore.includeWeightedSales
+  )
+)
 
 // Comparison metrics computed properties
 const comparisonCurrentMonthRevenue = computed(() => {
@@ -799,7 +761,8 @@ const comparisonYearUnbilled = computed(() => {
 const comparisonTwelveMonthsRecurring = computed(() => {
   if (!comparisonData.value || !compareAsOfDate.value) return null
   const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
-  const start = startOfMonth(selectedDate)
+  // Forecast starts the first of next month (matches forecastStartMonthKey)
+  const start = addMonths(startOfMonth(selectedDate), 1)
   let total = 0
 
   for (let i = 0; i < 12; i++) {
@@ -816,7 +779,8 @@ const comparisonTwelveMonthsRecurring = computed(() => {
 const comparisonTwelveMonthsWonUnscheduled = computed(() => {
   if (!comparisonData.value || !compareAsOfDate.value) return null
   const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
-  const start = startOfMonth(selectedDate)
+  // Forecast starts the first of next month (matches forecastStartMonthKey)
+  const start = addMonths(startOfMonth(selectedDate), 1)
   let total = 0
 
   for (let i = 0; i < 12; i++) {
@@ -833,7 +797,8 @@ const comparisonTwelveMonthsWonUnscheduled = computed(() => {
 const comparisonTwelveMonthsJournalEntries = computed(() => {
   if (!comparisonData.value || !compareAsOfDate.value) return null
   const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
-  const start = startOfMonth(selectedDate)
+  // Forecast starts the first of next month (matches forecastStartMonthKey)
+  const start = addMonths(startOfMonth(selectedDate), 1)
   let total = 0
 
   for (let i = 0; i < 12; i++) {
@@ -850,7 +815,8 @@ const comparisonTwelveMonthsJournalEntries = computed(() => {
 const comparisonTwelveMonthsWeightedSales = computed(() => {
   if (!comparisonData.value || !compareAsOfDate.value || !revenueStore.includeWeightedSales) return 0
   const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
-  const start = startOfMonth(selectedDate)
+  // Forecast starts the first of next month (matches forecastStartMonthKey)
+  const start = addMonths(startOfMonth(selectedDate), 1)
   let total = 0
 
   for (let i = 0; i < 12; i++) {
@@ -992,6 +958,15 @@ function getThreeMonthRange() {
 function getCurrentDateLabel() {
   const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
   return `As of ${format(selectedDate, 'MMM d')}`
+}
+
+// Date range covered by the 1-Year Forecast: first of next month through the
+// end of the 12th month (e.g. "Jul 1, 2026 - Jun 30, 2027").
+function getYearForecastRange() {
+  const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
+  const start = addMonths(startOfMonth(selectedDate), 1)
+  const end = endOfMonth(addMonths(start, 11))
+  return `${format(start, 'MMM d, yyyy')} - ${format(end, 'MMM d, yyyy')}`
 }
 
 function formatCompareDate() {
@@ -1263,6 +1238,10 @@ function setQuickRange(type) {
     case '3months': // This month + next 2 (3 total)
       start = startOfMonth(now)
       end = endOfMonth(addMonths(now, 2))
+      break
+    case 'next3months': // First of next month (n+1) through end of n+3
+      start = startOfMonth(addMonths(now, 1))
+      end = endOfMonth(addMonths(now, 3))
       break
     case '1year': // This month + next 11 (12 total)
       start = startOfMonth(now)
