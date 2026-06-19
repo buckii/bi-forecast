@@ -220,8 +220,11 @@ This allows secure HTTPS access to your local development server for webhook tes
 
 #### Dashboard
 - Interactive 24-month revenue chart with Chart.js and horizontal reference lines
+- Chart totals strip: per-revenue-type and grand totals (plus per-month average) for the months currently plotted; clicking a type or its legend entry hides it and drops it from the total
+- Quick Ranges menu including a "Next 3 Months" range (first of next month through +3)
 - Historical date selector for viewing past forecasts
 - Key metrics cards (current month, 3-month, 1-year totals)
+- 1-Year Forecast spans the first of next month through +12 months (e.g. Jul 1 – Jun 30), so monthly recurring is counted for a full 12 months rather than 11 (the current month's recurring is already billed as invoiced)
 - Weighted sales toggle with real-time recalculation
 - Transaction details modal with drill-down functionality and discrepancy detection
 - Real-time refresh timestamps with loading indicators and tooltips
