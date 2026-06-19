@@ -4,6 +4,28 @@
       <canvas ref="chartCanvas"></canvas>
     </div>
 
+    <!-- Totals for all visible months: per-revenue-type breakdown + grand total.
+         Click a type (or its legend entry) to hide it and drop it from the total. -->
+    <div v-if="data && data.length"
+      class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 pt-2 border-t border-gray-200 dark:border-gray-700">
+      <button v-for="s in SERIES" :key="s.key" type="button" @click="toggleSeries(s.key)"
+        class="flex items-center space-x-1.5 focus:outline-none"
+        :class="seriesVisibility[s.key] ? 'hover:opacity-80' : 'opacity-40'"
+        :title="seriesVisibility[s.key] ? `Hide ${s.label}` : `Show ${s.label}`">
+        <span class="inline-block w-2.5 h-2.5 rounded-sm" :style="{ backgroundColor: s.color }"></span>
+        <span class="text-xs text-gray-600 dark:text-gray-400"
+          :class="{ 'line-through': !seriesVisibility[s.key] }">{{ s.label }}:</span>
+        <span class="text-xs font-medium text-gray-800 dark:text-gray-200"
+          :class="{ 'line-through': !seriesVisibility[s.key] }">{{ fmt(seriesTotals[s.key]) }}</span>
+      </button>
+      <div class="flex items-center space-x-1.5 pl-3 ml-1 border-l border-gray-300 dark:border-gray-600">
+        <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">Total ({{ data.length }} mo):</span>
+        <span class="text-sm font-bold text-gray-800 dark:text-gray-200">
+          {{ fmt(grandTotal) }} ({{ fmt(monthlyAverage) }}/mo)
+        </span>
+      </div>
+    </div>
+
     <!-- Reference Lines Legend -->
     <div v-if="referenceLines"
       class="flex flex-wrap items-center justify-center gap-4 pt-2 border-t border-gray-200 dark:border-gray-700">
@@ -94,6 +116,74 @@ const chartColors = {
   monthlyRecurring: '#8b5cf6', // violet
   wonUnscheduled: '#ec4899',  // pink
   weightedSales: '#64748b'    // slate
+}
+
+// Revenue types in stack order. `label` matches each current-stack dataset's
+// label so we can map legend/dataset visibility back to a type.
+const SERIES = [
+  { key: 'invoiced', label: 'Invoiced', color: chartColors.invoiced },
+  { key: 'journalEntries', label: 'Journal Entries', color: chartColors.journalEntries },
+  { key: 'delayedCharges', label: 'Delayed Charges', color: chartColors.delayedCharges },
+  { key: 'monthlyRecurring', label: 'Monthly Recurring', color: chartColors.monthlyRecurring },
+  { key: 'wonUnscheduled', label: 'Won Unscheduled', color: chartColors.wonUnscheduled },
+  { key: 'weightedSales', label: 'Weighted Sales', color: chartColors.weightedSales }
+]
+
+// Which revenue types are currently visible (mirrors chart legend toggles).
+const seriesVisibility = ref(Object.fromEntries(SERIES.map(s => [s.key, true])))
+
+const currencyFmt = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0
+})
+function fmt(v) {
+  return currencyFmt.format(v || 0)
+}
+
+// Per-type totals across every month currently plotted (raw component values, so
+// the parts sum to a true net total even when journal entries are negative).
+const seriesTotals = computed(() => {
+  const totals = {}
+  for (const s of SERIES) {
+    totals[s.key] = (props.data || []).reduce((sum, d) => sum + (d[s.key] || 0), 0)
+  }
+  return totals
+})
+
+// Grand total of the visible types only — drops when a type is hidden.
+const grandTotal = computed(() =>
+  SERIES.reduce(
+    (sum, s) => (seriesVisibility.value[s.key] ? sum + seriesTotals.value[s.key] : sum),
+    0
+  )
+)
+
+// Average per plotted month (grand total / number of months shown).
+const monthlyAverage = computed(() => {
+  const count = props.data?.length || 0
+  return count ? grandTotal.value / count : 0
+})
+
+// Read each current-stack dataset's visibility back from the chart into our state.
+function syncVisibility() {
+  if (!chartInstance) return
+  chartInstance.data.datasets.forEach((ds, i) => {
+    const s = SERIES.find(x => x.label === ds.label)
+    if (s) seriesVisibility.value[s.key] = chartInstance.isDatasetVisible(i)
+  })
+}
+
+// Toggle a revenue type from the totals strip (keeps the chart legend in sync).
+function toggleSeries(key) {
+  if (!chartInstance) return
+  const series = SERIES.find(x => x.key === key)
+  if (!series) return
+  const idx = chartInstance.data.datasets.findIndex(ds => ds.label === series.label)
+  if (idx === -1) return
+  chartInstance.isDatasetVisible(idx) ? chartInstance.hide(idx) : chartInstance.show(idx)
+  syncVisibility()
 }
 
 // Custom plugin to display total values above bar stacks
@@ -418,6 +508,13 @@ function createChart() {
               // Only show main datasets in legend, hide comparison datasets
               return !legendItem.text.includes('(Compare)')
             }
+          },
+          onClick: function (e, legendItem, legend) {
+            // Default toggle behavior, then mirror visibility into the totals strip
+            const ci = legend.chart
+            const index = legendItem.datasetIndex
+            ci.isDatasetVisible(index) ? ci.hide(index) : ci.show(index)
+            syncVisibility()
           }
         },
         tooltip: {
@@ -541,6 +638,9 @@ function createChart() {
       }
     }
   })
+
+  // Initialize the totals strip visibility from the freshly created chart
+  syncVisibility()
 }
 
 function updateChart() {
