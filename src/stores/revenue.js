@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import revenueService from '../services/revenue'
 import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns'
+import formulas from '../lib/metrics-formulas.js'
 
 export const useRevenueStore = defineStore('revenue', () => {
   const selectedDate = ref(new Date())
@@ -24,113 +25,54 @@ export const useRevenueStore = defineStore('revenue', () => {
   const includeWeightedSales = ref(true)
   const lastUpdated = ref(null)
   
-  const currentMonthRevenue = computed(() => {
-    const currentMonth = format(startOfMonth(new Date()), 'yyyy-MM-dd')
-    const monthData = revenueData.value.find(m => m.month === currentMonth)
-    if (!monthData) return 0
-    
-    const components = monthData.components
-    let total = components.invoiced + components.journalEntries + 
-                components.delayedCharges + components.monthlyRecurring + 
-                components.wonUnscheduled
-    
-    if (includeWeightedSales.value) {
-      total += components.weightedSales
-    }
-    
-    return total
-  })
-  
-  const threeMonthRevenue = computed(() => {
-    const start = startOfMonth(new Date())
-    let total = 0
-    
-    for (let i = 0; i < 3; i++) {
-      const month = format(addMonths(start, i), 'yyyy-MM-dd')
-      const monthData = revenueData.value.find(m => m.month === month)
-      if (monthData) {
-        const components = monthData.components
-        total += components.invoiced + components.journalEntries + 
-                 components.delayedCharges + components.monthlyRecurring + 
-                 components.wonUnscheduled
-        
-        if (includeWeightedSales.value) {
-          total += components.weightedSales
-        }
-      }
-    }
-    
-    return total
-  })
-  
-  const yearUnbilledCharges = computed(() => {
-    // Get the pre-calculated value from backend balances
-    return balances.value.yearUnbilled || 0
-  })
+  const currentMonthKey = computed(() =>
+    format(startOfMonth(new Date()), 'yyyy-MM-dd')
+  )
 
-  const thirtyDaysUnbilled = computed(() => {
-    // Get the pre-calculated value from backend balances
-    return balances.value.thirtyDaysUnbilled || 0
-  })
+  const currentMonthRevenue = computed(() =>
+    formulas.currentMonthRevenue(
+      revenueData.value,
+      currentMonthKey.value,
+      includeWeightedSales.value
+    )
+  )
 
-  const totalCashOnHand = computed(() => {
-    if (!balances.value.assets || !Array.isArray(balances.value.assets)) {
-      return 0
-    }
-    
-    return balances.value.assets.reduce((total, account) => {
-      // Check both subType and name for flexibility with different data formats
-      const accountType = account.subType || account.name
-      if (['Checking', 'Savings', 'UndepositedFunds'].includes(accountType)) {
-        const balance = parseFloat(account.balance) || 0
-        return total + balance
-      }
-      return total
-    }, 0)
-  })
+  const threeMonthRevenue = computed(() =>
+    formulas.threeMonthRevenue(
+      revenueData.value,
+      currentMonthKey.value,
+      includeWeightedSales.value
+    )
+  )
 
-  const daysCash = computed(() => {
-    const monthlyExpenses = parseFloat(balances.value.monthlyExpenses) || 0
-    const dailyExpenses = monthlyExpenses / 30
-    const cashOnHand = totalCashOnHand.value
-    
-    
-    if (dailyExpenses === 0 || cashOnHand === 0) return 0
-    return Math.round(cashOnHand / dailyExpenses)
-  })
+  const yearUnbilledCharges = computed(() => balances.value.yearUnbilled || 0)
 
-  const totalReceivables = computed(() => {
-    if (!balances.value.receivables) return 0
-    
-    // Handle different receivables data structures
-    if (typeof balances.value.receivables === 'number') {
-      return balances.value.receivables
-    }
-    
-    if (balances.value.receivables.total !== undefined) {
-      return balances.value.receivables.total
-    }
-    
-    // If it's an object with aging buckets, sum them up
-    if (balances.value.receivables.current !== undefined) {
-      return (balances.value.receivables.current || 0) +
-             (balances.value.receivables.days1to30 || 0) +
-             (balances.value.receivables.days31to60 || 0) +
-             (balances.value.receivables.days61to90 || 0) +
-             (balances.value.receivables.over90 || 0)
-    }
-    
-    return 0
-  })
+  const thirtyDaysUnbilled = computed(() =>
+    formulas.thirtyDaysUnbilled(balances.value)
+  )
 
-  const daysCashPlusAR = computed(() => {
-    const monthlyExpenses = parseFloat(balances.value.monthlyExpenses) || 0
-    const dailyExpenses = monthlyExpenses / 30
-    if (dailyExpenses === 0) return 0
-    const totalLiquid = totalCashOnHand.value + totalReceivables.value
-    if (totalLiquid === 0) return 0
-    return Math.round(totalLiquid / dailyExpenses)
-  })
+  const totalCashOnHand = computed(() =>
+    formulas.totalCashOnHand(balances.value.assets)
+  )
+
+  const daysCash = computed(() =>
+    formulas.daysCash(
+      totalCashOnHand.value,
+      parseFloat(balances.value.monthlyExpenses) || 0
+    )
+  )
+
+  const totalReceivables = computed(() =>
+    formulas.totalReceivables(balances.value.receivables)
+  )
+
+  const daysCashPlusAR = computed(() =>
+    formulas.daysCashPlusAR(
+      totalCashOnHand.value,
+      totalReceivables.value,
+      parseFloat(balances.value.monthlyExpenses) || 0
+    )
+  )
   
   async function loadRevenueData(date = null, bypassCache = false) {
     loading.value = true
