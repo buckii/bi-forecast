@@ -3,11 +3,6 @@
   command = "npm install --include=dev && npm run build"
   functions = "netlify/functions"
 
-[functions]
-  # metrics-plain.cjs dynamically imports the shared ESM formulas module from
-  # src/lib (outside the functions dir); ensure it ships with the function.
-  included_files = ["src/lib/**"]
-
 [dev]
   command = "npm run dev:local"
   framework = "#auto"

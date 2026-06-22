@@ -1,12 +1,96 @@
 const { getCollection } = require('./utils/database.js')
-// Shared metrics module is ESM; load it via dynamic import() (works natively
-// from a CommonJS Lambda function). Cached after first load.
-let formulasPromise
-function getFormulas() {
-  if (!formulasPromise) {
-    formulasPromise = import('../../src/lib/metrics-formulas.js')
+
+// This is a public, unauthenticated endpoint, so it stays fully self-contained
+// CommonJS — it does NOT import the ESM src/lib/metrics-formulas.js (a Netlify
+// function reaching into ESM frontend code breaks the function bundler).
+//
+// The formulas below MUST stay in sync with src/lib/metrics-formulas.js so the
+// plain-text metrics match the dashboard. Keep the two in lockstep.
+
+const CASH_ACCOUNT_TYPES = ['Checking', 'Savings', 'UndepositedFunds']
+const THREE_MONTH_KEYS = ['invoiced', 'journalEntries', 'delayedCharges', 'monthlyRecurring', 'wonUnscheduled']
+const YEAR_KEYS = ['monthlyRecurring', 'wonUnscheduled', 'journalEntries']
+
+// Given a YYYY-MM-01 key, return the key `offset` months later (UTC-safe).
+function monthKeyFromOffset(currentMonthKey, offset) {
+  const [y, m] = currentMonthKey.split('-').map(Number)
+  const date = new Date(Date.UTC(y, m - 1 + offset, 1))
+  const yy = date.getUTCFullYear()
+  const mm = String(date.getUTCMonth() + 1).padStart(2, '0')
+  return `${yy}-${mm}-01`
+}
+
+function findMonth(months, key) {
+  if (!Array.isArray(months)) return null
+  return months.find(m => m.month === key) || null
+}
+
+// Sum the given component keys across `count` months starting at currentMonthKey.
+function sumMonths(months, currentMonthKey, count, componentKeys) {
+  let total = 0
+  for (let i = 0; i < count; i++) {
+    const monthData = findMonth(months, monthKeyFromOffset(currentMonthKey, i))
+    if (!monthData || !monthData.components) continue
+    for (const k of componentKeys) {
+      total += monthData.components[k] || 0
+    }
   }
-  return formulasPromise
+  return total
+}
+
+function threeMonthRevenue(months, currentMonthKey, includeWeightedSales = true) {
+  const keys = includeWeightedSales ? [...THREE_MONTH_KEYS, 'weightedSales'] : THREE_MONTH_KEYS
+  return sumMonths(months, currentMonthKey, 3, keys)
+}
+
+// `forecastStartMonthKey` is the first month of the forecast window (the first of
+// the month after the as-of month). Sums 12 months forward + the year unbilled.
+function yearForecast(months, balances, forecastStartMonthKey, includeWeightedSales = true) {
+  const keys = includeWeightedSales ? [...YEAR_KEYS, 'weightedSales'] : YEAR_KEYS
+  const summed = sumMonths(months, forecastStartMonthKey, 12, keys)
+  return summed + (balances?.yearUnbilled || 0)
+}
+
+function thirtyDaysUnbilled(balances) {
+  return balances?.thirtyDaysUnbilled || 0
+}
+
+function totalReceivables(receivables) {
+  if (!receivables) return 0
+  if (typeof receivables === 'number') return receivables
+  if (receivables.total !== undefined) return receivables.total
+  if (receivables.current !== undefined) {
+    return (receivables.current || 0) +
+      (receivables.days1to30 || 0) +
+      (receivables.days31to60 || 0) +
+      (receivables.days61to90 || 0) +
+      (receivables.over90 || 0)
+  }
+  return 0
+}
+
+function totalCashOnHand(assets) {
+  if (!Array.isArray(assets)) return 0
+  return assets.reduce((sum, account) => {
+    const accountType = account.subType || account.name
+    if (CASH_ACCOUNT_TYPES.includes(accountType)) {
+      return sum + (parseFloat(account.balance) || 0)
+    }
+    return sum
+  }, 0)
+}
+
+function effectiveMonthlyExpenses(companySettings, balances) {
+  if (companySettings?.monthlyExpensesOverride) {
+    return companySettings.monthlyExpensesOverride
+  }
+  return balances?.monthlyExpenses || 0
+}
+
+function daysCash(cashOnHand, monthlyExpenses) {
+  const dailyExpenses = monthlyExpenses / 30
+  if (dailyExpenses === 0 || cashOnHand === 0) return 0
+  return Math.round(cashOnHand / dailyExpenses)
 }
 
 function todayInET() {
@@ -41,8 +125,6 @@ exports.handler = async function(event) {
   }
 
   try {
-    const formulas = await getFormulas()
-
     const asOfParam =
       event.queryStringParameters?.as_of ||
       event.queryStringParameters?.date ||
@@ -103,22 +185,19 @@ exports.handler = async function(event) {
 
     const currentMonthKey = monthKeyFromDateStr(asOfParam)
     // 1-Year Forecast starts the first of next month (matches the dashboard)
-    const forecastStartKey = formulas.monthKeyFromOffset(currentMonthKey, 1)
+    const forecastStartKey = monthKeyFromOffset(currentMonthKey, 1)
 
-    const cash = formulas.totalCashOnHand(balances.assets)
-    const receivables = formulas.totalReceivables(balances.receivables)
-    const monthlyExpenses = formulas.effectiveMonthlyExpenses(
-      company.settings,
-      balances
-    )
+    const cash = totalCashOnHand(balances.assets)
+    const receivables = totalReceivables(balances.receivables)
+    const monthlyExpenses = effectiveMonthlyExpenses(company.settings, balances)
 
     const output = [
-      Math.round(formulas.thirtyDaysUnbilled(balances)),
-      Math.round(formulas.yearForecast(months, balances, forecastStartKey, true)),
-      Math.round(formulas.threeMonthRevenue(months, currentMonthKey, true)),
-      Math.round(formulas.threeMonthRevenue(months, currentMonthKey, false)),
+      Math.round(thirtyDaysUnbilled(balances)),
+      Math.round(yearForecast(months, balances, forecastStartKey, true)),
+      Math.round(threeMonthRevenue(months, currentMonthKey, true)),
+      Math.round(threeMonthRevenue(months, currentMonthKey, false)),
       Math.round(receivables),
-      formulas.daysCash(cash, monthlyExpenses)
+      daysCash(cash, monthlyExpenses)
     ].join('\n')
 
     return {
