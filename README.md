@@ -223,7 +223,9 @@ This allows secure HTTPS access to your local development server for webhook tes
 - Chart totals strip: per-revenue-type and grand totals (plus per-month average) for the months currently plotted; clicking a type or its legend entry hides it and drops it from the total
 - Quick Ranges menu including a "Next 3 Months" range (first of next month through +3)
 - Historical date selector for viewing past forecasts
-- Key metrics cards (current month, 3-month, 1-year totals)
+- Key metrics cards (current month, 3-month, 1-year totals, 30-day unbilled, days cash, days of work)
+- Days of Work card: horizon (in days) until booked revenue can no longer sustain the target margin / break-even, shown won vs forecasted — "how long until we run out of work if we win nothing more?"
+- Days Cash card combines cash-only and cash + AR runway side by side
 - 1-Year Forecast spans the first of next month through +12 months (e.g. Jul 1 – Jun 30), so monthly recurring is counted for a full 12 months rather than 11 (the current month's recurring is already billed as invoiced)
 - Weighted sales toggle with real-time recalculation
 - Transaction details modal with drill-down functionality and discrepancy detection
@@ -310,7 +312,7 @@ This allows secure HTTPS access to your local development server for webhook tes
 - `revenue-refresh-qbo.js` - Manual QuickBooks data refresh with optimized API calls and background transaction caching
 - `revenue-refresh-pipedrive.js` - Manual Pipedrive data refresh reusing existing QB data to minimize API calls
 - `transaction-details.js` - Drill-down transaction data with cache-first retrieval
-- `metrics-plain.cjs` - **Unauthenticated** plain-text endpoint returning 6 key metrics (30d unbilled, 1-year forecast, 3-month forecast, 3-month won, AR, days cash) as one rounded integer per line for spreadsheet paste. Accepts optional `?as_of=YYYY-MM-DD` for historical snapshots
+- `metrics-plain.cjs` - **Unauthenticated** plain-text endpoint returning 10 key metrics, one rounded integer per line for spreadsheet paste: 30d unbilled, 1-year forecast, 3-month forecast, 3-month won, AR, days cash, then days of work — forecasted @ target margin, won @ target margin, forecasted @ break-even, won @ break-even. Accepts optional `?as_of=YYYY-MM-DD` for historical snapshots
 - `services/transaction-details-cache.js` - Transaction details prefetching and caching service (6-month window)
 - `services/revenue-calculator.js` - Core revenue calculation engine with data caching and API call optimization
 
