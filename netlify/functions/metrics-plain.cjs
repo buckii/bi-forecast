@@ -192,8 +192,15 @@ exports.handler = async function(event) {
     }
 
     const [ay, am, ad] = asOfParam.split('-').map(Number)
-    const asOfDate = new Date(Date.UTC(ay, am - 1, ad, 0, 0, 0, 0))
-    if (Number.isNaN(asOfDate.getTime())) {
+    // Exclusive upper bound = start of the day AFTER as-of (UTC). Querying with
+    // `$lt` captures any archive stamped anywhere during the as-of day regardless
+    // of the timezone its archiveDate was written in — revenue-current.js stamps
+    // local-midnight, which is 00:00Z in prod's UTC runtime but e.g. 04:00Z in a
+    // local ET dev machine. A `<= as-of 00:00Z` bound would skip today's archive
+    // and fall back to yesterday's, so this endpoint must match the SAME archive
+    // the dashboard reads or the two disagree.
+    const asOfDayEnd = new Date(Date.UTC(ay, am - 1, ad + 1, 0, 0, 0, 0))
+    if (Number.isNaN(asOfDayEnd.getTime())) {
       return {
         statusCode: 400,
         headers: { 'Content-Type': 'text/plain' },
@@ -212,7 +219,7 @@ exports.handler = async function(event) {
     const archive = await archivesCollection.findOne(
       {
         companyId: company._id,
-        archiveDate: { $lte: asOfDate }
+        archiveDate: { $lt: asOfDayEnd }
       },
       { sort: { archiveDate: -1 } }
     )
@@ -258,10 +265,10 @@ exports.handler = async function(event) {
       Math.round(threeMonthRevenue(months, currentMonthKey, false)),
       Math.round(receivables),
       daysCash(cash, monthlyExpenses),
-      dowLine(dow.targetForecasted),
       dowLine(dow.targetWon),
-      dowLine(dow.breakEvenForecasted),
-      dowLine(dow.breakEvenWon)
+      dowLine(dow.targetForecasted),
+      dowLine(dow.breakEvenWon),
+      dowLine(dow.breakEvenForecasted)
     ].join('\n')
 
     return {
