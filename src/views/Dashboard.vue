@@ -243,29 +243,49 @@
           </div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Days Cash</h3>
           <p class="text-xs text-gray-500 dark:text-gray-400">{{ getCurrentDateLabel() }}</p>
-          <p class="text-3xl font-bold text-primary-600 mt-2">
-            {{ chartRefreshing ? '—' : (daysCash || '—') }}
-          </p>
-          <div v-if="!chartRefreshing && comparisonDaysCash !== null" class="mt-3 space-y-1">
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              As of {{ formatCompareDate() }}
-            </p>
-            <p class="text-xl font-semibold text-gray-700 dark:text-gray-300">
-              {{ comparisonDaysCash }}
-            </p>
-            <p :class="calculateChange(daysCash, comparisonDaysCash).dollar >= 0 ? 'text-green-600' : 'text-red-600'"
-              class="text-sm font-medium">
-              {{ calculateChange(daysCash, comparisonDaysCash).dollar >= 0 ? '+' : '' }}{{ calculateChange(daysCash,
-                comparisonDaysCash).dollar.toFixed(0) }} days
-              ({{ calculateChange(daysCash, comparisonDaysCash).percent >= 0 ? '+' : '' }}{{ calculateChange(daysCash,
-                comparisonDaysCash).percent.toFixed(1) }}%)
-            </p>
+
+          <div class="grid grid-cols-2 gap-4 mt-2">
+            <!-- Cash only -->
+            <div>
+              <p class="text-3xl font-bold text-primary-600">
+                {{ chartRefreshing ? '—' : (daysCash || '—') }}
+              </p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Cash only</p>
+              <p v-if="!chartRefreshing" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                {{ formatCurrency(revenueStore.totalCashOnHand || 0) }}
+              </p>
+              <p v-if="!chartRefreshing && comparisonDaysCash !== null"
+                :class="calculateChange(daysCash, comparisonDaysCash).dollar >= 0 ? 'text-green-600' : 'text-red-600'"
+                class="text-xs font-medium mt-1">
+                {{ calculateChange(daysCash, comparisonDaysCash).dollar >= 0 ? '+' : '' }}{{ calculateChange(daysCash,
+                  comparisonDaysCash).dollar.toFixed(0) }} days
+              </p>
+            </div>
+            <!-- Cash + AR -->
+            <div>
+              <p class="text-3xl font-bold text-primary-600">
+                {{ chartRefreshing ? '—' : (daysCashPlusAR || '—') }}
+              </p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Cash + AR</p>
+              <p v-if="!chartRefreshing" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                {{ formatCurrency((revenueStore.totalCashOnHand || 0) + (revenueStore.totalReceivables || 0)) }}
+              </p>
+              <p v-if="!chartRefreshing && comparisonDaysCashPlusAR !== null"
+                :class="calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).dollar >= 0 ? 'text-green-600' : 'text-red-600'"
+                class="text-xs font-medium mt-1">
+                {{ calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).dollar >= 0 ? '+' : '' }}{{
+                  calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).dollar.toFixed(0) }} days
+              </p>
+            </div>
           </div>
-          <p v-if="!chartRefreshing" class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Cash: {{ formatCurrency(revenueStore.totalCashOnHand || 0) }}
+
+          <p v-if="!chartRefreshing && (comparisonDaysCash !== null || comparisonDaysCashPlusAR !== null)"
+            class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+            vs {{ formatCompareDate() }}
           </p>
-          <p v-if="!chartRefreshing" class="text-xs text-gray-400 dark:text-gray-500">
-            Expenses: {{ formatCurrency(effectiveMonthlyExpenses) }}/mo
+          <p v-if="!chartRefreshing" class="text-xs text-gray-400 dark:text-gray-500 mt-2">
+            AR: {{ formatCurrency(revenueStore.totalReceivables || 0) }} · Expenses:
+            {{ formatCurrency(effectiveMonthlyExpenses) }}/mo
             <span v-if="authStore.company?.settings?.monthlyExpensesOverride" class="text-blue-500">(override)</span>
           </p>
         </div>
@@ -276,36 +296,35 @@
             class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Days Cash + AR</h3>
-          <p class="text-xs text-gray-500 dark:text-gray-400">{{ getCurrentDateLabel() }}</p>
-          <p class="text-3xl font-bold text-primary-600 mt-2">
-            {{ chartRefreshing ? '—' : (daysCashPlusAR || '—') }}
-          </p>
-          <div v-if="!chartRefreshing && comparisonDaysCashPlusAR !== null" class="mt-3 space-y-1">
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              As of {{ formatCompareDate() }}
-            </p>
-            <p class="text-xl font-semibold text-gray-700 dark:text-gray-300">
-              {{ comparisonDaysCashPlusAR }}
-            </p>
-            <p :class="calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).dollar >= 0 ? 'text-green-600' : 'text-red-600'"
-              class="text-sm font-medium">
-              {{ calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).dollar >= 0 ? '+' : '' }}{{
-                calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).dollar.toFixed(0) }} days
-              ({{ calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).percent >= 0 ? '+' : '' }}{{
-                calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).percent.toFixed(1) }}%)
-            </p>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Days of Work</h3>
+          <p class="text-xs text-gray-500 dark:text-gray-400">at {{ targetNetMargin }}% target margin</p>
+
+          <div class="grid grid-cols-2 gap-4 mt-2">
+            <div>
+              <p class="text-3xl font-bold text-primary-600">
+                {{ chartRefreshing ? '—' : formatDays(daysOfWork.targetWon) }}
+              </p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Won</p>
+            </div>
+            <div>
+              <p class="text-3xl font-bold text-primary-600">
+                {{ chartRefreshing ? '—' : formatDays(daysOfWork.targetForecasted) }}
+              </p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Forecasted</p>
+            </div>
           </div>
-          <p v-if="!chartRefreshing" class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Total: {{ formatCurrency((revenueStore.totalCashOnHand || 0) + (revenueStore.totalReceivables || 0)) }}
-          </p>
-          <p v-if="!chartRefreshing" class="text-xs text-gray-400 dark:text-gray-500">
-            AR: {{ formatCurrency(revenueStore.totalReceivables || 0) }}
-          </p>
-          <p v-if="!chartRefreshing" class="text-xs text-gray-400 dark:text-gray-500">
-            Expenses: {{ formatCurrency(effectiveMonthlyExpenses) }}/mo
-            <span v-if="authStore.company?.settings?.monthlyExpensesOverride" class="text-blue-500">(override)</span>
-          </p>
+
+          <div v-if="!chartRefreshing" class="mt-3">
+            <p class="text-xs text-gray-400 dark:text-gray-500">Break even</p>
+            <div class="grid grid-cols-2 gap-4">
+              <p class="text-lg font-semibold text-gray-700 dark:text-gray-300">
+                {{ formatDays(daysOfWork.breakEvenWon) }}
+              </p>
+              <p class="text-lg font-semibold text-gray-700 dark:text-gray-300">
+                {{ formatDays(daysOfWork.breakEvenForecasted) }}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -677,6 +696,29 @@ const daysCashPlusAR = computed(() =>
     effectiveMonthlyExpenses.value
   )
 )
+
+// Days already elapsed in the as-of month (so Days of Work reads "from today").
+const elapsedDays = computed(() =>
+  parse(selectedDateStr.value, 'yyyy-MM-dd', new Date()).getDate() - 1
+)
+
+// Days of Work — horizon (in days) at which cumulative revenue can no longer
+// sustain the target margin / break-even. Four variations: target vs break-even,
+// forecasted (incl. weighted sales) vs won (committed only).
+const daysOfWork = computed(() =>
+  formulas.allDaysOfWork(
+    revenueStore.revenueData,
+    selectedMonthKey.value,
+    effectiveMonthlyExpenses.value,
+    targetNetMargin.value / 100,
+    elapsedDays.value
+  )
+)
+
+// Format a Days-of-Work value: day count, or em dash when not computable.
+function formatDays(v) {
+  return (v === null || v === undefined) ? '—' : `${v}`
+}
 
 // 12-month component breakdowns (shown beneath the 1-Year Forecast card).
 // All anchored to the first of next month — see forecastStartMonthKey.
