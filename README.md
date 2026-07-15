@@ -312,7 +312,7 @@ This allows secure HTTPS access to your local development server for webhook tes
 - `revenue-refresh-qbo.js` - Manual QuickBooks data refresh with optimized API calls and background transaction caching
 - `revenue-refresh-pipedrive.js` - Manual Pipedrive data refresh reusing existing QB data to minimize API calls
 - `transaction-details.js` - Drill-down transaction data with cache-first retrieval
-- `metrics-plain.cjs` - **Unauthenticated** plain-text endpoint returning 10 key metrics, one rounded integer per line for spreadsheet paste: 30d unbilled, 1-year forecast, 3-month forecast, 3-month won, AR, days cash, then days of work — forecasted @ target margin, won @ target margin, forecasted @ break-even, won @ break-even. Accepts optional `?as_of=YYYY-MM-DD` for historical snapshots
+- `metrics-plain.cjs` - **Unauthenticated** plain-text endpoint returning 10 key metrics, one rounded integer per line for spreadsheet paste: 30d unbilled, 1-year forecast, 3-month forecast, 3-month won, AR, days cash, then days of work — won @ target margin, forecasted @ target margin, won @ break-even, forecasted @ break-even. Accepts optional `?as_of=YYYY-MM-DD` for historical snapshots. Selects the archive stamped during the as-of day (matching the dashboard's data) rather than a stale prior archive
 - `services/transaction-details-cache.js` - Transaction details prefetching and caching service (6-month window)
 - `services/revenue-calculator.js` - Core revenue calculation engine with data caching and API call optimization
 
