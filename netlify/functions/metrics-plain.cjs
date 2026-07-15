@@ -93,6 +93,59 @@ function daysCash(cashOnHand, monthlyExpenses) {
   return Math.round(cashOnHand / dailyExpenses)
 }
 
+const DAYS_PER_MONTH = 30
+
+// "Days of work" horizon — see src/lib/metrics-formulas.js for the full doc.
+// Kept in lockstep with that file.
+function daysOfWork(months, currentMonthKey, monthlyExpenses, targetMargin, includeWeightedSales = true, elapsedDays = 0) {
+  if (!monthlyExpenses || monthlyExpenses <= 0) return null
+  if (!Array.isArray(months) || months.length === 0) return null
+
+  const keys = includeWeightedSales ? [...THREE_MONTH_KEYS, 'weightedSales'] : THREE_MONTH_KEYS
+  const k = 1 / (1 - targetMargin)
+
+  let available = 0
+  while (findMonth(months, monthKeyFromOffset(currentMonthKey, available))) {
+    available++
+  }
+  if (available === 0) return null
+
+  let cumRev = 0
+  for (let i = 0; i < available; i++) {
+    const monthRev = sumMonths(months, monthKeyFromOffset(currentMonthKey, i), 1, keys)
+    const cumRevBefore = cumRev
+    const cumRevAfter = cumRev + monthRev
+    const required = k * monthlyExpenses * (i + 1)
+
+    if (cumRevAfter < required) {
+      const denom = monthRev - k * monthlyExpenses
+      let f
+      if (Math.abs(denom) < 1e-9) {
+        f = 0
+      } else {
+        f = (k * monthlyExpenses * i - cumRevBefore) / denom
+      }
+      if (f < 0) f = 0
+      if (f > 1) f = 1
+      const days = (i + f) * DAYS_PER_MONTH - elapsedDays
+      return Math.max(0, Math.round(days))
+    }
+
+    cumRev = cumRevAfter
+  }
+
+  return Math.max(0, Math.round(available * DAYS_PER_MONTH - elapsedDays))
+}
+
+function allDaysOfWork(months, currentMonthKey, monthlyExpenses, targetMargin, elapsedDays = 0) {
+  return {
+    targetForecasted: daysOfWork(months, currentMonthKey, monthlyExpenses, targetMargin, true, elapsedDays),
+    targetWon: daysOfWork(months, currentMonthKey, monthlyExpenses, targetMargin, false, elapsedDays),
+    breakEvenForecasted: daysOfWork(months, currentMonthKey, monthlyExpenses, 0, true, elapsedDays),
+    breakEvenWon: daysOfWork(months, currentMonthKey, monthlyExpenses, 0, false, elapsedDays)
+  }
+}
+
 function todayInET() {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/New_York',
@@ -191,13 +244,24 @@ exports.handler = async function(event) {
     const receivables = totalReceivables(balances.receivables)
     const monthlyExpenses = effectiveMonthlyExpenses(company.settings, balances)
 
+    // Days-of-work horizons (from the as-of date). Uses the configured target net
+    // margin; break-even is always 0%. Empty string when not computable.
+    const targetMargin = (company.settings?.targetNetMargin || 20) / 100
+    const elapsedDays = Number(asOfParam.split('-')[2]) - 1
+    const dow = allDaysOfWork(months, currentMonthKey, monthlyExpenses, targetMargin, elapsedDays)
+    const dowLine = (v) => (v === null || v === undefined ? '' : v)
+
     const output = [
       Math.round(thirtyDaysUnbilled(balances)),
       Math.round(yearForecast(months, balances, forecastStartKey, true)),
       Math.round(threeMonthRevenue(months, currentMonthKey, true)),
       Math.round(threeMonthRevenue(months, currentMonthKey, false)),
       Math.round(receivables),
-      daysCash(cash, monthlyExpenses)
+      daysCash(cash, monthlyExpenses),
+      dowLine(dow.targetForecasted),
+      dowLine(dow.targetWon),
+      dowLine(dow.breakEvenForecasted),
+      dowLine(dow.breakEvenWon)
     ].join('\n')
 
     return {
