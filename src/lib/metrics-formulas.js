@@ -120,6 +120,81 @@ function daysCashPlusAR(cashOnHand, receivables, monthlyExpenses) {
   return Math.round(totalLiquid / dailyExpenses)
 }
 
+const DAYS_PER_MONTH = 30
+
+// "Days of work" — the horizon (in days from the as-of date) at which cumulative
+// booked revenue can no longer sustain the given net margin. We walk forward
+// month-by-month from `currentMonthKey`, accruing booked revenue while expenses
+// accrue at `monthlyExpenses`/month, and find where cumulative revenue first
+// drops below the required level (target margin, or 0% for break-even).
+//
+// `targetMargin` is a fraction (0.30 = 30%; 0 = break-even). `includeWeightedSales`
+// picks the component set (Won = committed only; Forecasted = + weightedSales).
+// `elapsedDays` is the days already elapsed in the as-of month (dayOfMonth - 1),
+// subtracted so the result reads as "from today".
+//
+// Returns null when expenses are non-positive or there is no month data. If the
+// threshold is never crossed within the available future months, returns the
+// available window in days (a floor — the true horizon is at least this long).
+function daysOfWork(months, currentMonthKey, monthlyExpenses, targetMargin, includeWeightedSales = true, elapsedDays = 0) {
+  if (!monthlyExpenses || monthlyExpenses <= 0) return null
+  if (!Array.isArray(months) || months.length === 0) return null
+
+  const keys = includeWeightedSales
+    ? [...THREE_MONTH_KEYS, 'weightedSales']
+    : THREE_MONTH_KEYS
+
+  // Required revenue-to-expense multiplier at the crossing point. For a target
+  // net margin m, (rev - exp)/rev = m  =>  rev = exp / (1 - m).
+  const k = 1 / (1 - targetMargin)
+
+  // Count future months available from currentMonthKey (contiguous data window).
+  let available = 0
+  while (findMonth(months, monthKeyFromOffset(currentMonthKey, available))) {
+    available++
+  }
+  if (available === 0) return null
+
+  let cumRev = 0
+  for (let i = 0; i < available; i++) {
+    const monthRev = sumMonths(months, monthKeyFromOffset(currentMonthKey, i), 1, keys)
+    const cumRevBefore = cumRev
+    const cumRevAfter = cumRev + monthRev
+    const required = k * monthlyExpenses * (i + 1)
+
+    if (cumRevAfter < required) {
+      // Crossing happens within month i. Revenue/expenses accrue linearly across
+      // the month; solve for the fraction f in [0,1] where the threshold is hit.
+      const denom = monthRev - k * monthlyExpenses
+      let f
+      if (Math.abs(denom) < 1e-9) {
+        f = 0
+      } else {
+        f = (k * monthlyExpenses * i - cumRevBefore) / denom
+      }
+      if (f < 0) f = 0
+      if (f > 1) f = 1
+      const days = (i + f) * DAYS_PER_MONTH - elapsedDays
+      return Math.max(0, Math.round(days))
+    }
+
+    cumRev = cumRevAfter
+  }
+
+  // Never crossed within the available window — return the window as a floor.
+  return Math.max(0, Math.round(available * DAYS_PER_MONTH - elapsedDays))
+}
+
+// Convenience: all four Days-of-Work variations at once.
+function allDaysOfWork(months, currentMonthKey, monthlyExpenses, targetMargin, elapsedDays = 0) {
+  return {
+    targetForecasted: daysOfWork(months, currentMonthKey, monthlyExpenses, targetMargin, true, elapsedDays),
+    targetWon: daysOfWork(months, currentMonthKey, monthlyExpenses, targetMargin, false, elapsedDays),
+    breakEvenForecasted: daysOfWork(months, currentMonthKey, monthlyExpenses, 0, true, elapsedDays),
+    breakEvenWon: daysOfWork(months, currentMonthKey, monthlyExpenses, 0, false, elapsedDays)
+  }
+}
+
 export {
   CASH_ACCOUNT_TYPES,
   monthKeyFromOffset,
@@ -133,7 +208,9 @@ export {
   totalCashOnHand,
   effectiveMonthlyExpenses,
   daysCash,
-  daysCashPlusAR
+  daysCashPlusAR,
+  daysOfWork,
+  allDaysOfWork
 }
 
 export default {
@@ -149,5 +226,7 @@ export default {
   totalCashOnHand,
   effectiveMonthlyExpenses,
   daysCash,
-  daysCashPlusAR
+  daysCashPlusAR,
+  daysOfWork,
+  allDaysOfWork
 }
