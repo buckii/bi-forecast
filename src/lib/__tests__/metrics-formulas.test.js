@@ -68,6 +68,21 @@ describe('daysOfWork', () => {
     expect(daysOfWork(rich, START, EXPENSES, 0.30, false)).toBe(12 * 30)
   })
 
+  it('spreads later months back over a lean current month', () => {
+    // Current month is far under the break-even bar (50 vs 100 expenses) but the
+    // next two months more than make up for it. The horizon must reflect the
+    // whole booked run, not collapse at the first under-target month.
+    const lean = buildMonths([50, 400, 100], [], 12)
+    // surplus by boundary: 0, -50, +250, +250, then -100/mo -> last crossing in
+    // month 5 at f=0.5 -> 165d.
+    expect(daysOfWork(lean, START, EXPENSES, 0, false)).toBe(165)
+  })
+
+  it('still returns 0 when nothing later can cover the current shortfall', () => {
+    const thin = buildMonths([50, 20, 0], [], 12)
+    expect(daysOfWork(thin, START, EXPENSES, 0, false)).toBe(0)
+  })
+
   it('subtracts elapsed days so the horizon reads from today', () => {
     const full = daysOfWork(months, START, EXPENSES, 0.30, false)
     const elapsed = daysOfWork(months, START, EXPENSES, 0.30, false, 10)

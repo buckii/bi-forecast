@@ -110,31 +110,29 @@ function daysOfWork(months, currentMonthKey, monthlyExpenses, targetMargin, incl
   }
   if (available === 0) return null
 
-  let cumRev = 0
+  // Cumulative surplus at each month boundary; a strong month's surplus carries
+  // back over a lean month's gap because we take the LAST zero crossing.
+  const required = k * monthlyExpenses
+  const surplus = [0]
   for (let i = 0; i < available; i++) {
     const monthRev = sumMonths(months, monthKeyFromOffset(currentMonthKey, i), 1, keys)
-    const cumRevBefore = cumRev
-    const cumRevAfter = cumRev + monthRev
-    const required = k * monthlyExpenses * (i + 1)
+    surplus.push(surplus[i] + monthRev - required)
+  }
 
-    if (cumRevAfter < required) {
-      const denom = monthRev - k * monthlyExpenses
-      let f
-      if (Math.abs(denom) < 1e-9) {
-        f = 0
-      } else {
-        f = (k * monthlyExpenses * i - cumRevBefore) / denom
-      }
-      if (f < 0) f = 0
-      if (f > 1) f = 1
+  if (surplus[available] >= 0) {
+    return Math.max(0, Math.round(available * DAYS_PER_MONTH - elapsedDays))
+  }
+
+  for (let i = available - 1; i >= 0; i--) {
+    if (surplus[i] >= 0 && surplus[i + 1] < 0) {
+      const drop = surplus[i] - surplus[i + 1]
+      const f = drop > 0 ? surplus[i] / drop : 0
       const days = (i + f) * DAYS_PER_MONTH - elapsedDays
       return Math.max(0, Math.round(days))
     }
-
-    cumRev = cumRevAfter
   }
 
-  return Math.max(0, Math.round(available * DAYS_PER_MONTH - elapsedDays))
+  return 0
 }
 
 function allDaysOfWork(months, currentMonthKey, monthlyExpenses, targetMargin, elapsedDays = 0) {

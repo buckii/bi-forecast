@@ -125,8 +125,12 @@ const DAYS_PER_MONTH = 30
 // "Days of work" — the horizon (in days from the as-of date) at which cumulative
 // booked revenue can no longer sustain the given net margin. We walk forward
 // month-by-month from `currentMonthKey`, accruing booked revenue while expenses
-// accrue at `monthlyExpenses`/month, and find where cumulative revenue first
-// drops below the required level (target margin, or 0% for break-even).
+// accrue at `monthlyExpenses`/month, and find the LAST point at which cumulative
+// revenue is still sufficient — i.e. the point beyond which it can never catch
+// up again. Taking the last crossing rather than the first is what lets a strong
+// month's surplus cover a lean month's gap: future work is spread back into the
+// lean month instead of a single under-target month (often the current one,
+// already partly invoiced) collapsing the horizon to ~0.
 //
 // `targetMargin` is a fraction (0.30 = 30%; 0 = break-even). `includeWeightedSales`
 // picks the component set (Won = committed only; Forecasted = + weightedSales).
@@ -155,34 +159,36 @@ function daysOfWork(months, currentMonthKey, monthlyExpenses, targetMargin, incl
   }
   if (available === 0) return null
 
-  let cumRev = 0
+  // Cumulative surplus at each month boundary: surplus[i] is revenue booked
+  // through month i-1 minus the revenue needed to hold the margin for i months.
+  // A month above k * expenses lifts it; a month below drags it down.
+  const required = k * monthlyExpenses
+  const surplus = [0]
   for (let i = 0; i < available; i++) {
     const monthRev = sumMonths(months, monthKeyFromOffset(currentMonthKey, i), 1, keys)
-    const cumRevBefore = cumRev
-    const cumRevAfter = cumRev + monthRev
-    const required = k * monthlyExpenses * (i + 1)
+    surplus.push(surplus[i] + monthRev - required)
+  }
 
-    if (cumRevAfter < required) {
-      // Crossing happens within month i. Revenue/expenses accrue linearly across
-      // the month; solve for the fraction f in [0,1] where the threshold is hit.
-      const denom = monthRev - k * monthlyExpenses
-      let f
-      if (Math.abs(denom) < 1e-9) {
-        f = 0
-      } else {
-        f = (k * monthlyExpenses * i - cumRevBefore) / denom
-      }
-      if (f < 0) f = 0
-      if (f > 1) f = 1
+  // Still solvent at the end of the data window — return the window as a floor.
+  if (surplus[available] >= 0) {
+    return Math.max(0, Math.round(available * DAYS_PER_MONTH - elapsedDays))
+  }
+
+  // Scan backwards for the last month where the surplus goes negative. Within a
+  // month, revenue and expenses accrue linearly, so the surplus is linear too:
+  // interpolate the fraction f of that month at which it reaches zero.
+  for (let i = available - 1; i >= 0; i--) {
+    if (surplus[i] >= 0 && surplus[i + 1] < 0) {
+      const drop = surplus[i] - surplus[i + 1]
+      const f = drop > 0 ? surplus[i] / drop : 0
       const days = (i + f) * DAYS_PER_MONTH - elapsedDays
       return Math.max(0, Math.round(days))
     }
-
-    cumRev = cumRevAfter
   }
 
-  // Never crossed within the available window — return the window as a floor.
-  return Math.max(0, Math.round(available * DAYS_PER_MONTH - elapsedDays))
+  // Unreachable: surplus[0] is 0 and surplus[available] is negative, so some
+  // month must cross. Guard anyway.
+  return 0
 }
 
 // Convenience: all four Days-of-Work variations at once.
