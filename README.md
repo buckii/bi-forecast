@@ -224,7 +224,7 @@ This allows secure HTTPS access to your local development server for webhook tes
 - Quick Ranges menu including a "Next 3 Months" range (first of next month through +3)
 - Historical date selector for viewing past forecasts
 - Key metrics cards (current month, 3-month, 1-year totals, 30-day unbilled, days cash, days of work)
-- Days of Work card: horizon (in days) until booked revenue can no longer sustain the target margin / break-even, shown won vs forecasted — "how long until we run out of work if we win nothing more?"
+- Days of Work card: horizon (in days) until booked revenue can no longer sustain the target margin / break-even, shown won vs forecasted — "how long until we run out of work if we win nothing more?". Later months' revenue is spread back over leaner ones (the horizon is the last point cumulative revenue still clears the bar), so an under-target current month does not zero the card
 - Days Cash card combines cash-only and cash + AR runway side by side
 - 1-Year Forecast spans the first of next month through +12 months (e.g. Jul 1 – Jun 30), so monthly recurring is counted for a full 12 months rather than 11 (the current month's recurring is already billed as invoiced)
 - Weighted sales toggle with real-time recalculation
