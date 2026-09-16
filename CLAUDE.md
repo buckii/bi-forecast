@@ -146,6 +146,17 @@ for (let page = 0; page < maxPages; page++) {
 
 **1-Year Forecast window**: The forecast starts on the **first of the month after** the as-of month and spans a full 12 months (e.g. as-of Jun 19 → Jul 1 – Jun 30). The current month's recurring is already billed (it shows up in `invoiced`, which the forecast excludes), so anchoring to the current month would only yield 11 months of recurring. Because the window reaches +12 months, every monthly-revenue fetch pulls 12 months forward: `calculateMonthlyRevenue(16, -3)` for live endpoints, `(19, -6)` for refresh/archive jobs. The `yearUnbilled` (Charges) window matches: first of next month through +12 months, anchored to month starts.
 
+**Journal Entry Client Attribution**: Journal entries carry no `CustomerRef`, and the entries this app creates set no line-level `Entity` either, so the client has to be found in the description/private note text. `RevenueCalculator.matchClientFromText()` is the single matcher for this — used by both `transaction-details.js` and `calculateClientBreakdownForMonth()`, so the drill-down modal and the chart totals agree.
+
+It matches against two sources, **longest candidate first** (so "Vineyard Community Center" wins over a shorter name it contains, rather than depending on `Object.entries` order):
+
+1. `clientAliasesMap` — the `client_aliases` collection (primary names + aliases)
+2. `clientNamesMap` — real client names, from `qbo.getCustomers()` via `loadClientNames()`, plus any names seen in already-fetched invoices/delayed charges/Pipedrive orgs via `registerClientNamesFromData()`
+
+Source 2 is why an unaliased client still groups correctly. `loadClientNames()` is best-effort: if QuickBooks is unavailable (archive-only mode, expired token) it logs and falls back to aliases plus in-data names. Names shorter than 4 characters are ignored — they substring-match far too much free text. A match is passed back through `resolveClientName()`, so an exact name that is itself an alias resolves to the primary.
+
+Unmatched entries fall back to `'Journal Entries'` in the by-client totals and `'N/A'` in the transaction-details modal. Call `loadClientNames()` alongside `loadClientAliases()` in any new entry point that attributes journal entries.
+
 **Journal Entry Filtering**: Only include entries with unearned/deferred revenue accounts:
 ```javascript
 // Filter for entries with unearned revenue accounts
@@ -215,7 +226,7 @@ Required for local development (see `.env.example`):
 
 3. **Archive dates**: Archives are created at 3am ET daily. Comparison dates before the first archive will 404.
 
-4. **Client aliases**: Revenue attribution requires client name matching. Use the client aliases system for consistent tracking across QB and Pipedrive.
+4. **Client aliases**: Revenue attribution requires client name matching. Use the client aliases system for consistent tracking across QB and Pipedrive. Aliases are for genuine spelling variants only — a client spelled the same way in QB does **not** need an alias record to be attributed (see Journal Entry Client Attribution).
 
 5. **Debouncing**: Refresh operations have 20-second debounce. Date inputs have 1-second debounce before loading data.
 

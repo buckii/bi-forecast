@@ -296,7 +296,7 @@ This allows secure HTTPS access to your local development server for webhook tes
 - **revenue_archives** - Daily snapshots of all revenue data with enhanced calculations
 - **transaction_details_cache** - Prefetched transaction details for 6 months (prev 2, current, next 3) with 30-day TTL
 - **exceptions** - Tracked exception items
-- **client_aliases** - Client name mappings for accurate revenue attribution across systems
+- **client_aliases** - Client name mappings for accurate revenue attribution across systems (spelling variants only; exact names are matched automatically from the QuickBooks customer list)
 
 ### Netlify Functions (API Endpoints)
 
@@ -380,7 +380,7 @@ This allows secure HTTPS access to your local development server for webhook tes
 - **Client Breakdown Modal**: Click any month on the revenue chart to see revenue by client
 - **Client Alias System**: Map alternative client names to primary names for accurate tracking across systems
 - **Settings Management**: Inline edit forms for managing client aliases with toast notifications
-- **Journal Entry Matching**: Two-tier matching system using entity references and text descriptions
+- **Journal Entry Matching**: Entity references first, then description text matched against both client aliases and real client names (longest match wins), so a client with no alias record still groups with its own invoices
 - **Export/Import Tools**: Scripts for migrating client aliases from development to production
 - **Comprehensive Attribution**: All 6 revenue components attributed to specific clients
 
@@ -415,6 +415,7 @@ This allows secure HTTPS access to your local development server for webhook tes
 - **Reusable Composables**: Created `useDataRefresh` and `useToast` composables for common patterns
 - **Consistent Error Handling**: Standardized error handling across refresh operations
 - **Client Alias Resolution**: Centralized logic for mapping client names across all revenue components
+- **Single Client Matcher**: `matchClientFromText()` is shared by the transaction-details modal and the by-client totals, so both views attribute journal entries identically
 
 ## Future Enhancements
 
