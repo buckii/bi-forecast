@@ -305,6 +305,36 @@ class QuickBooksService {
     }
   }
 
+  async getCustomers(maxPages = 10) {
+    const { accessToken, realmId } = await this.getAccessToken()
+
+    // QuickBooks API returns max 100 results per query - paginate to get them all
+    const allCustomers = []
+    const pageSize = 100
+
+    for (let page = 0; page < maxPages; page++) {
+      const startPosition = page * pageSize + 1
+      const query = `SELECT * FROM Customer WHERE Active = true STARTPOSITION ${startPosition} MAXRESULTS ${pageSize}`
+      const data = await this.makeRequest(`query?query=${encodeURIComponent(query)}`, realmId, accessToken)
+
+      const customers = data.QueryResponse?.Customer || []
+      allCustomers.push(...customers)
+
+      // If we got fewer than pageSize results, we've reached the end
+      if (customers.length < pageSize) {
+        break
+      }
+
+      // Add small delay between pagination requests to avoid rate limiting
+      if (page < maxPages - 1) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+    }
+
+    console.log(`[QBO] Fetched ${allCustomers.length} customers`)
+    return allCustomers
+  }
+
   async getAccounts() {
     const { accessToken, realmId } = await this.getAccessToken()
 

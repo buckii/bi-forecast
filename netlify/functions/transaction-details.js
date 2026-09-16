@@ -75,8 +75,8 @@ exports.handler = async function (event, context) {
 
     const calculator = new RevenueCalculator(company._id)
 
-    // Load client aliases for matching
-    await calculator.loadClientAliases()
+    // Load client aliases and known client names for matching
+    await Promise.all([calculator.loadClientAliases(), calculator.loadClientNames()])
 
     // Load from archive if as_of date is provided
     if (asOf) {
@@ -310,8 +310,8 @@ async function getJournalEntryTransactions(calculator, startDate, endDate, asOf 
     console.log(`[Transaction Details] Fallback: Filtered journal entries by CreateTime <= ${asOf}`)
   }
 
-  // Load client aliases for matching
-  await calculator.loadClientAliases()
+  // Load client aliases and known client names for matching
+  await Promise.all([calculator.loadClientAliases(), calculator.loadClientNames()])
 
   const transactions = []
 
@@ -390,18 +390,14 @@ async function getJournalEntryTransactions(calculator, startDate, endDate, asOf 
         matchedClient = calculator.resolveClientName(rawClientName, description)
         matchSource = 'entity_reference'
       } else {
-        // No entity reference, try to match based on description
-        const searchText = `${description} ${entry.PrivateNote || ''}`.toLowerCase()
+        // No entity reference, match the description against client aliases and
+        // exact client names
+        const searchText = `${description} ${entry.PrivateNote || ''}`
+        const nameMatch = calculator.matchClientFromText(searchText)
 
-        // Iterate through all client aliases to find a match
-        if (calculator.clientAliasesMap) {
-          for (const [alias, primaryName] of Object.entries(calculator.clientAliasesMap)) {
-            if (searchText.includes(alias.toLowerCase())) {
-              matchedClient = primaryName
-              matchSource = `description_match:${alias}`
-              break
-            }
-          }
+        if (nameMatch) {
+          matchedClient = nameMatch
+          matchSource = `description_match:${nameMatch}`
         }
       }
 

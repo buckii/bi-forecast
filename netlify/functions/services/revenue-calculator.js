@@ -9,6 +9,7 @@ class RevenueCalculator {
     this.qbo = new QuickBooksService(companyId)
     this.pipedrive = new PipedriveService(companyId)
     this.clientAliasesMap = null
+    this.clientNamesMap = null
     this.isUsingArchive = false
     this.isUsingFallback = false  // True when archive exists but has no QB/Pipedrive data
     this.archivedData = null
@@ -120,6 +121,92 @@ class RevenueCalculator {
     }
 
     return name
+  }
+
+  /**
+   * Build the set of known client names from QuickBooks customers.
+   *
+   * Journal entries carry no CustomerRef/Entity, so the only way to attribute them
+   * is to look for a client name inside the description. Aliases alone are not
+   * enough - a client with no alias record would fall through to 'N/A' - so we also
+   * match against the real customer list.
+   *
+   * Best effort: if QuickBooks is unavailable (archive-only mode, expired token),
+   * matching falls back to aliases plus whatever names appear in the loaded data.
+   */
+  async loadClientNames() {
+    if (this.clientNamesMap !== null) return this.clientNamesMap
+
+    this.clientNamesMap = {}
+
+    try {
+      const customers = await this.qbo.getCustomers()
+      customers.forEach(customer => {
+        this.registerClientName(customer.DisplayName)
+        this.registerClientName(customer.CompanyName)
+      })
+    } catch (error) {
+      console.error('Error loading QuickBooks customers for name matching:', error.message)
+    }
+
+    return this.clientNamesMap
+  }
+
+  /**
+   * Add a single client name to the name-match map. Cheap enough to call for every
+   * customer we see in already-fetched data (invoices, charges, Pipedrive orgs), so
+   * matching still works when the customer list could not be fetched.
+   */
+  registerClientName(name) {
+    if (!name || typeof name !== 'string') return
+    const trimmed = name.trim()
+    // Very short names produce false positives inside free-text descriptions
+    if (trimmed.length < 4) return
+    if (this.clientNamesMap === null) this.clientNamesMap = {}
+    const key = trimmed.toLowerCase()
+    if (!this.clientNamesMap[key]) {
+      this.clientNamesMap[key] = trimmed
+    }
+  }
+
+  /**
+   * Register every client name present in already-fetched QBO/Pipedrive data.
+   */
+  registerClientNamesFromData(qboData, pipedriveData) {
+    if (qboData) {
+      ;(qboData.invoices || []).forEach(invoice => this.registerClientName(invoice.CustomerRef?.name))
+      ;(qboData.delayedCharges || []).forEach(charge => this.registerClientName(charge.CustomerRef?.name))
+    }
+    if (pipedriveData) {
+      ;(pipedriveData.wonUnscheduledDeals || []).forEach(deal => this.registerClientName(deal.orgName))
+      ;(pipedriveData.openDeals || []).forEach(deal => this.registerClientName(deal.orgName))
+    }
+  }
+
+  /**
+   * Find a client mentioned anywhere in free text (journal entry descriptions and
+   * private notes). Checks client aliases AND exact client names, longest candidate
+   * first so "Vineyard Community Center" wins over a shorter name it contains.
+   *
+   * @returns {string|null} The resolved primary client name, or null if no match.
+   */
+  matchClientFromText(text) {
+    if (!text) return null
+    const searchText = text.toLowerCase()
+
+    const candidates = [
+      ...Object.entries(this.clientAliasesMap || {}),
+      ...Object.entries(this.clientNamesMap || {})
+    ].sort((a, b) => b[0].length - a[0].length)
+
+    for (const [candidate, primaryName] of candidates) {
+      if (searchText.includes(candidate)) {
+        // An exact name may itself be an alias for a different primary name
+        return this.resolveClientName(primaryName)
+      }
+    }
+
+    return null
   }
 
   async calculateMonthlyRevenue(months = 18, startOffset = -6) {
@@ -875,8 +962,8 @@ class RevenueCalculator {
     const startMonth = startOfMonth(monthDate)
     const endMonth = endOfMonth(monthDate)
 
-    // Load client aliases before processing
-    await this.loadClientAliases()
+    // Load client aliases and known client names before processing
+    await Promise.all([this.loadClientAliases(), this.loadClientNames()])
 
     // For calculating client breakdown, we need a wider date range:
     // - Previous month for monthly recurring calculation
@@ -890,6 +977,9 @@ class RevenueCalculator {
       this.fetchAllQBOData(fetchStartMonth, fetchEndMonth),
       this.fetchAllPipedriveData()
     ])
+
+    // Pick up any client names the customer list did not cover
+    this.registerClientNamesFromData(qboData, pipedriveData)
 
     // Process data for the requested month
     const clientBreakdown = this.calculateClientBreakdownForMonth(
@@ -911,14 +1001,17 @@ class RevenueCalculator {
     const startMonth = addMonths(startOfMonth(currentDate), startOffset)
     const endMonth = addMonths(startOfMonth(currentDate), startOffset + months - 1)
 
-    // Load client aliases before processing
-    await this.loadClientAliases()
+    // Load client aliases and known client names before processing
+    await Promise.all([this.loadClientAliases(), this.loadClientNames()])
 
     // Fetch all data in parallel
     const [qboData, pipedriveData] = await Promise.all([
       this.fetchAllQBOData(startMonth, endMonth),
       this.fetchAllPipedriveData()
     ])
+
+    // Pick up any client names the customer list did not cover
+    this.registerClientNamesFromData(qboData, pipedriveData)
 
     // Process data into monthly buckets grouped by client
     const result = []
@@ -1050,17 +1143,10 @@ class RevenueCalculator {
             .map(line => line.description)
             .filter(desc => desc)
             .join(' ')
-          const searchText = `${revenueDescriptions} ${entry.PrivateNote || ''}`.toLowerCase()
+          const searchText = `${revenueDescriptions} ${entry.PrivateNote || ''}`
 
-          // Iterate through all client aliases to find a match
-          if (this.clientAliasesMap) {
-            for (const [alias, primaryName] of Object.entries(this.clientAliasesMap)) {
-              if (searchText.includes(alias.toLowerCase())) {
-                matchedClient = primaryName
-                break
-              }
-            }
-          }
+          // Match against client aliases and exact client names
+          matchedClient = this.matchClientFromText(searchText) || 'N/A'
 
           // If still no match, use generic "Journal Entries"
           if (matchedClient === 'N/A') {
@@ -1155,7 +1241,7 @@ class RevenueCalculator {
               const description = line.Description || entry.PrivateNote || ''
               const clientName = rawClientName
                 ? this.resolveClientName(rawClientName, description)
-                : this.resolveClientName('Journal Entries', description)
+                : (this.matchClientFromText(description) || 'Journal Entries')
 
               addToClient(clientName, lineAmount)
             }
