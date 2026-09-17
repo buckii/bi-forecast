@@ -493,9 +493,6 @@
                   <tr v-if="expandedClients.has(client.client)" class="bg-gray-50 dark:bg-gray-800">
                     <td colspan="4" class="px-6 py-4">
                       <div class="space-y-2">
-                        <h5 class="font-medium text-gray-900 dark:text-gray-100 text-sm mb-3">
-                          Transactions for {{ client.client }}
-                        </h5>
                         <div
                           v-if="getClientTransactions(client.client).length === 0"
                           class="text-sm text-gray-500 dark:text-gray-400"
