@@ -23,10 +23,6 @@ export default {
     return api.post('/revenue-refresh-pipedrive')
   },
   
-  async getTransactionDetails(month, component) {
-    return api.get(`/revenue-details?month=${month}&component=${component}`)
-  },
-
   async getRevenueByClient(month = null, includeWeightedSales = true, asOf = null) {
     const params = new URLSearchParams({
       includeWeightedSales: includeWeightedSales.toString()
