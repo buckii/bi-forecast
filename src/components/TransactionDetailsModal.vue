@@ -642,7 +642,7 @@
 <script setup>
 import { ArrowDownTrayIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import { Chart, registerables } from 'chart.js'
-import { addMonths, format as formatDate, isBefore, parseISO, startOfMonth } from 'date-fns'
+import { format as formatDate, parseISO } from 'date-fns'
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { formatCurrency, formatShare } from '../lib/format.js'
 import {
@@ -655,6 +655,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { isDarkModeGlobal } from '../composables/useDarkMode'
 import { useAuthStore } from '../stores/auth'
 import { useRevenueStore } from '../stores/revenue'
+import { useTransactionDetails } from '../composables/useTransactionDetails.js'
 import JournalEntryBulkEditModal from './JournalEntryBulkEditModal.vue'
 import JournalEntryCreateModal from './JournalEntryCreateModal.vue'
 import JournalEntryDetailModal from './JournalEntryDetailModal.vue'
@@ -706,6 +707,9 @@ const emit = defineEmits(['close'])
 
 const authStore = useAuthStore()
 
+const { loading, loadingProgress, loadingStatus, error, allTransactions, clientData, cacheMetadata, loadAllData } =
+  useTransactionDetails(props)
+
 // Get price per point from company settings
 const pricePerPoint = computed(() => {
   return authStore.company?.settings?.pricePerPoint || 550
@@ -719,26 +723,12 @@ const getInitialTab = () => {
 const activeTab = ref(getInitialTab())
 
 // Auto-export logic
-const loading = ref(true)
-
-// Auto-export logic
 watch(loading, (newLoading) => {
   if (!newLoading && props.isOpen && props.autoExport && allTransactions.value.length > 0) {
     setTimeout(() => {
       exportToCSV()
     }, 500)
   }
-})
-const loadingProgress = ref(0)
-const loadingStatus = ref('')
-const error = ref(null)
-const allTransactions = ref([])
-const clientData = ref(null)
-const cacheMetadata = ref({
-  transactionsCachedAt: null,
-  transactionsFromCache: false,
-  clientsCachedAt: null,
-  clientsFromCache: false,
 })
 const refreshing = ref(false)
 const expandedTransactions = ref(new Set())
@@ -910,7 +900,7 @@ watch(
   () => props.isOpen,
   (isOpen) => {
     if (isOpen && (props.month || (props.startDate && props.endDate))) {
-      loadAllData()
+      loadDetails()
     } else {
       // Reset state when modal closes (but preserve activeTab for next open)
       allTransactions.value = []
@@ -946,223 +936,16 @@ watch(
 
     // Reload data if modal is open to fetch/exclude weighted sales transactions
     if (props.isOpen && (props.month || (props.startDate && props.endDate))) {
-      loadAllData()
+      loadDetails()
     }
   },
 )
 
-async function loadAllData(forceRefresh = false) {
-  loading.value = true
-  loadingStatus.value = 'Preparing to load data...'
-  loadingProgress.value = 0
-  error.value = null
+async function loadDetails(forceRefresh = false) {
+  await loadAllData(forceRefresh)
 
-  try {
-    // List of months to fetch
-    const monthsToFetch = []
-    if (props.startDate && props.endDate) {
-      monthsToFetch.push(...getMonthsInRange(props.startDate, props.endDate))
-    } else {
-      monthsToFetch.push(props.month)
-    }
-
-    // Fetch transaction types based on dashboard toggle
-    const components = ['invoiced', 'journalEntries', 'delayedCharges', 'monthlyRecurring', 'wonUnscheduled']
-    if (revenueStore.includeWeightedSales) {
-      components.push('weightedSales')
-    }
-
-    const totalSteps = components.length + 1 // +1 for client data
-    let completedSteps = 0
-    const updateProgress = (stepName) => {
-      completedSteps++
-      loadingProgress.value = Math.round((completedSteps / totalSteps) * 100)
-      loadingStatus.value = `Loading ${stepName}... (${completedSteps}/${totalSteps})`
-    }
-
-    // Build common params
-    const startMonth = monthsToFetch[0]
-    const endMonth = monthsToFetch[monthsToFetch.length - 1]
-
-    // Determine if we are doing a range request
-    const isRangeRequest = monthsToFetch.length > 1
-
-    const params = new URLSearchParams()
-
-    if (isRangeRequest) {
-      params.append('month_start', startMonth)
-      params.append('month_end', endMonth)
-    } else {
-      params.append('month', startMonth)
-    }
-
-    if (props.asOf) {
-      params.append('as_of', props.asOf)
-    }
-    if (forceRefresh) {
-      params.append('_refresh', Date.now().toString())
-    }
-
-    // Fetch components
-    const transactionResults = []
-
-    // We can run these in parallel now since we only make one request per component for the whole range
-    // But to be safe with QBO concurrency, we can still stagger them slightly or just await sequentially
-    for (const component of components) {
-      // Small delay between components
-      await new Promise((r) => setTimeout(r, 100))
-
-      const componentParams = new URLSearchParams(params)
-      componentParams.append('component', component)
-
-      try {
-        const response = await fetch(`/.netlify/functions/transaction-details?${componentParams.toString()}`, {
-          headers: { Authorization: `Bearer ${authStore.token}` },
-        })
-
-        if (!response.ok) {
-          transactionResults.push({ transactions: [], fromCache: false, cachedAt: null })
-          updateProgress(component)
-          continue
-        }
-
-        const result = await response.json()
-        const data = result.data || result
-        transactionResults.push({
-          transactions: data.transactions || [],
-          fromCache: data.fromCache || false,
-          cachedAt: data.cachedAt || null,
-        })
-        updateProgress(component)
-      } catch (e) {
-        console.error(`Error fetching ${component} for range ${startMonth}-${endMonth}:`, e)
-        transactionResults.push({ transactions: [], fromCache: false, cachedAt: null })
-        updateProgress(component)
-      }
-    }
-
-    // Fetch client data
-    const clientParams = new URLSearchParams({
-      includeWeightedSales: revenueStore.includeWeightedSales.toString(),
-    })
-
-    if (isRangeRequest) {
-      clientParams.append('month_start', startMonth)
-      clientParams.append('month_end', endMonth)
-    } else {
-      clientParams.append('month', startMonth)
-    }
-
-    if (props.asOf) {
-      clientParams.append('as_of', props.asOf)
-    }
-
-    let clientResult = { clients: null, fromCache: false, cachedAt: null }
-    try {
-      const response = await fetch(`/.netlify/functions/revenue-by-client?${clientParams.toString()}`, {
-        headers: { Authorization: `Bearer ${authStore.token}` },
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        const data = result.data || result
-        clientResult = {
-          clients: data.clients || [],
-          month: data.month,
-          fromCache: data.fromCache || false,
-          cachedAt: data.cachedAt || null,
-        }
-      }
-      updateProgress('Client Data')
-    } catch (e) {
-      console.error(`Error fetching client data for range ${startMonth}-${endMonth}:`, e)
-      updateProgress('Client Data')
-    }
-
-    // Since we now have single results covering the whole range, we put them in a list of 1 to match aggregation logic or just assign directly
-    const allResults = [
-      {
-        transactionResults,
-        clientResult,
-      },
-    ]
-
-    // Aggregate results
-    let aggregatedTransactions = []
-    let aggregatedClients = {} // Map by client name to sum totals
-    let hasCache = false
-    let latestCacheDate = null
-    let clientHasCache = false
-    let latestClientCacheDate = null
-
-    for (const result of allResults) {
-      // Aggregate transactions
-      const txns = result.transactionResults.flatMap((r) => r.transactions)
-      aggregatedTransactions.push(...txns)
-
-      // Check cache metadata for transactions
-      const transactionsWithCache = result.transactionResults.filter((r) => r.fromCache)
-      if (transactionsWithCache.length > 0) hasCache = true
-      const date = transactionsWithCache
-        .map((r) => r.cachedAt)
-        .filter(Boolean)
-        .sort()
-        .reverse()[0]
-      if (date && (!latestCacheDate || new Date(date) > new Date(latestCacheDate))) {
-        latestCacheDate = date
-      }
-
-      // Aggregate clients
-      if (result.clientResult.clients) {
-        if (result.clientResult.fromCache) clientHasCache = true
-        if (
-          result.clientResult.cachedAt &&
-          (!latestClientCacheDate || new Date(result.clientResult.cachedAt) > new Date(latestClientCacheDate))
-        ) {
-          latestClientCacheDate = result.clientResult.cachedAt
-        }
-
-        for (const client of result.clientResult.clients) {
-          if (!aggregatedClients[client.client]) {
-            aggregatedClients[client.client] = { ...client, total: 0 }
-            // Note: We might want to aggregate breakdown fields too (invoiced, recurring, etc.)
-            // but 'total' is the most critical for the pie chart.
-            // Currently revenue-by-client returns breakdown. Detailed aggregation might be needed if detail view relies on it.
-            // For now, let's assume 'total' is primary.
-          }
-          aggregatedClients[client.client].total += client.total || 0
-        }
-      }
-    }
-
-    allTransactions.value = aggregatedTransactions
-
-    // Set cache metadata
-    cacheMetadata.value = {
-      transactionsFromCache: hasCache,
-      transactionsCachedAt: latestCacheDate,
-      clientsFromCache: clientHasCache,
-      clientsCachedAt: latestClientCacheDate,
-    }
-
-    // Set client data
-    const aggregatedClientList = Object.values(aggregatedClients)
-    clientData.value =
-      aggregatedClientList.length > 0
-        ? {
-            clients: aggregatedClientList,
-            month: props.month || 'Multiple Months',
-          }
-        : null
-
-    // If we're on the clients tab, create the pie chart
-    if (activeTab.value === 'clients' && clientData.value?.clients) {
-      setTimeout(() => createPieChart(), 100)
-    }
-  } catch (err) {
-    error.value = err.message
-  } finally {
-    loading.value = false
+  if (activeTab.value === 'clients' && clientData.value?.clients) {
+    setTimeout(() => createPieChart(), 100)
   }
 }
 
@@ -1187,7 +970,7 @@ async function refreshData() {
   // Add a cache-busting timestamp to force fresh data
   const originalAsOf = props.asOf
   try {
-    await loadAllData(true) // Pass true to indicate force refresh
+    await loadDetails(true)
   } finally {
     refreshing.value = false
   }
@@ -1224,25 +1007,6 @@ const modalTitle = computed(() => {
   }
   return formatMonth(props.month)
 })
-
-function getMonthsInRange(startStr, endStr) {
-  const months = []
-  try {
-    let current = startOfMonth(parseISO(startStr))
-    const end = startOfMonth(parseISO(endStr))
-
-    // Safety break to prevent infinite loops
-    let iterations = 0
-    while ((isBefore(current, end) || current.getTime() === end.getTime()) && iterations < 36) {
-      months.push(formatDate(current, 'yyyy-MM'))
-      current = addMonths(current, 1)
-      iterations++
-    }
-  } catch (e) {
-    console.error('Error generating months range:', e)
-  }
-  return months
-}
 
 function formatTransactionDate(dateStr) {
   if (!dateStr) return 'N/A'
@@ -1609,21 +1373,21 @@ function closeJournalEntryCreateModal() {
 function handleJournalEntryCreated() {
   closeJournalEntryCreateModal()
   // Reload transactions
-  loadAllData()
+  loadDetails()
 }
 
 // Handle journal entry updated
 function handleJournalEntryUpdated() {
   selectedJournalEntry.value = null
   // Reload transactions
-  loadAllData()
+  loadDetails()
 }
 
 // Handle journal entry deleted
 function handleJournalEntryDeleted() {
   selectedJournalEntry.value = null
   // Reload transactions
-  loadAllData()
+  loadDetails()
 }
 
 // Watch for dark mode changes to update chart
