@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { requestJson } from '../lib/api-fetch.js'
 import { useAuthStore } from '../stores/auth'
 
 const AMOUNT_TOLERANCE = 0.01
@@ -39,18 +40,13 @@ export function useJournalEntryActions(onChanged) {
   const bulkEditEntryId = ref(null)
   const journalEntryAccounts = ref({ revenue: [], unearned: [] })
 
-  function authorizedFetch(endpoint) {
-    return fetch(`/.netlify/functions/${endpoint}`, {
-      headers: { Authorization: `Bearer ${authStore.token}` },
-    })
-  }
-
   async function loadJournalEntryAccounts() {
     try {
-      const response = await authorizedFetch('journal-entry-accounts')
-      if (!response.ok) throw new Error('Failed to load journal entry accounts')
+      const data = await requestJson('journal-entry-accounts', {
+        token: authStore.token,
+        fallbackError: 'Failed to load journal entry accounts',
+      })
 
-      const { data } = await response.json()
       journalEntryAccounts.value = {
         revenue: data.revenueAccounts || [],
         unearned: data.unearnedRevenueAccounts || [],
@@ -78,10 +74,11 @@ export function useJournalEntryActions(onChanged) {
 
     // Older transactions carry no entry id, so fall back to matching on date and amount.
     try {
-      const response = await authorizedFetch('journal-entries-list?view=all')
-      if (!response.ok) throw new Error('Failed to load journal entries')
+      const data = await requestJson('journal-entries-list?view=all', {
+        token: authStore.token,
+        fallbackError: 'Failed to load journal entries',
+      })
 
-      const { data } = await response.json()
       const entry = data.unpaired.find((candidate) => matchesTransaction(candidate, transaction))
 
       if (entry) {
