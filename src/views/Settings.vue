@@ -492,6 +492,7 @@ import { useDarkMode } from '../composables/useDarkMode'
 import { useDataRefresh } from '../composables/useDataRefresh'
 import { useToast } from '../composables/useToast'
 import { useClientAliases } from '../composables/useClientAliases.js'
+import { useJournalAccountSettings } from '../composables/useJournalAccountSettings.js'
 import AppLayout from '../components/AppLayout.vue'
 import ToastContainer from '../components/ToastContainer.vue'
 
@@ -510,6 +511,19 @@ const {
   saveIndividualClient,
   loadClientAliases,
 } = useClientAliases(toast)
+
+const {
+  editingJournalAccounts,
+  loadingJournalAccounts,
+  journalAccounts,
+  editableJournalAccounts,
+  availableRevenueAccounts,
+  availableUnearnedAccounts,
+  loadJournalAccounts,
+  saveJournalAccounts,
+  cancelJournalAccountsEdit,
+  getAccountName,
+} = useJournalAccountSettings(toast)
 const {
   refreshingQBO,
   refreshingPipedrive,
@@ -540,25 +554,6 @@ const editableMonthlyExpensesOverride = ref(null)
 const editablePricePerPoint = ref(550)
 
 // Journal Entry Accounts
-const editingJournalAccounts = ref(false)
-const loadingJournalAccounts = ref(false)
-const journalAccounts = ref({
-  unearnedRevenue: '',
-  projectIncomePoints: '',
-  recurringIncomeSupport: '',
-  recurringIncomePoints: '',
-})
-const editableJournalAccounts = ref({
-  unearnedRevenue: '',
-  projectIncomePoints: '',
-  recurringIncomeSupport: '',
-  recurringIncomePoints: '',
-})
-const availableRevenueAccounts = ref([])
-const availableUnearnedAccounts = ref([])
-
-// Don't use computed - just reference clientAliases directly
-// We'll sort once on load instead of reactively
 const company = computed(() => authStore.company)
 
 async function connectQBO() {
@@ -709,94 +704,6 @@ async function checkConnectionStatus() {
   } catch (error) {
     // Connection status check failed - ignore silently
   }
-}
-
-async function loadJournalAccounts() {
-  try {
-    loadingJournalAccounts.value = true
-    const response = await fetch('/.netlify/functions/journal-entry-accounts', {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${authStore.token}`,
-      },
-    })
-
-    if (response.ok) {
-      const data = await response.json()
-      availableRevenueAccounts.value = data.data.revenueAccounts || []
-      availableUnearnedAccounts.value = data.data.unearnedRevenueAccounts || []
-
-      // Load current settings
-      if (data.data.currentSettings) {
-        journalAccounts.value = {
-          unearnedRevenue: data.data.currentSettings.unearnedRevenue || '',
-          projectIncomePoints: data.data.currentSettings.projectIncomePoints || '',
-          recurringIncomeSupport: data.data.currentSettings.recurringIncomeSupport || '',
-          recurringIncomePoints: data.data.currentSettings.recurringIncomePoints || '',
-        }
-      }
-    } else {
-      const errorData = await response.json()
-      toast.error(errorData.error || 'Failed to load journal entry accounts')
-    }
-  } catch (error) {
-    console.error('Error loading journal entry accounts:', error)
-    toast.error('Failed to load journal entry accounts')
-  } finally {
-    loadingJournalAccounts.value = false
-  }
-}
-
-async function saveJournalAccounts() {
-  try {
-    // Validate all fields are filled
-    if (
-      !editableJournalAccounts.value.unearnedRevenue ||
-      !editableJournalAccounts.value.projectIncomePoints ||
-      !editableJournalAccounts.value.recurringIncomeSupport ||
-      !editableJournalAccounts.value.recurringIncomePoints
-    ) {
-      toast.warning('Please select all required accounts')
-      return
-    }
-
-    const response = await fetch('/.netlify/functions/company-update-journal-accounts', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${authStore.token}`,
-      },
-      body: JSON.stringify(editableJournalAccounts.value),
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || 'Failed to save journal entry accounts')
-    }
-
-    // Update local values
-    journalAccounts.value = { ...editableJournalAccounts.value }
-    editingJournalAccounts.value = false
-
-    // Refresh user data to get updated company settings
-    await authStore.fetchCurrentUser()
-
-    toast.success('Journal entry accounts saved successfully')
-  } catch (error) {
-    console.error('Error saving journal entry accounts:', error)
-    toast.error(error.message)
-  }
-}
-
-function cancelJournalAccountsEdit() {
-  editableJournalAccounts.value = { ...journalAccounts.value }
-  editingJournalAccounts.value = false
-}
-
-function getAccountName(accountId, type) {
-  const accounts = type === 'unearned' ? availableUnearnedAccounts.value : availableRevenueAccounts.value
-  const account = accounts.find((a) => a.value === accountId)
-  return account ? `${account.fullyQualifiedName} (#${accountId})` : `Account #${accountId}`
 }
 
 // Watch for editing company to populate the field
