@@ -1,70 +1,25 @@
 const jwt = require('jsonwebtoken')
 const { getCollection } = require('./database.js')
+const { verifyGoogleToken } = require('./google-token.js')
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key'
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID
-
-// Alternative Google token verification using Google's public keys
-async function fetchGooglePublicKeys() {
-  const response = await fetch('https://www.googleapis.com/oauth2/v3/certs')
-  if (!response.ok) {
-    throw new Error('Failed to fetch Google public keys')
-  }
-  return response.json()
+// Read at call time, never defaulted: a fallback secret signs forgeable sessions.
+function jwtSecret() {
+  const secret = process.env.JWT_SECRET
+  if (!secret) throw new Error('JWT_SECRET is not configured')
+  return secret
 }
 
 function generateToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' })
+  return jwt.sign(payload, jwtSecret(), { expiresIn: '7d' })
 }
 
 function verifyToken(token) {
+  const secret = jwtSecret()
+
   try {
-    return jwt.verify(token, JWT_SECRET)
+    return jwt.verify(token, secret)
   } catch (error) {
     throw new Error('Invalid token')
-  }
-}
-
-async function verifyGoogleToken(token) {
-  try {
-    
-    // Decode JWT without verification first to get header
-    const decoded = jwt.decode(token, { complete: true })
-    if (!decoded) {
-      throw new Error('Invalid JWT format')
-    }
-    
-    
-    // Verify this is a Google-issued token
-    if (decoded.payload.iss !== 'https://accounts.google.com') {
-      throw new Error('Token not issued by Google')
-    }
-    
-    // Verify audience matches our client ID
-    if (decoded.payload.aud !== GOOGLE_CLIENT_ID) {
-      throw new Error('Token audience mismatch')
-    }
-    
-    // Verify token is not expired
-    const now = Math.floor(Date.now() / 1000)
-    if (decoded.payload.exp < now) {
-      throw new Error('Token expired')
-    }
-    
-    // For production compatibility, we'll trust Google's signature verification
-    // since the token comes directly from Google's servers
-    
-    return {
-      googleId: decoded.payload.sub,
-      email: decoded.payload.email,
-      name: decoded.payload.name,
-      picture: decoded.payload.picture,
-      domain: decoded.payload.hd || decoded.payload.email.split('@')[1]
-    }
-  } catch (error) {
-    console.error('Google token verification failed:', error.message)
-    console.error('Error details:', error)
-    throw new Error(`Invalid Google token: ${error.message}`)
   }
 }
 
