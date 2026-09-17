@@ -242,10 +242,13 @@
                       </svg>
                       <span
                         class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap"
-                        :class="[getTypeColor(transaction.type), transaction.type === 'delayedCharge' ? '' : 'ml-0']"
+                        :class="[
+                          transactionTypeColor(transaction.type),
+                          transaction.type === 'delayedCharge' ? '' : 'ml-0',
+                        ]"
                         :style="transaction.type === 'delayedCharge' ? 'margin-left: 24px' : ''"
                       >
-                        {{ formatTransactionType(transaction.type) }}
+                        {{ transactionTypeLabel(transaction.type) }}
                       </span>
                     </div>
                   </td>
@@ -485,7 +488,7 @@
                       {{ formatPoints(client.total) }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">
-                      {{ formatPercent(client.total, clientTotalRevenue) }}
+                      {{ formatShare(client.total, clientTotalRevenue) }}
                     </td>
                   </tr>
 
@@ -508,9 +511,9 @@
                             <div class="flex items-center space-x-3 flex-1">
                               <span
                                 class="inline-flex items-center px-2 py-1 rounded-full font-medium"
-                                :class="getTypeColor(transaction.type)"
+                                :class="transactionTypeColor(transaction.type)"
                               >
-                                {{ formatTransactionType(transaction.type) }}
+                                {{ transactionTypeLabel(transaction.type) }}
                               </span>
                               <span class="font-medium text-gray-900 dark:text-gray-100">
                                 {{ transaction.docNumber }}
@@ -641,7 +644,13 @@ import { ArrowDownTrayIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import { Chart, registerables } from 'chart.js'
 import { addMonths, format as formatDate, isBefore, parseISO, startOfMonth } from 'date-fns'
 import { computed, onUnmounted, ref, watch } from 'vue'
-import { formatCurrency } from '../lib/format.js'
+import { formatCurrency, formatShare } from '../lib/format.js'
+import {
+  TRANSACTION_TYPES,
+  defaultTypeFilters,
+  transactionTypeColor,
+  transactionTypeLabel,
+} from '../lib/transaction-types.js'
 import { useRoute, useRouter } from 'vue-router'
 import { isDarkModeGlobal } from '../composables/useDarkMode'
 import { useAuthStore } from '../stores/auth'
@@ -768,33 +777,12 @@ const clientSortBy = ref('amount') // 'amount' | 'client'
 const clientSortDirection = ref('desc') // 'asc' | 'desc'
 
 // Transaction type filters
-const transactionTypes = [
-  { value: 'invoice', label: 'Invoiced' },
-  { value: 'journalEntry', label: 'Journal Entries' },
-  { value: 'delayedCharge', label: 'Delayed Charges' },
-  { value: 'monthlyRecurring', label: 'Monthly Recurring' },
-  { value: 'wonUnscheduled', label: 'Won Unscheduled' },
-  { value: 'weightedSales', label: 'Weighted Sales' },
-]
+const transactionTypes = TRANSACTION_TYPES.map((type) => ({ value: type.value, label: type.filterLabel }))
 
-const enabledTypes = ref({
-  invoice: true,
-  journalEntry: true,
-  delayedCharge: true,
-  monthlyRecurring: true,
-  wonUnscheduled: true,
-  weightedSales: revenueStore.includeWeightedSales, // Respect dashboard toggle
-})
+const enabledTypes = ref(defaultTypeFilters(revenueStore.includeWeightedSales))
 
-// Separate filter state for Clients tab
-const clientEnabledTypes = ref({
-  invoice: true,
-  journalEntry: true,
-  delayedCharge: true,
-  monthlyRecurring: true,
-  wonUnscheduled: true,
-  weightedSales: revenueStore.includeWeightedSales, // Respect dashboard toggle
-})
+// The Clients tab keeps its own filter state.
+const clientEnabledTypes = ref(defaultTypeFilters(revenueStore.includeWeightedSales))
 
 const allFiltersEnabled = computed(() => {
   return Object.values(enabledTypes.value).every((v) => v)
@@ -1289,30 +1277,6 @@ function formatRelativeTime(dateStr) {
   }
 }
 
-function formatTransactionType(type) {
-  const typeMap = {
-    invoice: 'Invoice',
-    journalEntry: 'Journal Entry',
-    delayedCharge: 'Delayed Charge',
-    monthlyRecurring: 'Monthly Recurring',
-    wonUnscheduled: 'Won Unscheduled',
-    weightedSales: 'Weighted Sales',
-  }
-  return typeMap[type] || type
-}
-
-function formatType(type) {
-  const types = {
-    invoice: 'Invoice',
-    journalEntry: 'Journal Entry',
-    delayedCharge: 'Delayed Charge',
-    monthlyRecurring: 'Monthly Recurring',
-    wonUnscheduled: 'Won Unscheduled',
-    weightedSales: 'Weighted Sales',
-  }
-  return types[type] || type
-}
-
 function exportToCSV() {
   if (allTransactions.value.length === 0) return
 
@@ -1322,7 +1286,7 @@ function exportToCSV() {
   // Format rows
   const rows = allTransactions.value.map((txn) => {
     return [
-      formatType(txn.type),
+      transactionTypeLabel(txn.type),
       txn.docNumber || '',
       txn.date || '',
       `"${(txn.clientRaw || txn.customer || '').replace(/"/g, '""')}"`, // Quote and escape quotes
@@ -1348,23 +1312,6 @@ function exportToCSV() {
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
-}
-
-function getTypeColor(type) {
-  const colors = {
-    invoice: 'bg-blue-100 text-blue-800',
-    journalEntry: 'bg-green-100 text-green-800',
-    delayedCharge: 'bg-yellow-100 text-yellow-800',
-    monthlyRecurring: 'bg-purple-100 text-purple-800',
-    wonUnscheduled: 'bg-pink-100 text-pink-800',
-    weightedSales: 'bg-gray-100 text-gray-800',
-  }
-  return colors[type] || 'bg-gray-100 text-gray-800'
-}
-
-function formatPercent(value, total) {
-  if (total === 0) return '0%'
-  return ((value / total) * 100).toFixed(1) + '%'
 }
 
 function formatPoints(value) {
@@ -1538,7 +1485,7 @@ function createPieChart() {
             label: function (context) {
               const label = context.label || ''
               const value = formatCurrency(context.parsed)
-              const percent = formatPercent(context.parsed, total)
+              const percent = formatShare(context.parsed, total)
               return `${label}: ${value} (${percent})`
             },
           },

@@ -31,6 +31,12 @@ export function formatPercent(value, digits = 0) {
   return `${(value || 0).toFixed(digits)}%`
 }
 
+/** `value` as a share of `total`, e.g. "12.5%". */
+export function formatShare(value, total) {
+  if (!total) return '0%'
+  return `${((value / total) * 100).toFixed(1)}%`
+}
+
 export function formatNumber(value) {
   return new Intl.NumberFormat('en-US').format(value || 0)
 }
@@ -88,6 +94,7 @@ export default {
   formatCurrency,
   formatCurrencyCents,
   formatPercent,
+  formatShare,
   formatNumber,
   formatDate,
   formatDateLong,
