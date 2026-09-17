@@ -116,104 +116,45 @@
 
       <!-- Key Metrics -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <div class="card relative">
-          <!-- Loading overlay -->
-          <div
-            v-if="chartRefreshing"
-            class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg"
-          >
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-          </div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">This Month</h3>
-          <p class="text-xs text-gray-500 dark:text-gray-400">{{ getThisMonthRange() }}</p>
-          <p class="text-3xl font-bold text-primary-600 mt-2">
-            {{ chartRefreshing ? '—' : formatCurrency(revenueStore.currentMonthRevenue) }}
-          </p>
-          <p v-if="!chartRefreshing" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Est. Profit: {{ formatCurrency(thisMonthProfit) }} ({{ thisMonthMargin.toFixed(0) }}%)
-          </p>
-          <div v-if="!chartRefreshing && comparisonCurrentMonthRevenue !== null" class="mt-3 space-y-1">
-            <p class="text-xs text-gray-500 dark:text-gray-400">As of {{ formatCompareDate() }}</p>
-            <p class="text-xl font-semibold text-gray-700 dark:text-gray-300">
-              {{ formatCurrency(comparisonCurrentMonthRevenue) }}
+        <MetricCard
+          title="This Month"
+          :subtitle="getThisMonthRange()"
+          :loading="chartRefreshing"
+          :value="revenueStore.currentMonthRevenue"
+          :comparison="comparisonCurrentMonthRevenue"
+          :comparison-label="formatCompareDate()"
+        >
+          <template #footnote>
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              Est. Profit: {{ formatCurrency(thisMonthProfit) }} ({{ thisMonthMargin.toFixed(0) }}%)
             </p>
-            <p
-              :class="
-                calculateChange(revenueStore.currentMonthRevenue, comparisonCurrentMonthRevenue).dollar >= 0
-                  ? 'text-green-600'
-                  : 'text-red-600'
-              "
-              class="text-sm font-medium"
-            >
-              {{
-                calculateChange(revenueStore.currentMonthRevenue, comparisonCurrentMonthRevenue).dollar >= 0 ? '+' : ''
-              }}{{
-                formatCurrency(calculateChange(revenueStore.currentMonthRevenue, comparisonCurrentMonthRevenue).dollar)
-              }}
-              ({{
-                calculateChange(revenueStore.currentMonthRevenue, comparisonCurrentMonthRevenue).percent >= 0
-                  ? '+'
-                  : ''
-              }}{{
-                calculateChange(revenueStore.currentMonthRevenue, comparisonCurrentMonthRevenue).percent.toFixed(1)
-              }}%)
-            </p>
-          </div>
-        </div>
+          </template>
+        </MetricCard>
 
-        <div class="card relative">
-          <!-- Loading overlay -->
-          <div
-            v-if="chartRefreshing"
-            class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg"
-          >
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-          </div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">3-Month Forecast</h3>
-          <p class="text-xs text-gray-500 dark:text-gray-400">{{ getThreeMonthRange() }}</p>
-          <p class="text-3xl font-bold text-primary-600 mt-2">
-            {{ chartRefreshing ? '—' : formatCurrency(revenueStore.threeMonthRevenue) }}
-          </p>
-          <p v-if="!chartRefreshing" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Est. Profit: {{ formatCurrency(threeMonthProfit) }} ({{ threeMonthMargin.toFixed(0) }}%)
-          </p>
-          <div v-if="!chartRefreshing && comparisonThreeMonthRevenue !== null" class="mt-3 space-y-1">
-            <p class="text-xs text-gray-500 dark:text-gray-400">As of {{ formatCompareDate() }}</p>
-            <p class="text-xl font-semibold text-gray-700 dark:text-gray-300">
-              {{ formatCurrency(comparisonThreeMonthRevenue) }}
+        <MetricCard
+          title="3-Month Forecast"
+          :subtitle="getThreeMonthRange()"
+          :loading="chartRefreshing"
+          :value="revenueStore.threeMonthRevenue"
+          :comparison="comparisonThreeMonthRevenue"
+          :comparison-label="formatCompareDate()"
+        >
+          <template #footnote>
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              Est. Profit: {{ formatCurrency(threeMonthProfit) }} ({{ threeMonthMargin.toFixed(0) }}%)
             </p>
-            <p
-              :class="
-                calculateChange(revenueStore.threeMonthRevenue, comparisonThreeMonthRevenue).dollar >= 0
-                  ? 'text-green-600'
-                  : 'text-red-600'
-              "
-              class="text-sm font-medium"
-            >
-              {{ calculateChange(revenueStore.threeMonthRevenue, comparisonThreeMonthRevenue).dollar >= 0 ? '+' : ''
-              }}{{
-                formatCurrency(calculateChange(revenueStore.threeMonthRevenue, comparisonThreeMonthRevenue).dollar)
-              }}
-              ({{ calculateChange(revenueStore.threeMonthRevenue, comparisonThreeMonthRevenue).percent >= 0 ? '+' : ''
-              }}{{ calculateChange(revenueStore.threeMonthRevenue, comparisonThreeMonthRevenue).percent.toFixed(1) }}%)
-            </p>
-          </div>
-        </div>
+          </template>
+        </MetricCard>
 
-        <div class="card relative">
-          <!-- Loading overlay -->
-          <div
-            v-if="chartRefreshing"
-            class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg"
-          >
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-          </div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">1-Year Forecast</h3>
-          <p class="text-xs text-gray-500 dark:text-gray-400">{{ getYearForecastRange() }}</p>
-          <p class="text-3xl font-bold text-primary-600 mt-2">
-            {{ chartRefreshing ? '—' : formatCurrency(yearForecast) }}
-          </p>
-          <div v-if="!chartRefreshing" class="space-y-0.5 mt-1">
+        <MetricCard
+          title="1-Year Forecast"
+          :subtitle="getYearForecastRange()"
+          :loading="chartRefreshing"
+          :value="yearForecast"
+          :comparison="comparisonYearForecast"
+          :comparison-label="formatCompareDate()"
+        >
+          <template #footnote>
             <p class="text-xs text-gray-400 dark:text-gray-500">
               Recurring: {{ formatCurrency(twelveMonthsRecurring) }}
             </p>
@@ -229,170 +170,71 @@
             <p class="text-xs text-gray-400 dark:text-gray-500">
               Charges: {{ formatCurrency(revenueStore.yearUnbilledCharges) }}
             </p>
-          </div>
-          <div v-if="!chartRefreshing && comparisonYearForecast !== null" class="mt-3 space-y-1">
-            <p class="text-xs text-gray-500 dark:text-gray-400">As of {{ formatCompareDate() }}</p>
-            <p class="text-xl font-semibold text-gray-700 dark:text-gray-300">
-              {{ formatCurrency(comparisonYearForecast) }}
-            </p>
-            <p
-              :class="
-                calculateChange(yearForecast, comparisonYearForecast).dollar >= 0 ? 'text-green-600' : 'text-red-600'
-              "
-              class="text-sm font-medium"
-            >
-              {{ calculateChange(yearForecast, comparisonYearForecast).dollar >= 0 ? '+' : ''
-              }}{{ formatCurrency(calculateChange(yearForecast, comparisonYearForecast).dollar) }} ({{
-                calculateChange(yearForecast, comparisonYearForecast).percent >= 0 ? '+' : ''
-              }}{{ calculateChange(yearForecast, comparisonYearForecast).percent.toFixed(1) }}%)
-            </p>
-          </div>
-        </div>
+          </template>
+        </MetricCard>
 
-        <div class="card relative">
-          <!-- Loading overlay -->
-          <div
-            v-if="chartRefreshing"
-            class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg"
-          >
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-          </div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">30-Days Unbilled</h3>
-          <p class="text-xs text-gray-500 dark:text-gray-400">{{ getCurrentDateLabel() }}</p>
-          <p class="text-3xl font-bold text-primary-600 mt-2">
-            {{ chartRefreshing ? '—' : formatCurrency(revenueStore.thirtyDaysUnbilled) }}
-          </p>
-          <div v-if="!chartRefreshing && comparisonThirtyDaysUnbilled !== null" class="mt-3 space-y-1">
-            <p class="text-xs text-gray-500 dark:text-gray-400">As of {{ formatCompareDate() }}</p>
-            <p class="text-xl font-semibold text-gray-700 dark:text-gray-300">
-              {{ formatCurrency(comparisonThirtyDaysUnbilled) }}
-            </p>
-            <p
-              :class="
-                calculateChange(revenueStore.thirtyDaysUnbilled, comparisonThirtyDaysUnbilled).dollar >= 0
-                  ? 'text-green-600'
-                  : 'text-red-600'
-              "
-              class="text-sm font-medium"
-            >
-              {{ calculateChange(revenueStore.thirtyDaysUnbilled, comparisonThirtyDaysUnbilled).dollar >= 0 ? '+' : ''
-              }}{{
-                formatCurrency(calculateChange(revenueStore.thirtyDaysUnbilled, comparisonThirtyDaysUnbilled).dollar)
-              }}
-              ({{
-                calculateChange(revenueStore.thirtyDaysUnbilled, comparisonThirtyDaysUnbilled).percent >= 0 ? '+' : ''
-              }}{{
-                calculateChange(revenueStore.thirtyDaysUnbilled, comparisonThirtyDaysUnbilled).percent.toFixed(1)
-              }}%)
-            </p>
-          </div>
-        </div>
+        <MetricCard
+          title="30-Days Unbilled"
+          :subtitle="getCurrentDateLabel()"
+          :loading="chartRefreshing"
+          :value="revenueStore.thirtyDaysUnbilled"
+          :comparison="comparisonThirtyDaysUnbilled"
+          :comparison-label="formatCompareDate()"
+        />
 
-        <div class="card relative">
-          <!-- Loading overlay -->
-          <div
-            v-if="chartRefreshing"
-            class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg"
-          >
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-          </div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Days Cash</h3>
-          <p class="text-xs text-gray-500 dark:text-gray-400">{{ getCurrentDateLabel() }}</p>
-
+        <MetricCard title="Days Cash" :subtitle="getCurrentDateLabel()" :loading="chartRefreshing">
           <div class="grid grid-cols-2 gap-4 mt-2">
-            <!-- Cash only -->
-            <div>
-              <p class="text-3xl font-bold text-primary-600">
-                {{ chartRefreshing ? '—' : daysCash || '—' }}
-              </p>
-              <p class="text-xs text-gray-500 dark:text-gray-400">Cash only</p>
-              <p v-if="!chartRefreshing" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                {{ formatCurrency(revenueStore.totalCashOnHand || 0) }}
-              </p>
-              <p
-                v-if="!chartRefreshing && comparisonDaysCash !== null"
-                :class="calculateChange(daysCash, comparisonDaysCash).dollar >= 0 ? 'text-green-600' : 'text-red-600'"
-                class="text-xs font-medium mt-1"
-              >
-                {{ calculateChange(daysCash, comparisonDaysCash).dollar >= 0 ? '+' : ''
-                }}{{ calculateChange(daysCash, comparisonDaysCash).dollar.toFixed(0) }} days
-              </p>
-            </div>
-            <!-- Cash + AR -->
-            <div>
-              <p class="text-3xl font-bold text-primary-600">
-                {{ chartRefreshing ? '—' : daysCashPlusAR || '—' }}
-              </p>
-              <p class="text-xs text-gray-500 dark:text-gray-400">Cash + AR</p>
-              <p v-if="!chartRefreshing" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                {{ formatCurrency((revenueStore.totalCashOnHand || 0) + (revenueStore.totalReceivables || 0)) }}
-              </p>
-              <p
-                v-if="!chartRefreshing && comparisonDaysCashPlusAR !== null"
-                :class="
-                  calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).dollar >= 0
-                    ? 'text-green-600'
-                    : 'text-red-600'
-                "
-                class="text-xs font-medium mt-1"
-              >
-                {{ calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).dollar >= 0 ? '+' : ''
-                }}{{ calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).dollar.toFixed(0) }} days
-              </p>
-            </div>
+            <DaysStat
+              label="Cash only"
+              :value="daysCash"
+              :loading="chartRefreshing"
+              :amount="revenueStore.totalCashOnHand || 0"
+              :comparison="comparisonDaysCash"
+            />
+            <DaysStat
+              label="Cash + AR"
+              :value="daysCashPlusAR"
+              :loading="chartRefreshing"
+              :amount="(revenueStore.totalCashOnHand || 0) + (revenueStore.totalReceivables || 0)"
+              :comparison="comparisonDaysCashPlusAR"
+            />
           </div>
 
-          <p
-            v-if="!chartRefreshing && (comparisonDaysCash !== null || comparisonDaysCashPlusAR !== null)"
-            class="text-xs text-gray-500 dark:text-gray-400 mt-2"
-          >
-            vs {{ formatCompareDate() }}
-          </p>
-          <p v-if="!chartRefreshing" class="text-xs text-gray-400 dark:text-gray-500 mt-2">
-            AR: {{ formatCurrency(revenueStore.totalReceivables || 0) }} · Expenses:
-            {{ formatCurrency(effectiveMonthlyExpenses) }}/mo
-            <span v-if="authStore.company?.settings?.monthlyExpensesOverride" class="text-blue-500">(override)</span>
-          </p>
-        </div>
+          <template #footnote>
+            <p
+              v-if="comparisonDaysCash !== null || comparisonDaysCashPlusAR !== null"
+              class="text-xs text-gray-500 dark:text-gray-400 mt-2"
+            >
+              vs {{ formatCompareDate() }}
+            </p>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
+              AR: {{ formatCurrency(revenueStore.totalReceivables || 0) }} · Expenses:
+              {{ formatCurrency(effectiveMonthlyExpenses) }}/mo
+              <span v-if="authStore.company?.settings?.monthlyExpensesOverride" class="text-blue-500">(override)</span>
+            </p>
+          </template>
+        </MetricCard>
 
-        <div class="card relative">
-          <!-- Loading overlay -->
-          <div
-            v-if="chartRefreshing"
-            class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg"
-          >
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-          </div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Days of Work</h3>
-          <p class="text-xs text-gray-500 dark:text-gray-400">at {{ targetNetMargin }}% target margin</p>
-
+        <MetricCard title="Days of Work" :subtitle="`at ${targetNetMargin}% target margin`" :loading="chartRefreshing">
           <div class="grid grid-cols-2 gap-4 mt-2">
-            <div>
-              <p class="text-3xl font-bold text-primary-600">
-                {{ chartRefreshing ? '—' : formatDays(daysOfWork.targetWon) }}
-              </p>
-              <p class="text-xs text-gray-500 dark:text-gray-400">Won</p>
-            </div>
-            <div>
-              <p class="text-3xl font-bold text-primary-600">
-                {{ chartRefreshing ? '—' : formatDays(daysOfWork.targetForecasted) }}
-              </p>
-              <p class="text-xs text-gray-500 dark:text-gray-400">Forecasted</p>
-            </div>
+            <DaysStat label="Won" :value="formatDays(daysOfWork.targetWon)" :loading="chartRefreshing" />
+            <DaysStat label="Forecasted" :value="formatDays(daysOfWork.targetForecasted)" :loading="chartRefreshing" />
           </div>
 
-          <div v-if="!chartRefreshing" class="mt-3">
-            <p class="text-xs text-gray-400 dark:text-gray-500">Break even</p>
-            <div class="grid grid-cols-2 gap-4">
-              <p class="text-lg font-semibold text-gray-700 dark:text-gray-300">
-                {{ formatDays(daysOfWork.breakEvenWon) }}
-              </p>
-              <p class="text-lg font-semibold text-gray-700 dark:text-gray-300">
-                {{ formatDays(daysOfWork.breakEvenForecasted) }}
-              </p>
+          <template #footnote>
+            <div class="mt-3">
+              <p class="text-xs text-gray-400 dark:text-gray-500">Break even</p>
+              <div class="grid grid-cols-2 gap-4">
+                <p class="text-lg font-semibold text-gray-700 dark:text-gray-300">
+                  {{ formatDays(daysOfWork.breakEvenWon) }}
+                </p>
+                <p class="text-lg font-semibold text-gray-700 dark:text-gray-300">
+                  {{ formatDays(daysOfWork.breakEvenForecasted) }}
+                </p>
+              </div>
             </div>
-          </div>
-        </div>
+          </template>
+        </MetricCard>
       </div>
 
       <!-- Revenue Chart -->
@@ -596,6 +438,8 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { formatCurrency } from '../lib/format.js'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '../components/AppLayout.vue'
+import DaysStat from '../components/DaysStat.vue'
+import MetricCard from '../components/MetricCard.vue'
 import RevenueChart from '../components/RevenueChart.vue'
 import StatusModal from '../components/StatusModal.vue'
 import TransactionDetailsModal from '../components/TransactionDetailsModal.vue'
