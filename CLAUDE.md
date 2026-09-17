@@ -177,6 +177,23 @@ if (isRevenueAccount) {
 }
 ```
 
+### Slack Sharing
+Two endpoints post to the channel in `SLACK_CHANNEL_ID` using `services/slack.js`:
+
+- `share-chart.js` - the forecast chart as a PNG (html2canvas capture from the Dashboard)
+- `share-client-revenue.js` - the client breakdown as a **Block Kit message**, with the pie chart uploaded as a thread reply
+
+**Share text, not pictures of text.** A rasterized table has to be zoomed to read, and its contents cannot be searched, copied, or read by a screen reader. Charts are fine as images; tabular data is not. `share-client-revenue.js` posts real text and attaches the chart to the thread via `uploadFile(..., threadTs)`.
+
+**Slack limits `buildBlocks()` is written around** - exceeding any of these rejects the whole message:
+- 3000 characters per section block → client lines chunk at `SECTION_CHAR_LIMIT` (2800)
+- 50 blocks per message → at most `MAX_LISTED_CLIENTS` (100) clients are listed individually; the rest become an overflow line
+- `text` is the notification/fallback string and is **required** even when `blocks` is supplied
+
+Clients below `threshold` (default $3,000) collapse into one rollup line, so the listed lines plus the rollup always reconcile against the stated total. The frontend sends `sortedClients`, which already reflects the modal's active type filters, so Slack matches what is on screen rather than a re-query.
+
+`postBlocks()` and `uploadFile()` both use the existing `chat:write` / `files:write` scopes — adding Block Kit needed no re-auth. Note that `SLACK_CHANNEL_ID` is a single hardcoded channel; anything more sensitive than the current internal channel needs channel routing first.
+
 ### Transaction Caching Strategy
 - **Prefetch Window**: 6 months (prev 2, current, next 3)
 - **Trigger**: Background job during QB/PD refresh
@@ -190,6 +207,7 @@ if (isRevenueAccount) {
 - `revenue-*.js` - Revenue data endpoints
 - `qbo-*.js` - QuickBooks OAuth flow
 - `scheduled-*.js` - Cron jobs (daily archive at 3am ET)
+- `share-*.js` - Slack sharing endpoints
 - `utils/` - Shared utilities (auth, database, response helpers)
 - `services/` - Business logic (keep functions thin, logic in services)
 
@@ -232,7 +250,9 @@ Required for local development (see `.env.example`):
 
 6. **Journal entry dates**: All auto-generated journal entries MUST be on the 1st of the month. Use UTC date methods exclusively when creating entries to avoid timezone shifts. See the Date Handling section for proper UTC usage.
 
-7. **Fallback mode**: If revenue calculator is in fallback mode (archive exists but has no QB data), Pipedrive refresh will NOT update the archive to preserve QB data integrity. Run QB Refresh first to get fresh QuickBooks data.
+7. **Points divisor**: Use `company.settings.pricePerPoint` (default 550), never a hardcoded divisor, so point counts agree across the modals and the Slack share.
+
+8. **Fallback mode**: If revenue calculator is in fallback mode (archive exists but has no QB data), Pipedrive refresh will NOT update the archive to preserve QB data integrity. Run QB Refresh first to get fresh QuickBooks data.
 
 ## Architecture Decisions
 

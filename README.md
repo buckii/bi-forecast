@@ -327,6 +327,11 @@ This allows secure HTTPS access to your local development server for webhook tes
 - `client-aliases.js` - Client alias data retrieval
 - `settings.js` - Client alias management and updates
 
+#### Slack Sharing
+- `share-chart.js` - Post the forecast chart to Slack as a PNG
+- `share-client-revenue.js` - Post the client revenue breakdown as a formatted Block Kit message, with the pie chart attached as a thread reply
+- `services/slack.js` - Slack API wrapper (messages, Block Kit, threaded file uploads)
+
 #### Scheduled Tasks
 - `scheduled-archive.js` - Daily data archiving (3am ET)
 
@@ -383,6 +388,7 @@ This allows secure HTTPS access to your local development server for webhook tes
 - **Journal Entry Matching**: Entity references first, then description text matched against both client aliases and real client names (longest match wins), so a client with no alias record still groups with its own invoices
 - **Export/Import Tools**: Scripts for migrating client aliases from development to production
 - **Comprehensive Attribution**: All 6 revenue components attributed to specific clients
+- **Share to Slack**: Post the breakdown as real, selectable Slack text rather than a screenshot — clients at or above a threshold (default $3,000) are listed individually, smaller ones roll up into a single reconciling line, and the pie chart is attached as a thread reply
 
 ### Chart & Visualization Improvements
 - **Horizontal Reference Lines**: Chart now displays monthly expense levels and target revenue lines based on configured net margins
@@ -423,7 +429,7 @@ This allows secure HTTPS access to your local development server for webhook tes
 - Real-time bank balance integration (Plaid)
 - Date comparison views for forecast analysis
 - ML-based forecast predictions
-- Slack/email alert integrations
+- Email alert integrations (Slack sharing and failure alerts are shipped)
 - Budget vs actual comparisons
 - Advanced export capabilities (CSV, Excel)
 - Client-level historical trends and analytics
