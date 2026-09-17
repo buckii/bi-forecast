@@ -974,55 +974,37 @@ function resetToToday() {
   handleDateChange()
 }
 
-function thisMonthVsPriorMonth() {
-  const today = new Date()
-  selectedDateStr.value = format(today, 'yyyy-MM-dd')
-  const firstOfPrevMonth = startOfMonth(subMonths(today, 1))
-  compareAsOfDate.value = format(firstOfPrevMonth, 'yyyy-MM-dd')
+/** First of the month `monthsAgo` months back. */
+function monthStartAgo(monthsAgo) {
+  return startOfMonth(subMonths(new Date(), monthsAgo))
+}
+
+function compareDates(asOf, compareTo) {
+  selectedDateStr.value = format(asOf, 'yyyy-MM-dd')
+  compareAsOfDate.value = format(compareTo, 'yyyy-MM-dd')
   adjustChartRange()
   handleDateChange()
   handleCompareDateChange()
+}
+
+function thisMonthVsPriorMonth() {
+  compareDates(new Date(), monthStartAgo(1))
 }
 
 function lastMonthVsPriorMonth() {
-  const today = new Date()
-  const firstOfLastMonth = startOfMonth(subMonths(today, 1))
-  selectedDateStr.value = format(firstOfLastMonth, 'yyyy-MM-dd')
-  const firstOfMonthBefore = startOfMonth(subMonths(today, 2))
-  compareAsOfDate.value = format(firstOfMonthBefore, 'yyyy-MM-dd')
-  adjustChartRange()
-  handleDateChange()
-  handleCompareDateChange()
+  compareDates(monthStartAgo(1), monthStartAgo(2))
 }
 
 function todayVsStartOfCurrentMonth() {
-  const today = new Date()
-  selectedDateStr.value = format(today, 'yyyy-MM-dd')
-  const startOfCurrent = startOfMonth(today)
-  compareAsOfDate.value = format(startOfCurrent, 'yyyy-MM-dd')
-  adjustChartRange()
-  handleDateChange()
-  handleCompareDateChange()
+  compareDates(new Date(), monthStartAgo(0))
 }
 
 function todayVsStartOfPriorMonth() {
-  const today = new Date()
-  selectedDateStr.value = format(today, 'yyyy-MM-dd')
-  const startOfPrior = startOfMonth(subMonths(today, 1))
-  compareAsOfDate.value = format(startOfPrior, 'yyyy-MM-dd')
-  adjustChartRange()
-  handleDateChange()
-  handleCompareDateChange()
+  compareDates(new Date(), monthStartAgo(1))
 }
 
 function todayVsStartOfTwoMonthsAgo() {
-  const today = new Date()
-  selectedDateStr.value = format(today, 'yyyy-MM-dd')
-  const startOfTwoAgo = startOfMonth(subMonths(today, 2))
-  compareAsOfDate.value = format(startOfTwoAgo, 'yyyy-MM-dd')
-  adjustChartRange()
-  handleDateChange()
-  handleCompareDateChange()
+  compareDates(new Date(), monthStartAgo(2))
 }
 
 function adjustChartRange() {
@@ -1104,42 +1086,24 @@ function handleEndDateChange() {
 
 const showRangeMenu = ref(false)
 
+const QUICK_RANGES = {
+  default: (now) => [startOfMonth(subMonths(now, 1)), endOfMonth(addMonths(now, 4))],
+  '3months': (now) => [startOfMonth(now), endOfMonth(addMonths(now, 2))],
+  next3months: (now) => [startOfMonth(addMonths(now, 1)), endOfMonth(addMonths(now, 3))],
+  '1year': (now) => [startOfMonth(now), endOfMonth(addMonths(now, 11))],
+  thisYear: (now) => [startOfYear(now), endOfYear(now)],
+  lastYear: (now) => [startOfYear(subYears(now, 1)), endOfYear(subYears(now, 1))],
+}
+
 function setQuickRange(type) {
-  const now = new Date()
-  let start, end
+  const range = QUICK_RANGES[type]
 
-  switch (type) {
-    case 'default': // Last month + next 5 (6 total)
-      start = startOfMonth(subMonths(now, 1))
-      end = endOfMonth(addMonths(now, 4))
-      break
-    case '3months': // This month + next 2 (3 total)
-      start = startOfMonth(now)
-      end = endOfMonth(addMonths(now, 2))
-      break
-    case 'next3months': // First of next month (n+1) through end of n+3
-      start = startOfMonth(addMonths(now, 1))
-      end = endOfMonth(addMonths(now, 3))
-      break
-    case '1year': // This month + next 11 (12 total)
-      start = startOfMonth(now)
-      end = endOfMonth(addMonths(now, 11))
-      break
-    case 'thisYear': // Jan 1 to Dec 31 of current year
-      start = startOfYear(now)
-      end = endOfYear(now)
-      break
-    case 'lastYear': // Jan 1 to Dec 31 of last year
-      const lastYear = subYears(now, 1)
-      start = startOfYear(lastYear)
-      end = endOfYear(lastYear)
-      break
-  }
-
-  if (start && end) {
+  if (range) {
+    const [start, end] = range(new Date())
     chartStartDateStr.value = format(start, 'yyyy-MM-dd')
     chartEndDateStr.value = format(end, 'yyyy-MM-dd')
   }
+
   showRangeMenu.value = false
 }
 
