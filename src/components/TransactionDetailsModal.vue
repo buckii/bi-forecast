@@ -641,7 +641,6 @@
 
 <script setup>
 import { ArrowDownTrayIcon, XMarkIcon } from '@heroicons/vue/24/outline'
-import { Chart, registerables } from 'chart.js'
 import { format as formatDate, parseISO } from 'date-fns'
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { formatCurrency, formatShare } from '../lib/format.js'
@@ -652,12 +651,11 @@ import { useAuthStore } from '../stores/auth'
 import { useRevenueStore } from '../stores/revenue'
 import { useTransactionDetails } from '../composables/useTransactionDetails.js'
 import { sortClients, sortTransactions, useTypeFilter } from '../composables/useTypeFilter.js'
+import { useClientPieChart } from '../composables/useClientPieChart.js'
 import JournalEntryBulkEditModal from './JournalEntryBulkEditModal.vue'
 import JournalEntryCreateModal from './JournalEntryCreateModal.vue'
 import JournalEntryDetailModal from './JournalEntryDetailModal.vue'
 import StatusModal from './StatusModal.vue'
-
-Chart.register(...registerables)
 
 const revenueStore = useRevenueStore()
 const router = useRouter()
@@ -730,7 +728,13 @@ const refreshing = ref(false)
 const expandedTransactions = ref(new Set())
 const expandedClients = ref(new Set())
 const pieCanvas = ref(null)
-let pieChartInstance = null
+
+const {
+  draw: createPieChart,
+  destroy: destroyPieChart,
+  toImage: pieChartImage,
+  hasChart: hasPieChart,
+} = useClientPieChart({ canvas: pieCanvas, clients: sortedClients, total: clientTotalRevenue })
 
 const sharingToSlack = ref(false)
 const showShareModal = ref(false)
@@ -837,10 +841,7 @@ watch(
       clientSortDirection.value = 'desc'
 
       // Cleanup pie chart
-      if (pieChartInstance) {
-        pieChartInstance.destroy()
-        pieChartInstance = null
-      }
+      destroyPieChart()
     }
   },
   { immediate: true },
@@ -1023,7 +1024,7 @@ async function shareClientsToSlack() {
   try {
     // Capture the pie chart straight off the Chart.js canvas - no html2canvas
     // needed, since we only want the chart and not the surrounding table
-    const imageData = pieChartInstance ? pieChartInstance.toBase64Image('image/png', 1.0) : null
+    const imageData = pieChartImage()
 
     // Deep link back to this exact view, using the modal params the Dashboard
     // restores on mount (modalMonth/modalTab for a single month, modalStart/
@@ -1089,95 +1090,6 @@ async function shareClientsToSlack() {
   }
 }
 
-function getClientColors() {
-  const colors = [
-    '#3b82f6',
-    '#10b981',
-    '#f59e0b',
-    '#8b5cf6',
-    '#ec4899',
-    '#64748b',
-    '#06b6d4',
-    '#84cc16',
-    '#f97316',
-    '#a855f7',
-    '#14b8a6',
-    '#6366f1',
-    '#ef4444',
-    '#22c55e',
-    '#eab308',
-    '#d946ef',
-    '#0ea5e9',
-    '#f43f5e',
-  ]
-  return colors
-}
-
-function createPieChart() {
-  if (!pieCanvas.value || !clientData.value?.clients || clientData.value.clients.length === 0) return
-
-  if (pieChartInstance) {
-    pieChartInstance.destroy()
-  }
-
-  const ctx = pieCanvas.value.getContext('2d')
-  const colors = getClientColors()
-  const clients = sortedClients.value
-  const total = clientTotalRevenue.value
-
-  // Show top 10 clients individually, group the rest
-  const mainClients = clients.slice(0, 10)
-  const otherClients = clients.slice(10)
-
-  // Add "Other Clients" if there are any
-  if (otherClients.length > 0) {
-    const otherTotal = otherClients.reduce((sum, c) => sum + c.total, 0)
-    mainClients.push({
-      client: `Other Clients (${otherClients.length})`,
-      total: otherTotal,
-    })
-  }
-
-  pieChartInstance = new Chart(ctx, {
-    type: 'pie',
-    data: {
-      labels: mainClients.map((c) => c.client),
-      datasets: [
-        {
-          data: mainClients.map((c) => c.total),
-          backgroundColor: mainClients.map((_, i) => colors[i % colors.length]),
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'right',
-          labels: {
-            color: isDarkModeGlobal.value ? '#ffffff' : '#374151',
-            padding: 10,
-            font: {
-              size: 11,
-            },
-          },
-        },
-        tooltip: {
-          callbacks: {
-            label: function (context) {
-              const label = context.label || ''
-              const value = formatCurrency(context.parsed)
-              const percent = formatShare(context.parsed, total)
-              return `${label}: ${value} (${percent})`
-            },
-          },
-        },
-      },
-    },
-  })
-}
-
 // Watch for tab changes to create/destroy pie chart, save preference, and update URL
 watch(activeTab, (newTab) => {
   // Save to localStorage for next time
@@ -1189,9 +1101,8 @@ watch(activeTab, (newTab) => {
 
   if (newTab === 'clients' && clientData.value?.clients) {
     setTimeout(() => createPieChart(), 100)
-  } else if (pieChartInstance) {
-    pieChartInstance.destroy()
-    pieChartInstance = null
+  } else {
+    destroyPieChart()
   }
 })
 
@@ -1311,7 +1222,7 @@ function handleJournalEntryDeleted() {
 
 // Watch for dark mode changes to update chart
 watch(isDarkModeGlobal, () => {
-  if (pieChartInstance && activeTab.value === 'clients') {
+  if (hasPieChart.value && activeTab.value === 'clients') {
     createPieChart()
   }
 })
@@ -1320,7 +1231,7 @@ watch(isDarkModeGlobal, () => {
 watch(
   clientEnabledTypes,
   () => {
-    if (pieChartInstance && activeTab.value === 'clients') {
+    if (hasPieChart.value && activeTab.value === 'clients') {
       createPieChart()
     }
   },
@@ -1329,10 +1240,7 @@ watch(
 
 // Cleanup on unmount
 onUnmounted(() => {
-  if (pieChartInstance) {
-    pieChartInstance.destroy()
-    pieChartInstance = null
-  }
+  destroyPieChart()
 })
 </script>
 

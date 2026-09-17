@@ -50,13 +50,11 @@ vi.mock('vue-router', () => ({
 }))
 
 // Mock Chart.js
-vi.mock('chart.js', () => ({
-  Chart: vi.fn(() => ({
-    destroy: vi.fn(),
-    update: vi.fn(),
-  })),
-  registerables: [],
-}))
+vi.mock('chart.js', () => {
+  const Chart = vi.fn(() => ({ destroy: vi.fn(), update: vi.fn(), toBase64Image: vi.fn() }))
+  Chart.register = vi.fn()
+  return { Chart, registerables: [] }
+})
 
 describe('Dashboard - Simple Tests', () => {
   let pinia
