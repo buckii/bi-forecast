@@ -7,6 +7,7 @@ const { detectPairs } = require('./services/journal-entry-pairs.js')
 const { toDateString, addMonths, todayString } = require('./utils/dates.js')
 
 const DEFAULT_WINDOW_MONTHS = 6
+const MAX_PAGES = 10
 
 exports.handler = createHandler({ errorMessage: 'Failed to fetch journal entries' }, async ({ company, query }) => {
   const today = todayString()
@@ -15,12 +16,7 @@ exports.handler = createHandler({ errorMessage: 'Failed to fetch journal entries
   const view = query.view || 'all'
 
   const qbo = new QuickBooksService(company._id)
-  const { accessToken, realmId } = await qbo.getAccessToken()
-
-  const qbQuery = `SELECT * FROM JournalEntry WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}' ORDER BY TxnDate DESC`
-  const data = await qbo.makeRequest(`query?query=${encodeURIComponent(qbQuery)}`, realmId, accessToken)
-
-  const entries = (data.QueryResponse?.JournalEntry || []).filter(hasUnearnedRevenue)
+  const entries = (await qbo.getJournalEntries(startDate, endDate, MAX_PAGES)).filter(hasUnearnedRevenue)
   const { paired, unpaired } = detectPairs(entries)
 
   return {
