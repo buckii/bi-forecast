@@ -87,7 +87,6 @@ export function useDataRefresh() {
       throw new Error(`Please wait ${secondsRemaining} seconds before refreshing again`)
     }
 
-    lastQBORefresh.value = now
     refreshingQBO.value = true
     try {
       const response = await fetch('/.netlify/functions/revenue-refresh-qbo', {
@@ -109,6 +108,8 @@ export function useDataRefresh() {
 
       // Trigger revenue store refresh with cache bypass
       await revenueStore.loadRevenueData(null, true)
+      // Only a completed refresh starts the debounce; a failed one must be retryable.
+      lastQBORefresh.value = Date.now()
     } catch (error) {
       console.error('Error refreshing QBO data:', error)
       throw error // Re-throw so calling component can handle UI feedback
@@ -127,7 +128,6 @@ export function useDataRefresh() {
       throw new Error(`Please wait ${secondsRemaining} seconds before refreshing again`)
     }
 
-    lastPipedriveRefresh.value = now
     refreshingPipedrive.value = true
     try {
       const response = await fetch('/.netlify/functions/revenue-refresh-pipedrive', {
@@ -149,6 +149,8 @@ export function useDataRefresh() {
 
       // Trigger revenue store refresh with cache bypass
       await revenueStore.loadRevenueData(null, true)
+      // Only a completed refresh starts the debounce; a failed one must be retryable.
+      lastPipedriveRefresh.value = Date.now()
     } catch (error) {
       console.error('Error refreshing Pipedrive data:', error)
       throw error // Re-throw so calling component can handle UI feedback
