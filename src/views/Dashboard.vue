@@ -599,14 +599,12 @@ import AppLayout from '../components/AppLayout.vue'
 import RevenueChart from '../components/RevenueChart.vue'
 import StatusModal from '../components/StatusModal.vue'
 import TransactionDetailsModal from '../components/TransactionDetailsModal.vue'
-import { isDarkModeGlobal } from '../composables/useDarkMode'
 import { useDataRefresh } from '../composables/useDataRefresh'
 import { formatDays, useDashboardMetrics } from '../composables/useDashboardMetrics.js'
 import { calculateChange, useComparison } from '../composables/useComparison.js'
-import revenueService from '../services/revenue'
+import { useChartSharing } from '../composables/useChartSharing.js'
 import { useAuthStore } from '../stores/auth'
 import { useRevenueStore } from '../stores/revenue'
-import formulas from '../lib/metrics-formulas.js'
 
 const revenueStore = useRevenueStore()
 const authStore = useAuthStore()
@@ -718,13 +716,20 @@ const endDateChangeTimeout = ref(null)
 
 const showTransactionModal = ref(false)
 const selectedTransaction = ref({ month: '', startDate: '', endDate: '', component: '' })
-const sharingToSlack = ref(false)
 const chartContainer = ref(null)
 const revenueChart = ref(null)
-const showShareModal = ref(false)
-const shareModalState = ref('loading')
-const shareModalError = ref('')
-const shareModalErrorDetails = ref('')
+
+const {
+  sharingToSlack,
+  showShareModal,
+  shareModalState,
+  shareModalError,
+  shareModalErrorDetails,
+  shareChartToSlack,
+  downloadChart,
+  closeShareModal,
+  showError,
+} = useChartSharing(chartContainer)
 
 const chartData = computed(() => {
   // Return empty array while refreshing to prevent flash of old data
@@ -920,10 +925,10 @@ function handleDateChange() {
 
 function showMissingArchiveModal(date) {
   const formattedDate = format(date, 'MMM d, yyyy')
-  shareModalState.value = 'error'
-  shareModalError.value = `No data available for ${formattedDate}`
-  shareModalErrorDetails.value = `There is no archived data for the selected date (${formattedDate}). This could mean:\n\n• The date is in the future\n• No data was archived on that date\n• The date is before the system started tracking data\n\nPlease select a different date.`
-  showShareModal.value = true
+  showError(
+    `No data available for ${formattedDate}`,
+    `There is no archived data for the selected date (${formattedDate}). This could mean:\n\n• The date is in the future\n• No data was archived on that date\n• The date is before the system started tracking data\n\nPlease select a different date.`,
+  )
 }
 
 function handleCompareDateChange() {
@@ -1177,121 +1182,6 @@ function showDetail() {
     component: '', // All components
   }
   showTransactionModal.value = true
-}
-
-async function shareChartToSlack() {
-  if (!chartContainer.value) return
-
-  // Show modal in loading state
-  shareModalState.value = 'loading'
-  shareModalError.value = ''
-  shareModalErrorDetails.value = ''
-  showShareModal.value = true
-  sharingToSlack.value = true
-
-  try {
-    // Step 1: Capture chart
-    const html2canvas = (await import('html2canvas')).default
-
-    const canvas = await html2canvas(chartContainer.value, {
-      backgroundColor: isDarkModeGlobal.value ? '#111827' : '#ffffff', // Use theme background color
-      scale: 2, // Higher resolution
-      useCORS: true,
-      logging: false,
-      onclone: (clonedDoc) => {
-        // Find the container in the cloned document and add padding
-        const clonedContainer = clonedDoc.querySelector('[style*="60vh"]')
-        if (clonedContainer) {
-          clonedContainer.style.height = 'auto' // Allow growing
-          clonedContainer.style.paddingBottom = '60px' // Substantial padding
-          clonedContainer.style.backgroundColor = isDarkModeGlobal.value ? '#111827' : '#ffffff'
-        }
-      },
-    })
-
-    // Step 2: Convert to base64
-    const imageData = canvas.toDataURL('image/png', 1.0)
-
-    // Step 3: Send to backend with auth token
-    const response = await fetch('/.netlify/functions/share-chart', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${authStore.token}`,
-      },
-      body: JSON.stringify({
-        imageData,
-        chartTitle: 'Monthly Revenue Forecast',
-      }),
-    })
-
-    const responseData = await response.json()
-
-    if (!response.ok) {
-      throw new Error(responseData.message || `HTTP ${response.status}: ${response.statusText}`)
-    }
-
-    // Success!
-    shareModalState.value = 'success'
-  } catch (error) {
-    console.error('Error sharing chart to Slack:', error)
-
-    // Show error in modal
-    shareModalState.value = 'error'
-    shareModalError.value = error.message || 'An unexpected error occurred'
-
-    // Add technical details for debugging
-    const details = []
-    details.push(`Error: ${error.message}`)
-    details.push(`Auth token: ${authStore.token ? 'Present' : 'Missing'}`)
-    details.push(`Chart container: ${chartContainer.value ? 'Found' : 'Missing'}`)
-
-    if (error.stack) {
-      details.push(`Stack trace: ${error.stack}`)
-    }
-
-    shareModalErrorDetails.value = details.join('\n\n')
-  } finally {
-    sharingToSlack.value = false
-  }
-}
-
-function closeShareModal() {
-  showShareModal.value = false
-}
-
-async function downloadChart() {
-  if (!chartContainer.value) return
-
-  try {
-    const html2canvas = (await import('html2canvas')).default
-    const canvas = await html2canvas(chartContainer.value, {
-      backgroundColor: isDarkModeGlobal.value ? '#111827' : '#ffffff', // Use theme background color
-      scale: 2, // Higher resolution
-      useCORS: true,
-      logging: false,
-      onclone: (clonedDoc) => {
-        // Find the container in the cloned document and add padding
-        const clonedContainer = clonedDoc.querySelector('[style*="60vh"]')
-        if (clonedContainer) {
-          clonedContainer.style.height = 'auto' // Allow growing
-          clonedContainer.style.paddingBottom = '60px' // Substantial padding
-          clonedContainer.style.backgroundColor = isDarkModeGlobal.value ? '#111827' : '#ffffff'
-        }
-      },
-    })
-
-    const imageData = canvas.toDataURL('image/png', 1.0)
-
-    const link = document.createElement('a')
-    link.href = imageData
-    link.download = `revenue-forecast-${format(new Date(), 'yyyy-MM-dd')}.png`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  } catch (error) {
-    console.error('Error downloading chart:', error)
-  }
 }
 
 // Function to update URL query parameters
