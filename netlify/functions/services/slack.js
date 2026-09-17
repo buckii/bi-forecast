@@ -88,7 +88,19 @@ The ${dataSource} integration is experiencing issues. This may affect revenue fo
     })
   }
 
-  async uploadFile(fileBuffer, filename, title, initialComment) {
+  /**
+   * Post a Block Kit message. `text` is the notification/fallback string shown in
+   * sidebars, push notifications and by clients that cannot render blocks - it is
+   * required, not optional.
+   *
+   * @returns {Promise<Object|null>} The Slack result, whose `ts` can be passed to
+   *   uploadFile() as threadTs to attach a file as a reply.
+   */
+  async postBlocks(blocks, text) {
+    return this.sendMessage(text, { blocks })
+  }
+
+  async uploadFile(fileBuffer, filename, title, initialComment, threadTs = null) {
     if (!this.botToken || !this.channelId) {
       console.warn('Slack file upload skipped: SLACK_BOT_TOKEN or SLACK_CHANNEL_ID not configured')
       return null
@@ -148,7 +160,8 @@ The ${dataSource} integration is experiencing issues. This may affect revenue fo
             }
           ],
           channel_id: this.channelId,
-          initial_comment: initialComment || undefined
+          initial_comment: initialComment || undefined,
+          thread_ts: threadTs || undefined
         })
       })
 

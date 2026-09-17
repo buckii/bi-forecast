@@ -296,7 +296,30 @@
 
         <!-- Pie Chart -->
         <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Revenue by Client</h4>
+          <div class="flex items-start justify-between gap-3 mb-4">
+            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Revenue by Client</h4>
+            <div class="flex flex-col items-end gap-1">
+              <button @click="shareClientsToSlack" :disabled="sharingToSlack || !sortedClients.length"
+                class="btn-secondary inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
+                <svg v-if="sharingToSlack" class="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg"
+                  fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor"
+                    d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                  </path>
+                </svg>
+                <svg v-else class="-ml-1 mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path
+                    d="M5.042 15.165a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 10.12h6.481v2.522H5.042a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 7.597h6.481V5.074c0-1.393 1.135-2.523 2.52-2.523a2.528 2.528 0 0 1 2.52 2.523v2.523h2.515c1.393 0 2.52 1.135 2.52 2.523a2.528 2.528 0 0 1-2.52 2.523h-2.515v2.522h2.515a2.528 2.528 0 0 1 2.52 2.523A2.528 2.528 0 0 1 16.558 18.88h-2.515v2.523c0 1.393-1.135 2.523-2.52 2.523a2.528 2.528 0 0 1-2.52-2.523V18.88H5.042a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 15.835h6.481v-2.522H5.042z" />
+                </svg>
+                {{ sharingToSlack ? 'Sending...' : 'Send to Slack' }}
+              </button>
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                {{ sharedClientCount }} {{ sharedClientCount === 1 ? 'client' : 'clients' }}
+                {{ formatCurrency(shareThreshold) }}+, rest rolled up
+              </p>
+            </div>
+          </div>
           <div style="height: 300px;">
             <canvas ref="pieCanvas"></canvas>
           </div>
@@ -455,6 +478,13 @@
     <!-- Journal Entry Bulk Edit Modal -->
     <JournalEntryBulkEditModal v-if="showBulkEditModal" :initialEntryId="bulkEditEntryId"
       @close="showBulkEditModal = false" @updated="handleJournalEntryUpdated" />
+
+    <!-- Slack share status -->
+    <StatusModal :show="showShareModal" :state="shareModalState" loading-title="Sharing to Slack..."
+      loading-message="Posting the client breakdown and attaching the chart."
+      success-title="Shared to Slack" :success-message="shareSuccessMessage" error-title="Share Failed"
+      :error-message="shareModalError" :error-details="shareModalErrorDetails" @close="closeShareModal"
+      @retry="shareClientsToSlack" />
   </div>
 </template>
 
@@ -473,6 +503,7 @@ import { useRevenueStore } from '../stores/revenue'
 import JournalEntryBulkEditModal from './JournalEntryBulkEditModal.vue'
 import JournalEntryCreateModal from './JournalEntryCreateModal.vue'
 import JournalEntryDetailModal from './JournalEntryDetailModal.vue'
+import StatusModal from './StatusModal.vue'
 
 
 Chart.register(...registerables)
@@ -509,6 +540,11 @@ const props = defineProps({
   autoExport: {
     type: Boolean,
     default: false
+  },
+  // Clients below this are rolled up into a single line when sharing to Slack
+  shareThreshold: {
+    type: Number,
+    default: 3000
   }
 })
 
@@ -557,6 +593,17 @@ const expandedTransactions = ref(new Set())
 const expandedClients = ref(new Set())
 const pieCanvas = ref(null)
 let pieChartInstance = null
+
+const sharingToSlack = ref(false)
+const showShareModal = ref(false)
+const shareModalState = ref('loading')
+const shareModalError = ref('')
+const shareModalErrorDetails = ref('')
+const shareSuccessMessage = ref('')
+
+const sharedClientCount = computed(
+  () => sortedClients.value.filter(c => (c.total || 0) >= props.shareThreshold).length
+)
 
 // Journal Entry Modal State
 const showJournalEntryCreateModal = ref(false)
@@ -1173,6 +1220,81 @@ function formatPercent(value, total) {
 function formatPoints(value) {
   const points = value / pricePerPoint.value
   return points.toFixed(1)
+}
+
+function closeShareModal() {
+  showShareModal.value = false
+}
+
+/**
+ * Share the client breakdown to Slack as a Block Kit message (real, selectable
+ * text) with the pie chart attached as a thread reply - a rasterized table would
+ * have to be zoomed to read.
+ */
+async function shareClientsToSlack() {
+  if (!sortedClients.value.length) return
+
+  shareModalState.value = 'loading'
+  shareModalError.value = ''
+  shareModalErrorDetails.value = ''
+  showShareModal.value = true
+  sharingToSlack.value = true
+
+  try {
+    // Capture the pie chart straight off the Chart.js canvas - no html2canvas
+    // needed, since we only want the chart and not the surrounding table
+    const imageData = pieChartInstance
+      ? pieChartInstance.toBase64Image('image/png', 1.0)
+      : null
+
+    // Deep link back to this exact month/as-of so anyone can open the live list
+    const params = new URLSearchParams({ month: props.month })
+    if (props.asOf) params.append('date', props.asOf)
+    const appUrl = `${window.location.origin}/?${params.toString()}`
+
+    const response = await fetch('/.netlify/functions/share-client-revenue', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authStore.token}`
+      },
+      body: JSON.stringify({
+        // sortedClients reflects the active type filters, so Slack gets exactly
+        // what is on screen
+        clients: sortedClients.value,
+        month: props.month,
+        asOf: props.asOf || null,
+        includeWeightedSales: revenueStore.includeWeightedSales,
+        threshold: props.shareThreshold,
+        appUrl,
+        imageData
+      })
+    })
+
+    const responseData = await response.json()
+
+    if (!response.ok) {
+      throw new Error(responseData.message || `HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    const data = responseData.data || responseData
+    const parts = [`Shared ${data.namedCount} ${data.namedCount === 1 ? 'client' : 'clients'} at or above ${formatCurrency(props.shareThreshold)}`]
+    if (data.rolledUpCount > 0) {
+      parts.push(`${data.rolledUpCount} smaller ${data.rolledUpCount === 1 ? 'client' : 'clients'} rolled up`)
+    }
+    if (imageData && !data.chartShared) {
+      parts.push('the chart could not be attached')
+    }
+    shareSuccessMessage.value = `${parts.join(', ')}.`
+    shareModalState.value = 'success'
+  } catch (err) {
+    console.error('Failed to share client revenue to Slack:', err)
+    shareModalState.value = 'error'
+    shareModalError.value = err.message || 'An unexpected error occurred'
+    shareModalErrorDetails.value = err.stack || ''
+  } finally {
+    sharingToSlack.value = false
+  }
 }
 
 function getClientColors() {
