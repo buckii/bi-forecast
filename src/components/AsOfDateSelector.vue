@@ -1,16 +1,8 @@
 <template>
   <div class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
-    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-      View as of:
-    </label>
+    <label class="text-sm font-medium text-gray-700 dark:text-gray-300"> View as of: </label>
     <div class="flex items-center space-x-2">
-      <input
-        type="date"
-        :value="modelValue"
-        @input="handleDateChange"
-        :max="maxDate"
-        class="input text-sm"
-      />
+      <input type="date" :value="modelValue" @input="handleDateChange" :max="maxDate" class="input text-sm" />
       <button
         v-if="modelValue"
         @click="clearDate"
@@ -37,8 +29,8 @@ export default {
   props: {
     modelValue: {
       type: String,
-      default: ''
-    }
+      default: '',
+    },
   },
   emits: ['update:modelValue'],
   setup(props, { emit }) {
@@ -56,9 +48,9 @@ export default {
     return {
       maxDate,
       handleDateChange,
-      clearDate
+      clearDate,
     }
-  }
+  },
 }
 </script>
 

@@ -9,75 +9,56 @@ export const useRevenueStore = defineStore('revenue', () => {
   const isHistorical = ref(false)
   const loading = ref(false)
   const error = ref(null)
-  
+
   const revenueData = ref([])
   const exceptions = ref({
     overdueDeals: [],
     pastDelayedCharges: [],
-    wonUnscheduled: []
+    wonUnscheduled: [],
   })
   const balances = ref({
     assets: [],
     receivables: null,
-    monthlyExpenses: 0
+    monthlyExpenses: 0,
   })
-  
+
   const includeWeightedSales = ref(true)
   const lastUpdated = ref(null)
-  
-  const currentMonthKey = computed(() =>
-    format(startOfMonth(new Date()), 'yyyy-MM-dd')
-  )
+
+  const currentMonthKey = computed(() => format(startOfMonth(new Date()), 'yyyy-MM-dd'))
 
   const currentMonthRevenue = computed(() =>
-    formulas.currentMonthRevenue(
-      revenueData.value,
-      currentMonthKey.value,
-      includeWeightedSales.value
-    )
+    formulas.currentMonthRevenue(revenueData.value, currentMonthKey.value, includeWeightedSales.value),
   )
 
   const threeMonthRevenue = computed(() =>
-    formulas.threeMonthRevenue(
-      revenueData.value,
-      currentMonthKey.value,
-      includeWeightedSales.value
-    )
+    formulas.threeMonthRevenue(revenueData.value, currentMonthKey.value, includeWeightedSales.value),
   )
 
   const yearUnbilledCharges = computed(() => balances.value.yearUnbilled || 0)
 
-  const thirtyDaysUnbilled = computed(() =>
-    formulas.thirtyDaysUnbilled(balances.value)
-  )
+  const thirtyDaysUnbilled = computed(() => formulas.thirtyDaysUnbilled(balances.value))
 
-  const totalCashOnHand = computed(() =>
-    formulas.totalCashOnHand(balances.value.assets)
-  )
+  const totalCashOnHand = computed(() => formulas.totalCashOnHand(balances.value.assets))
 
   const daysCash = computed(() =>
-    formulas.daysCash(
-      totalCashOnHand.value,
-      parseFloat(balances.value.monthlyExpenses) || 0
-    )
+    formulas.daysCash(totalCashOnHand.value, parseFloat(balances.value.monthlyExpenses) || 0),
   )
 
-  const totalReceivables = computed(() =>
-    formulas.totalReceivables(balances.value.receivables)
-  )
+  const totalReceivables = computed(() => formulas.totalReceivables(balances.value.receivables))
 
   const daysCashPlusAR = computed(() =>
     formulas.daysCashPlusAR(
       totalCashOnHand.value,
       totalReceivables.value,
-      parseFloat(balances.value.monthlyExpenses) || 0
-    )
+      parseFloat(balances.value.monthlyExpenses) || 0,
+    ),
   )
-  
+
   async function loadRevenueData(date = null, bypassCache = false) {
     loading.value = true
     error.value = null
-    
+
     try {
       if (date) {
         selectedDate.value = date
@@ -103,7 +84,7 @@ export const useRevenueStore = defineStore('revenue', () => {
       loading.value = false
     }
   }
-  
+
   async function refreshQuickbooks() {
     loading.value = true
     try {
@@ -115,7 +96,7 @@ export const useRevenueStore = defineStore('revenue', () => {
       loading.value = false
     }
   }
-  
+
   async function refreshPipedrive() {
     loading.value = true
     try {
@@ -127,7 +108,7 @@ export const useRevenueStore = defineStore('revenue', () => {
       loading.value = false
     }
   }
-  
+
   return {
     selectedDate,
     isHistorical,
@@ -148,6 +129,6 @@ export const useRevenueStore = defineStore('revenue', () => {
     daysCashPlusAR,
     loadRevenueData,
     refreshQuickbooks,
-    refreshPipedrive
+    refreshPipedrive,
   }
 })

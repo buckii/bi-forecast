@@ -4,17 +4,12 @@ const { getCollection } = require('./utils/database.js')
 const QuickBooksService = require('./services/quickbooks.js')
 const { isDateOnly, startOfDay } = require('./utils/dates.js')
 
-const OPEN_INVOICE_QUERY =
-  "SELECT * FROM Invoice WHERE Balance != '0.00' ORDER BY TxnDate ASC MAXRESULTS 100"
+const OPEN_INVOICE_QUERY = "SELECT * FROM Invoice WHERE Balance != '0.00' ORDER BY TxnDate ASC MAXRESULTS 100"
 
 async function fetchOpenInvoices(companyId) {
   const qbo = new QuickBooksService(companyId)
   const { accessToken, realmId } = await qbo.getAccessToken()
-  const data = await qbo.makeRequest(
-    `query?query=${encodeURIComponent(OPEN_INVOICE_QUERY)}`,
-    realmId,
-    accessToken
-  )
+  const data = await qbo.makeRequest(`query?query=${encodeURIComponent(OPEN_INVOICE_QUERY)}`, realmId, accessToken)
   return data.QueryResponse?.Invoice || []
 }
 
@@ -42,7 +37,7 @@ function formatInvoice(invoice) {
     totalAmount: parseFloat(invoice.TotalAmt) || 0,
     balance,
     status: balance > 0 ? 'open' : 'paid',
-    currencyCode: invoice.CurrencyRef?.value || 'USD'
+    currencyCode: invoice.CurrencyRef?.value || 'USD',
   }
 }
 
@@ -50,7 +45,7 @@ async function archivedInvoices(companyId, asOf) {
   const archivesCollection = await getCollection('revenue_archives')
   const archive = await archivesCollection.findOne({
     companyId,
-    archiveDate: startOfDay(asOf)
+    archiveDate: startOfDay(asOf),
   })
 
   return archive?.quickbooks?.invoices?.open || null
@@ -71,7 +66,7 @@ exports.handler = createHandler({ errorMessage: 'Failed to fetch invoices' }, as
     if (!invoices) {
       console.log(`[Invoices] No archive for ${asOf}, filtering live data by creation time`)
       const asOfEnd = new Date(`${asOf}T23:59:59.999Z`)
-      invoices = (await fetchOpenInvoices(company._id)).filter(i => createdOnOrBefore(i, asOfEnd))
+      invoices = (await fetchOpenInvoices(company._id)).filter((i) => createdOnOrBefore(i, asOfEnd))
     }
   } else {
     invoices = await fetchOpenInvoices(company._id)
@@ -83,6 +78,6 @@ exports.handler = createHandler({ errorMessage: 'Failed to fetch invoices' }, as
     invoices: formattedInvoices,
     count: formattedInvoices.length,
     timestamp: new Date().toISOString(),
-    asOf: asOf || 'current'
+    asOf: asOf || 'current',
   }
 })

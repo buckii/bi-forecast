@@ -29,11 +29,11 @@ exports.handler = createHandler(
       { companyId: company._id, service: 'pipedrive' },
       {
         $set: { accessToken: encrypt(apiKey), updatedAt: new Date() },
-        $setOnInsert: { companyId: company._id, service: 'pipedrive', createdAt: new Date() }
+        $setOnInsert: { companyId: company._id, service: 'pipedrive', createdAt: new Date() },
       },
-      { upsert: true }
+      { upsert: true },
     )
 
     return { message: 'Pipedrive API key saved successfully', connected: true }
-  }
+  },
 )

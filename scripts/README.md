@@ -82,25 +82,30 @@ node scripts/seed-client-aliases.cjs
 ### Migration Workflow: Dev to Production
 
 1. **Export from Development**
+
    ```bash
    # Make sure .env points to dev database
    node scripts/export-client-aliases.cjs
    ```
+
    This creates `scripts/client-aliases-data.json`
 
 2. **Commit the JSON file** (optional but recommended)
+
    ```bash
    git add scripts/client-aliases-data.json
    git commit -m "Update client aliases export for production deployment"
    ```
 
 3. **Update Environment for Production**
+
    ```bash
    # Update .env to point to production MongoDB
    MONGODB_URI=mongodb+srv://production-cluster...
    ```
 
 4. **Import to Production**
+
    ```bash
    node scripts/seed-client-aliases.cjs
    ```
@@ -120,13 +125,16 @@ node scripts/seed-client-aliases.cjs
 ### Troubleshooting
 
 **Error: "No companies found in database"**
+
 - Make sure you're connected to the correct MongoDB database
 - Verify that the `companies` collection has at least one document
 
 **Error: "Input file not found"**
+
 - Run `export-client-aliases.cjs` first to create the JSON file
 
 **Multiple companies warning**
+
 - The script will use the first company found
 - For more control, you can modify the script to specify a company ID
 
@@ -135,6 +143,7 @@ node scripts/seed-client-aliases.cjs
 **File:** `client-aliases-data.json`
 
 This file contains the exported client alias data and should be updated before each production deployment. It includes:
+
 - Export timestamp
 - Source database and company information
 - All client aliases with their alternative names

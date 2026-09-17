@@ -2,19 +2,16 @@
   <AppLayout>
     <div class="space-y-6">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Settings</h1>
-      
+
       <!-- Company Information -->
       <div class="card">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Company Information</h2>
-          <button 
-            @click="editingCompany = !editingCompany"
-            class="btn-secondary text-sm"
-          >
+          <button @click="editingCompany = !editingCompany" class="btn-secondary text-sm">
             {{ editingCompany ? 'Cancel' : 'Edit' }}
           </button>
         </div>
-        
+
         <div v-if="!editingCompany" class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Company Name</label>
@@ -25,16 +22,11 @@
             <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ company?.domain || 'N/A' }}</p>
           </div>
         </div>
-        
+
         <div v-else class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Company Name</label>
-            <input
-              type="text"
-              v-model="editableCompanyName"
-              class="input mt-1"
-              placeholder="Enter company name"
-            />
+            <input type="text" v-model="editableCompanyName" class="input mt-1" placeholder="Enter company name" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Domain</label>
@@ -42,12 +34,8 @@
             <p class="text-xs text-gray-400">Domain cannot be changed as it's linked to your Google account</p>
           </div>
           <div class="flex justify-end space-x-3">
-            <button @click="editingCompany = false" class="btn-secondary">
-              Cancel
-            </button>
-            <button @click="saveCompanyInfo" class="btn-primary">
-              Save Changes
-            </button>
+            <button @click="editingCompany = false" class="btn-secondary">Cancel</button>
+            <button @click="saveCompanyInfo" class="btn-primary">Save Changes</button>
           </div>
         </div>
       </div>
@@ -65,7 +53,7 @@
           <span class="ml-2 text-gray-700 dark:text-gray-300">Dark mode</span>
         </label>
       </div>
-      
+
       <!-- API Connections -->
       <div class="card">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">API Connections</h2>
@@ -74,13 +62,15 @@
           <div class="flex items-center justify-between p-4 border dark:border-gray-600 rounded-lg">
             <div>
               <h3 class="font-medium text-gray-900 dark:text-gray-100">QuickBooks Online</h3>
-              <p class="text-sm text-gray-500 dark:text-gray-400">Connect to sync invoices, journal entries, and delayed charges</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400">
+                Connect to sync invoices, journal entries, and delayed charges
+              </p>
             </div>
             <div class="flex items-center space-x-3">
               <span class="text-sm" :class="qboConnected ? 'text-green-600' : 'text-gray-500'">
                 {{ qboConnected ? 'Connected' : 'Not Connected' }}
               </span>
-              <button 
+              <button
                 @click="qboConnected ? disconnectQBO() : connectQBO()"
                 :class="qboConnected ? 'btn-secondary' : 'btn-primary'"
               >
@@ -88,7 +78,7 @@
               </button>
             </div>
           </div>
-          
+
           <!-- Pipedrive -->
           <div class="flex items-center justify-between p-4 border dark:border-gray-600 rounded-lg">
             <div>
@@ -99,8 +89,8 @@
               <span class="text-sm" :class="pipedriveConnected ? 'text-green-600' : 'text-gray-500'">
                 {{ pipedriveConnected ? 'Connected' : 'Not Connected' }}
               </span>
-              <button 
-                @click="pipedriveConnected ? showPipedriveModal = false : showPipedriveModal = true"
+              <button
+                @click="pipedriveConnected ? (showPipedriveModal = false) : (showPipedriveModal = true)"
                 :class="pipedriveConnected ? 'btn-secondary' : 'btn-primary'"
               >
                 {{ pipedriveConnected ? 'Update' : 'Connect' }}
@@ -115,12 +105,11 @@
         <div class="flex items-center justify-between mb-4">
           <div>
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Journal Entry Accounts</h2>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Configure default QuickBooks accounts for journal entry creation</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Configure default QuickBooks accounts for journal entry creation
+            </p>
           </div>
-          <button
-            @click="editingJournalAccounts = !editingJournalAccounts"
-            class="btn-secondary text-sm"
-          >
+          <button @click="editingJournalAccounts = !editingJournalAccounts" class="btn-secondary text-sm">
             {{ editingJournalAccounts ? 'Cancel' : 'Edit' }}
           </button>
         </div>
@@ -135,25 +124,45 @@
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Unearned Revenue Account</label>
               <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">
-                {{ journalAccounts.unearnedRevenue ? getAccountName(journalAccounts.unearnedRevenue, 'unearned') : 'Not configured' }}
+                {{
+                  journalAccounts.unearnedRevenue
+                    ? getAccountName(journalAccounts.unearnedRevenue, 'unearned')
+                    : 'Not configured'
+                }}
               </p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project Income - Points</label>
               <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">
-                {{ journalAccounts.projectIncomePoints ? getAccountName(journalAccounts.projectIncomePoints, 'revenue') : 'Not configured' }}
+                {{
+                  journalAccounts.projectIncomePoints
+                    ? getAccountName(journalAccounts.projectIncomePoints, 'revenue')
+                    : 'Not configured'
+                }}
               </p>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Recurring Income - Support</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >Recurring Income - Support</label
+              >
               <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">
-                {{ journalAccounts.recurringIncomeSupport ? getAccountName(journalAccounts.recurringIncomeSupport, 'revenue') : 'Not configured' }}
+                {{
+                  journalAccounts.recurringIncomeSupport
+                    ? getAccountName(journalAccounts.recurringIncomeSupport, 'revenue')
+                    : 'Not configured'
+                }}
               </p>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Recurring Income - Points</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >Recurring Income - Points</label
+              >
               <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">
-                {{ journalAccounts.recurringIncomePoints ? getAccountName(journalAccounts.recurringIncomePoints, 'revenue') : 'Not configured' }}
+                {{
+                  journalAccounts.recurringIncomePoints
+                    ? getAccountName(journalAccounts.recurringIncomePoints, 'revenue')
+                    : 'Not configured'
+                }}
               </p>
             </div>
           </div>
@@ -163,76 +172,48 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Unearned Revenue Account</label>
-              <select
-                v-model="editableJournalAccounts.unearnedRevenue"
-                class="input mt-1"
-              >
+              <select v-model="editableJournalAccounts.unearnedRevenue" class="input mt-1">
                 <option value="">Select account...</option>
-                <option
-                  v-for="account in availableUnearnedAccounts"
-                  :key="account.value"
-                  :value="account.value"
-                >
+                <option v-for="account in availableUnearnedAccounts" :key="account.value" :value="account.value">
                   {{ account.fullyQualifiedName }} (#{{ account.value }})
                 </option>
               </select>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project Income - Points</label>
-              <select
-                v-model="editableJournalAccounts.projectIncomePoints"
-                class="input mt-1"
-              >
+              <select v-model="editableJournalAccounts.projectIncomePoints" class="input mt-1">
                 <option value="">Select account...</option>
-                <option
-                  v-for="account in availableRevenueAccounts"
-                  :key="account.value"
-                  :value="account.value"
-                >
+                <option v-for="account in availableRevenueAccounts" :key="account.value" :value="account.value">
                   {{ account.fullyQualifiedName }} (#{{ account.value }})
                 </option>
               </select>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Recurring Income - Support</label>
-              <select
-                v-model="editableJournalAccounts.recurringIncomeSupport"
-                class="input mt-1"
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >Recurring Income - Support</label
               >
+              <select v-model="editableJournalAccounts.recurringIncomeSupport" class="input mt-1">
                 <option value="">Select account...</option>
-                <option
-                  v-for="account in availableRevenueAccounts"
-                  :key="account.value"
-                  :value="account.value"
-                >
+                <option v-for="account in availableRevenueAccounts" :key="account.value" :value="account.value">
                   {{ account.fullyQualifiedName }} (#{{ account.value }})
                 </option>
               </select>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Recurring Income - Points</label>
-              <select
-                v-model="editableJournalAccounts.recurringIncomePoints"
-                class="input mt-1"
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >Recurring Income - Points</label
               >
+              <select v-model="editableJournalAccounts.recurringIncomePoints" class="input mt-1">
                 <option value="">Select account...</option>
-                <option
-                  v-for="account in availableRevenueAccounts"
-                  :key="account.value"
-                  :value="account.value"
-                >
+                <option v-for="account in availableRevenueAccounts" :key="account.value" :value="account.value">
                   {{ account.fullyQualifiedName }} (#{{ account.value }})
                 </option>
               </select>
             </div>
           </div>
           <div class="flex justify-end space-x-3">
-            <button @click="cancelJournalAccountsEdit" class="btn-secondary">
-              Cancel
-            </button>
-            <button @click="saveJournalAccounts" class="btn-primary">
-              Save Changes
-            </button>
+            <button @click="cancelJournalAccountsEdit" class="btn-secondary">Cancel</button>
+            <button @click="saveJournalAccounts" class="btn-primary">Save Changes</button>
           </div>
         </div>
       </div>
@@ -241,14 +222,11 @@
       <div class="card">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Financial Settings</h2>
-          <button 
-            @click="editingFinancials = !editingFinancials"
-            class="btn-secondary text-sm"
-          >
+          <button @click="editingFinancials = !editingFinancials" class="btn-secondary text-sm">
             {{ editingFinancials ? 'Cancel' : 'Edit' }}
           </button>
         </div>
-        
+
         <div v-if="!editingFinancials" class="space-y-4">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -257,7 +235,9 @@
               <p class="text-xs text-gray-500 dark:text-gray-400">Used to calculate target revenue line on charts</p>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Monthly Expenses Override</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >Monthly Expenses Override</label
+              >
               <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">
                 {{ monthlyExpensesOverride ? formatCurrency(monthlyExpensesOverride) : 'Auto (from previous month)' }}
               </p>
@@ -271,11 +251,13 @@
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Price Per Point</label>
               <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ formatCurrency(pricePerPoint) }}</p>
-              <p class="text-xs text-gray-500 dark:text-gray-400">Used to calculate point values on transaction details</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                Used to calculate point values on transaction details
+              </p>
             </div>
           </div>
         </div>
-        
+
         <div v-else class="space-y-4">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -292,7 +274,9 @@
               <p class="text-xs text-gray-500 mt-1">Percentage (e.g., 20 for 20% margin)</p>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Monthly Expenses Override</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >Monthly Expenses Override</label
+              >
               <input
                 type="number"
                 v-model.number="editableMonthlyExpensesOverride"
@@ -322,12 +306,8 @@
             </div>
           </div>
           <div class="flex justify-end space-x-3">
-            <button @click="editingFinancials = false" class="btn-secondary">
-              Cancel
-            </button>
-            <button @click="saveFinancialSettings" class="btn-primary">
-              Save Changes
-            </button>
+            <button @click="editingFinancials = false" class="btn-secondary">Cancel</button>
+            <button @click="saveFinancialSettings" class="btn-primary">Save Changes</button>
           </div>
         </div>
       </div>
@@ -337,14 +317,11 @@
         <div class="flex items-center justify-between mb-4">
           <div>
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Client Aliases</h2>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Map alternative client names to primary names for accurate revenue tracking</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Map alternative client names to primary names for accurate revenue tracking
+            </p>
           </div>
-          <button
-            @click="addNewClient"
-            class="btn-primary text-sm"
-          >
-            Add Client
-          </button>
+          <button @click="addNewClient" class="btn-primary text-sm">Add Client</button>
         </div>
 
         <div v-if="clientAliases.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
@@ -353,14 +330,20 @@
         </div>
 
         <div v-else class="space-y-2">
-          <div v-for="client in sortedClientAliases" :key="'client-' + client._id" class="border dark:border-gray-600 rounded-lg overflow-hidden">
+          <div
+            v-for="client in sortedClientAliases"
+            :key="'client-' + client._id"
+            class="border dark:border-gray-600 rounded-lg overflow-hidden"
+          >
             <!-- Client name button -->
             <button
               @click="toggleClientEdit(client._id)"
               class="w-full text-left px-4 py-3 transition-colors flex items-center justify-between"
-              :class="editingClientId === client._id
-                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100'
-                : 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
+              :class="
+                editingClientId === client._id
+                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100'
+                  : 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              "
             >
               <span class="text-sm font-medium">{{ client.primaryName || '(New Client)' }}</span>
               <svg
@@ -375,7 +358,10 @@
             </button>
 
             <!-- Inline editing form -->
-            <div v-if="editingClientId === client._id" class="p-4 bg-white dark:bg-gray-800 border-t dark:border-gray-700">
+            <div
+              v-if="editingClientId === client._id"
+              class="p-4 bg-white dark:bg-gray-800 border-t dark:border-gray-700"
+            >
               <div class="space-y-4">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -413,12 +399,7 @@
                   >
                     Delete
                   </button>
-                  <button
-                    @click="saveIndividualClient(client._id)"
-                    class="btn-primary"
-                  >
-                    Save
-                  </button>
+                  <button @click="saveIndividualClient(client._id)" class="btn-primary">Save</button>
                 </div>
               </div>
             </div>
@@ -435,22 +416,21 @@
               <h3 class="font-medium text-gray-900 dark:text-gray-100">Archive Retention</h3>
               <p class="text-sm text-gray-500 dark:text-gray-400">Number of days to keep historical data</p>
             </div>
-            <input
-              type="number"
-              v-model.number="archiveRetentionDays"
-              class="input w-24"
-              min="30"
-              max="365"
-            />
+            <input type="number" v-model.number="archiveRetentionDays" class="input w-24" min="30" max="365" />
           </div>
-          
+
           <div class="flex items-center justify-between">
             <div>
               <h3 class="font-medium text-gray-900 dark:text-gray-100">Refresh QBO Data</h3>
-              <p class="text-sm text-gray-500 dark:text-gray-400" :title="formatRefreshTooltip(qboLastRefresh)">{{ formatLastRefresh(qboLastRefresh) }}</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400" :title="formatRefreshTooltip(qboLastRefresh)">
+                {{ formatLastRefresh(qboLastRefresh) }}
+              </p>
             </div>
             <button @click="refreshQBO" :disabled="refreshingQBO" class="btn-primary flex items-center space-x-2">
-              <div v-if="refreshingQBO" class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+              <div
+                v-if="refreshingQBO"
+                class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"
+              ></div>
               <span>{{ refreshingQBO ? 'Refreshing...' : 'Refresh QBO' }}</span>
             </button>
           </div>
@@ -458,17 +438,26 @@
           <div class="flex items-center justify-between">
             <div>
               <h3 class="font-medium text-gray-900 dark:text-gray-100">Refresh Pipedrive Data</h3>
-              <p class="text-sm text-gray-500 dark:text-gray-400" :title="formatRefreshTooltip(pipedriveLastRefresh)">{{ formatLastRefresh(pipedriveLastRefresh) }}</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400" :title="formatRefreshTooltip(pipedriveLastRefresh)">
+                {{ formatLastRefresh(pipedriveLastRefresh) }}
+              </p>
             </div>
-            <button @click="refreshPipedrive" :disabled="refreshingPipedrive" class="btn-primary flex items-center space-x-2">
-              <div v-if="refreshingPipedrive" class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+            <button
+              @click="refreshPipedrive"
+              :disabled="refreshingPipedrive"
+              class="btn-primary flex items-center space-x-2"
+            >
+              <div
+                v-if="refreshingPipedrive"
+                class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"
+              ></div>
               <span>{{ refreshingPipedrive ? 'Refreshing...' : 'Refresh Pipedrive' }}</span>
             </button>
           </div>
         </div>
       </div>
     </div>
-    
+
     <!-- Pipedrive Modal -->
     <div v-if="showPipedriveModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-96">
@@ -484,12 +473,8 @@
             />
           </div>
           <div class="flex justify-end space-x-3">
-            <button @click="showPipedriveModal = false" class="btn-secondary">
-              Cancel
-            </button>
-            <button @click="savePipedriveKey" class="btn-primary">
-              Save
-            </button>
+            <button @click="showPipedriveModal = false" class="btn-secondary">Cancel</button>
+            <button @click="savePipedriveKey" class="btn-primary">Save</button>
           </div>
         </div>
       </div>
@@ -521,7 +506,7 @@ const {
   formatLastRefresh,
   formatRefreshTooltip,
   refreshQBO: baseRefreshQBO,
-  refreshPipedrive: baseRefreshPipedrive
+  refreshPipedrive: baseRefreshPipedrive,
 } = useDataRefresh()
 
 const showPipedriveModal = ref(false)
@@ -554,13 +539,13 @@ const journalAccounts = ref({
   unearnedRevenue: '',
   projectIncomePoints: '',
   recurringIncomeSupport: '',
-  recurringIncomePoints: ''
+  recurringIncomePoints: '',
 })
 const editableJournalAccounts = ref({
   unearnedRevenue: '',
   projectIncomePoints: '',
   recurringIncomeSupport: '',
-  recurringIncomePoints: ''
+  recurringIncomePoints: '',
 })
 const availableRevenueAccounts = ref([])
 const availableUnearnedAccounts = ref([])
@@ -574,26 +559,24 @@ const sortedClientAliases = computed(() => {
 
 const company = computed(() => authStore.company)
 
-
 async function connectQBO() {
   try {
     const response = await fetch('/.netlify/functions/qbo-oauth-start', {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${authStore.token}`
-      }
+        Authorization: `Bearer ${authStore.token}`,
+      },
     })
-    
+
     if (!response.ok) {
       const errorData = await response.json()
       throw new Error(errorData.error || 'Failed to start QuickBooks OAuth')
     }
-    
+
     const data = await response.json()
-    
+
     // Redirect to QuickBooks OAuth
     window.location.href = data.data.authUrl
-    
   } catch (error) {
     console.error('Error starting QuickBooks OAuth:', error)
     alert('Failed to connect QuickBooks: ' + error.message)
@@ -610,20 +593,19 @@ async function savePipedriveKey() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authStore.token}`
+        Authorization: `Bearer ${authStore.token}`,
       },
-      body: JSON.stringify({ apiKey: pipedriveApiKey.value })
+      body: JSON.stringify({ apiKey: pipedriveApiKey.value }),
     })
-    
+
     if (!response.ok) {
       const errorData = await response.json()
       throw new Error(errorData.error || 'Failed to save Pipedrive key')
     }
-    
+
     showPipedriveModal.value = false
     pipedriveApiKey.value = ''
     await checkConnectionStatus()
-    
   } catch (error) {
     console.error('Error saving Pipedrive key:', error)
     alert('Failed to save Pipedrive key: ' + error.message)
@@ -636,22 +618,21 @@ async function saveCompanyInfo() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authStore.token}`
+        Authorization: `Bearer ${authStore.token}`,
       },
-      body: JSON.stringify({ 
-        name: editableCompanyName.value 
-      })
+      body: JSON.stringify({
+        name: editableCompanyName.value,
+      }),
     })
-    
+
     if (!response.ok) {
       const errorData = await response.json()
       throw new Error(errorData.error || 'Failed to update company info')
     }
-    
+
     // Update the auth store with the new company info
     await authStore.fetchCurrentUser()
     editingCompany.value = false
-    
   } catch (error) {
     console.error('Error saving company info:', error)
     alert('Failed to save company information: ' + error.message)
@@ -664,13 +645,13 @@ async function saveFinancialSettings() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authStore.token}`
+        Authorization: `Bearer ${authStore.token}`,
       },
       body: JSON.stringify({
         targetNetMargin: editableTargetNetMargin.value,
         monthlyExpensesOverride: editableMonthlyExpensesOverride.value || null,
-        pricePerPoint: editablePricePerPoint.value
-      })
+        pricePerPoint: editablePricePerPoint.value,
+      }),
     })
 
     if (!response.ok) {
@@ -686,7 +667,6 @@ async function saveFinancialSettings() {
 
     // Update the auth store with the new company info
     await authStore.fetchCurrentUser()
-
   } catch (error) {
     console.error('Error saving financial settings:', error)
     alert('Failed to save financial settings: ' + error.message)
@@ -715,8 +695,8 @@ async function checkConnectionStatus() {
     const response = await fetch('/.netlify/functions/settings-status', {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${authStore.token}`
-      }
+        Authorization: `Bearer ${authStore.token}`,
+      },
     })
 
     if (response.ok) {
@@ -741,7 +721,7 @@ function addNewClient() {
   const newClient = {
     _id: nextClientId++,
     primaryName: '',
-    aliases: ''
+    aliases: '',
   }
   // Add to the top of the list so it appears right under the "Add Client" button
   clientAliases.value.unshift(newClient)
@@ -751,7 +731,7 @@ function addNewClient() {
 async function deleteClient(clientId) {
   try {
     // Find and remove the client
-    const actualIndex = clientAliases.value.findIndex(c => c._id === clientId)
+    const actualIndex = clientAliases.value.findIndex((c) => c._id === clientId)
 
     if (actualIndex !== -1) {
       clientAliases.value.splice(actualIndex, 1)
@@ -771,7 +751,7 @@ async function deleteClient(clientId) {
 
 async function saveIndividualClient(clientId) {
   try {
-    const client = clientAliases.value.find(c => c._id === clientId)
+    const client = clientAliases.value.find((c) => c._id === clientId)
 
     if (!client || !client.primaryName.trim()) {
       toast.warning('Please enter a primary client name')
@@ -792,21 +772,24 @@ async function saveIndividualClient(clientId) {
 async function saveAllClientAliases() {
   // Transform comma-separated aliases string into array
   const aliasesData = clientAliases.value
-    .filter(c => c.primaryName.trim()) // Only include clients with a primary name
-    .map(c => ({
+    .filter((c) => c.primaryName.trim()) // Only include clients with a primary name
+    .map((c) => ({
       primaryName: c.primaryName.trim(),
-      aliases: c.aliases.split(',').map(a => a.trim()).filter(a => a) // Split, trim, remove empties
+      aliases: c.aliases
+        .split(',')
+        .map((a) => a.trim())
+        .filter((a) => a), // Split, trim, remove empties
     }))
 
   const response = await fetch('/.netlify/functions/settings', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${authStore.token}`
+      Authorization: `Bearer ${authStore.token}`,
     },
     body: JSON.stringify({
-      clientAliases: aliasesData
-    })
+      clientAliases: aliasesData,
+    }),
   })
 
   if (!response.ok) {
@@ -823,24 +806,22 @@ async function loadClientAliases() {
     const response = await fetch('/.netlify/functions/client-aliases', {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${authStore.token}`
-      }
+        Authorization: `Bearer ${authStore.token}`,
+      },
     })
 
     if (response.ok) {
       const data = await response.json()
       // Transform array of aliases back to comma-separated string for display
       // Assign unique IDs for tracking and sort alphabetically once
-      const clients = data.data.clientAliases.map(c => ({
+      const clients = data.data.clientAliases.map((c) => ({
         _id: nextClientId++,
         primaryName: c.primaryName,
-        aliases: c.aliases.join(', ')
+        aliases: c.aliases.join(', '),
       }))
 
       // Sort once on load
-      clients.sort((a, b) =>
-        a.primaryName.localeCompare(b.primaryName, undefined, { sensitivity: 'base' })
-      )
+      clients.sort((a, b) => a.primaryName.localeCompare(b.primaryName, undefined, { sensitivity: 'base' }))
 
       clientAliases.value = clients
       originalClientAliases.value = JSON.parse(JSON.stringify(clientAliases.value))
@@ -856,8 +837,8 @@ async function loadJournalAccounts() {
     const response = await fetch('/.netlify/functions/journal-entry-accounts', {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${authStore.token}`
-      }
+        Authorization: `Bearer ${authStore.token}`,
+      },
     })
 
     if (response.ok) {
@@ -871,7 +852,7 @@ async function loadJournalAccounts() {
           unearnedRevenue: data.data.currentSettings.unearnedRevenue || '',
           projectIncomePoints: data.data.currentSettings.projectIncomePoints || '',
           recurringIncomeSupport: data.data.currentSettings.recurringIncomeSupport || '',
-          recurringIncomePoints: data.data.currentSettings.recurringIncomePoints || ''
+          recurringIncomePoints: data.data.currentSettings.recurringIncomePoints || '',
         }
       }
     } else {
@@ -889,10 +870,12 @@ async function loadJournalAccounts() {
 async function saveJournalAccounts() {
   try {
     // Validate all fields are filled
-    if (!editableJournalAccounts.value.unearnedRevenue ||
-        !editableJournalAccounts.value.projectIncomePoints ||
-        !editableJournalAccounts.value.recurringIncomeSupport ||
-        !editableJournalAccounts.value.recurringIncomePoints) {
+    if (
+      !editableJournalAccounts.value.unearnedRevenue ||
+      !editableJournalAccounts.value.projectIncomePoints ||
+      !editableJournalAccounts.value.recurringIncomeSupport ||
+      !editableJournalAccounts.value.recurringIncomePoints
+    ) {
       toast.warning('Please select all required accounts')
       return
     }
@@ -901,9 +884,9 @@ async function saveJournalAccounts() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authStore.token}`
+        Authorization: `Bearer ${authStore.token}`,
       },
-      body: JSON.stringify(editableJournalAccounts.value)
+      body: JSON.stringify(editableJournalAccounts.value),
     })
 
     if (!response.ok) {
@@ -932,45 +915,54 @@ function cancelJournalAccountsEdit() {
 
 function getAccountName(accountId, type) {
   const accounts = type === 'unearned' ? availableUnearnedAccounts.value : availableRevenueAccounts.value
-  const account = accounts.find(a => a.value === accountId)
+  const account = accounts.find((a) => a.value === accountId)
   return account ? `${account.fullyQualifiedName} (#${accountId})` : `Account #${accountId}`
 }
 
-
-
-
-
 // Watch for editing company to populate the field
-watch(() => editingCompany.value, (isEditing) => {
-  if (isEditing) {
-    editableCompanyName.value = company.value?.name || ''
-  }
-})
+watch(
+  () => editingCompany.value,
+  (isEditing) => {
+    if (isEditing) {
+      editableCompanyName.value = company.value?.name || ''
+    }
+  },
+)
 
 // Watch for editing financials to populate the fields
-watch(() => editingFinancials.value, (isEditing) => {
-  if (isEditing) {
-    editableTargetNetMargin.value = targetNetMargin.value
-    editableMonthlyExpensesOverride.value = monthlyExpensesOverride.value
-    editablePricePerPoint.value = pricePerPoint.value
-  }
-})
+watch(
+  () => editingFinancials.value,
+  (isEditing) => {
+    if (isEditing) {
+      editableTargetNetMargin.value = targetNetMargin.value
+      editableMonthlyExpensesOverride.value = monthlyExpensesOverride.value
+      editablePricePerPoint.value = pricePerPoint.value
+    }
+  },
+)
 
 // Watch for editing journal accounts to populate the fields
-watch(() => editingJournalAccounts.value, (isEditing) => {
-  if (isEditing) {
-    editableJournalAccounts.value = { ...journalAccounts.value }
-  }
-})
+watch(
+  () => editingJournalAccounts.value,
+  (isEditing) => {
+    if (isEditing) {
+      editableJournalAccounts.value = { ...journalAccounts.value }
+    }
+  },
+)
 
 // Watch for company changes to update financial settings
-watch(() => company.value, (newCompany) => {
-  if (newCompany && newCompany.settings) {
-    targetNetMargin.value = newCompany.settings.targetNetMargin || 20
-    monthlyExpensesOverride.value = newCompany.settings.monthlyExpensesOverride || null
-    pricePerPoint.value = newCompany.settings.pricePerPoint || 550
-  }
-}, { immediate: true })
+watch(
+  () => company.value,
+  (newCompany) => {
+    if (newCompany && newCompany.settings) {
+      targetNetMargin.value = newCompany.settings.targetNetMargin || 20
+      monthlyExpensesOverride.value = newCompany.settings.monthlyExpensesOverride || null
+      pricePerPoint.value = newCompany.settings.pricePerPoint || 550
+    }
+  },
+  { immediate: true },
+)
 
 onMounted(async () => {
   await checkConnectionStatus()

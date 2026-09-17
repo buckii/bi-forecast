@@ -46,7 +46,8 @@ async function main() {
     console.log(`Company ID: ${company._id}\n`)
 
     // Fetch all client aliases for this company
-    const clientAliases = await db.collection('client_aliases')
+    const clientAliases = await db
+      .collection('client_aliases')
       .find({ companyId: company._id })
       .sort({ primaryName: 1 })
       .toArray()
@@ -59,12 +60,12 @@ async function main() {
       exportedFrom: {
         companyId: company._id.toString(),
         companyName: company.name,
-        database: MONGODB_DB_NAME
+        database: MONGODB_DB_NAME,
       },
-      clientAliases: clientAliases.map(alias => ({
+      clientAliases: clientAliases.map((alias) => ({
         primaryName: alias.primaryName,
-        aliases: alias.aliases || []
-      }))
+        aliases: alias.aliases || [],
+      })),
     }
 
     // Save to JSON file
@@ -73,9 +74,8 @@ async function main() {
     console.log(`\n✅ Successfully exported to: ${OUTPUT_FILE}`)
     console.log(`\nSummary:`)
     console.log(`  - Total clients: ${exportData.clientAliases.length}`)
-    console.log(`  - Clients with aliases: ${exportData.clientAliases.filter(c => c.aliases.length > 0).length}`)
+    console.log(`  - Clients with aliases: ${exportData.clientAliases.filter((c) => c.aliases.length > 0).length}`)
     console.log(`  - Total aliases: ${exportData.clientAliases.reduce((sum, c) => sum + c.aliases.length, 0)}`)
-
   } catch (error) {
     console.error('\n❌ Error:', error)
     process.exit(1)

@@ -21,7 +21,8 @@ exports.handler = async function (event, context) {
 
     // Support new range parameters, fallback to 'month' for single month
     const monthStart = params.get('month_start') || params.get('month')
-    const monthEnd = params.get('month_end') || (params.get('month_start') ? params.get('month_start') : params.get('month'))
+    const monthEnd =
+      params.get('month_end') || (params.get('month_start') ? params.get('month_start') : params.get('month'))
 
     const component = params.get('component') // invoiced, journalEntries, etc.
     const asOf = params.get('as_of') // Optional: YYYY-MM-DD
@@ -56,7 +57,9 @@ exports.handler = async function (event, context) {
       const cachedData = await getCachedTransactionDetails(company._id, monthStart, asOfDate, monthEndForCache)
 
       if (cachedData && cachedData.transactions && cachedData.transactions[component]) {
-        console.log(`[Transaction Details] Serving from cache for ${monthStart}${isSingleMonth ? '' : ' to ' + monthEnd} ${component}`)
+        console.log(
+          `[Transaction Details] Serving from cache for ${monthStart}${isSingleMonth ? '' : ' to ' + monthEnd} ${component}`,
+        )
         const transactions = cachedData.transactions[component]
         const totalAmount = transactions.reduce((sum, txn) => sum + (txn.amount || 0), 0)
 
@@ -68,7 +71,7 @@ exports.handler = async function (event, context) {
           totalAmount: totalAmount,
           count: transactions.length,
           fromCache: true,
-          cachedAt: cachedData.cachedAt
+          cachedAt: cachedData.cachedAt,
         })
       }
     }
@@ -155,7 +158,10 @@ exports.handler = async function (event, context) {
       let hasDiscrepancy = false
       try {
         // Calculate what the graph shows using the same logic as revenue calculator
-        graphTotal = calculator.calculateWeightedSalesForMonth(startMonthDate, await getOpenDealsForComparison(calculator))
+        graphTotal = calculator.calculateWeightedSalesForMonth(
+          startMonthDate,
+          await getOpenDealsForComparison(calculator),
+        )
         const difference = Math.abs(graphTotal - totalAmount)
         hasDiscrepancy = difference > 1 // Allow for small rounding differences
       } catch (error) {
@@ -168,7 +174,7 @@ exports.handler = async function (event, context) {
           message: `Transaction details total ($${totalAmount.toLocaleString()}) differs from graph total ($${graphTotal.toLocaleString()})`,
           graphTotal: graphTotal,
           transactionTotal: totalAmount,
-          difference: graphTotal - totalAmount
+          difference: graphTotal - totalAmount,
         }
       }
     }
@@ -186,7 +192,7 @@ exports.handler = async function (event, context) {
       count: allTransactions.length,
       dateRange: { startDate: resultStartDate, endDate: resultEndDate },
       fromCache: false,
-      cachedAt: new Date()
+      cachedAt: new Date(),
     }
 
     if (warning) {
@@ -201,15 +207,14 @@ exports.handler = async function (event, context) {
       monthStart,
       {
         transactions: {
-          [component]: allTransactions
-        }
+          [component]: allTransactions,
+        },
       },
       asOfDate,
-      monthEndForCache
+      monthEndForCache,
     )
 
     return success(result)
-
   } catch (err) {
     console.error('Transaction details error:', err)
     return error(err.message || 'Failed to get transaction details', 500)
@@ -223,7 +228,7 @@ async function getInvoicedTransactions(calculator, startDate, endDate, asOf = nu
   const startDateObj = new Date(startDate + 'T00:00:00.000Z')
   const endDateObj = new Date(endDate + 'T23:59:59.999Z')
 
-  let filteredInvoices = invoices.filter(invoice => {
+  let filteredInvoices = invoices.filter((invoice) => {
     const txnDate = new Date(invoice.TxnDate + 'T00:00:00.000Z')
     return txnDate >= startDateObj && txnDate <= endDateObj
   })
@@ -231,7 +236,7 @@ async function getInvoicedTransactions(calculator, startDate, endDate, asOf = nu
   // If using fallback mode (as_of provided and archive has no data), filter by creation time
   if (asOf && calculator.isUsingFallback) {
     const asOfDate = new Date(asOf + 'T23:59:59.999Z')
-    filteredInvoices = filteredInvoices.filter(invoice => {
+    filteredInvoices = filteredInvoices.filter((invoice) => {
       if (invoice.MetaData && invoice.MetaData.CreateTime) {
         const createTime = new Date(invoice.MetaData.CreateTime)
         return createTime <= asOfDate
@@ -242,7 +247,7 @@ async function getInvoicedTransactions(calculator, startDate, endDate, asOf = nu
     console.log(`[Transaction Details] Fallback: Filtered invoices by CreateTime <= ${asOf}`)
   }
 
-  return filteredInvoices.map(invoice => ({
+  return filteredInvoices.map((invoice) => ({
     id: invoice.Id,
     type: 'invoice',
     docNumber: invoice.DocNumber,
@@ -257,30 +262,31 @@ async function getInvoicedTransactions(calculator, startDate, endDate, asOf = nu
       dueDate: invoice.DueDate,
       lineCount: (invoice.Line || []).length,
       // Add detailed line items like in the September test
-      lines: (invoice.Line || []).filter(line => line.DetailType === 'SalesItemLineDetail').map(line => {
-        const salesDetail = line.SalesItemLineDetail
+      lines: (invoice.Line || [])
+        .filter((line) => line.DetailType === 'SalesItemLineDetail')
+        .map((line) => {
+          const salesDetail = line.SalesItemLineDetail
 
-        // Use the income account from the product mapping if available, 
-        // otherwise fall back to the line's account reference
-        const incomeAccount = salesDetail?.IncomeAccountRef || salesDetail?.AccountRef
+          // Use the income account from the product mapping if available,
+          // otherwise fall back to the line's account reference
+          const incomeAccount = salesDetail?.IncomeAccountRef || salesDetail?.AccountRef
 
-        return {
-          lineNum: line.LineNum,
-          description: line.Description,
-          amount: line.Amount,
-          revenueAccountName: incomeAccount?.name || 'Unknown Account',
-          revenueAccountNumber: incomeAccount?.value || '',
-          itemName: salesDetail?.ItemRef?.name,
-          qty: salesDetail?.Qty,
-          unitPrice: salesDetail?.UnitPrice,
-          hasMonthly: (
-            incomeAccount?.name?.toLowerCase().includes('monthly') ||
-            salesDetail?.ItemRef?.name?.toLowerCase().includes('monthly') ||
-            line.Description?.toLowerCase().includes('monthly')
-          )
-        }
-      })
-    }
+          return {
+            lineNum: line.LineNum,
+            description: line.Description,
+            amount: line.Amount,
+            revenueAccountName: incomeAccount?.name || 'Unknown Account',
+            revenueAccountNumber: incomeAccount?.value || '',
+            itemName: salesDetail?.ItemRef?.name,
+            qty: salesDetail?.Qty,
+            unitPrice: salesDetail?.UnitPrice,
+            hasMonthly:
+              incomeAccount?.name?.toLowerCase().includes('monthly') ||
+              salesDetail?.ItemRef?.name?.toLowerCase().includes('monthly') ||
+              line.Description?.toLowerCase().includes('monthly'),
+          }
+        }),
+    },
   }))
 }
 
@@ -291,7 +297,7 @@ async function getJournalEntryTransactions(calculator, startDate, endDate, asOf 
   const startDateObj = new Date(startDate + 'T00:00:00.000Z')
   const endDateObj = new Date(endDate + 'T23:59:59.999Z')
 
-  let filteredEntries = journalEntries.filter(entry => {
+  let filteredEntries = journalEntries.filter((entry) => {
     const txnDate = new Date(entry.TxnDate + 'T00:00:00.000Z')
     return txnDate >= startDateObj && txnDate <= endDateObj
   })
@@ -299,7 +305,7 @@ async function getJournalEntryTransactions(calculator, startDate, endDate, asOf 
   // If using fallback mode (as_of provided and archive has no data), filter by creation time
   if (asOf && calculator.isUsingFallback) {
     const asOfDate = new Date(asOf + 'T23:59:59.999Z')
-    filteredEntries = filteredEntries.filter(entry => {
+    filteredEntries = filteredEntries.filter((entry) => {
       if (entry.MetaData && entry.MetaData.CreateTime) {
         const createTime = new Date(entry.MetaData.CreateTime)
         return createTime <= asOfDate
@@ -338,13 +344,11 @@ async function getJournalEntryTransactions(calculator, startDate, endDate, asOf 
         accountNumber: accountRef?.value || '',
         accountType: accountRef?.type || '',
         entity: entityRef?.name || '',
-        entityType: entityRef?.type || ''
+        entityType: entityRef?.type || '',
       })
 
       // Track revenue lines separately for amount calculation
-      if (accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
-        !accountRef?.name?.toLowerCase().includes('unearned')) {
-
+      if (accountRef?.name?.match(/^4\d{3}|revenue|income/i) && !accountRef?.name?.toLowerCase().includes('unearned')) {
         // For journal entries: Credits are positive revenue, Debits are negative
         const lineAmount = amount * (postingType === 'Credit' ? 1 : -1)
         revenueAmount += lineAmount
@@ -356,7 +360,7 @@ async function getJournalEntryTransactions(calculator, startDate, endDate, asOf 
           accountName: accountRef.name,
           accountNumber: accountRef.value,
           postingType: postingType,
-          entity: entityRef?.name || ''
+          entity: entityRef?.name || '',
         })
       }
     }
@@ -365,12 +369,13 @@ async function getJournalEntryTransactions(calculator, startDate, endDate, asOf 
     if (revenueLines.length > 0) {
       // Create description from revenue line descriptions
       const revenueDescriptions = revenueLines
-        .filter(line => line.description && line.description !== 'No description')
-        .map(line => line.description)
+        .filter((line) => line.description && line.description !== 'No description')
+        .map((line) => line.description)
 
-      const description = revenueDescriptions.length > 0
-        ? revenueDescriptions.join('; ')
-        : (entry.PrivateNote || `Journal Entry ${entry.DocNumber}`)
+      const description =
+        revenueDescriptions.length > 0
+          ? revenueDescriptions.join('; ')
+          : entry.PrivateNote || `Journal Entry ${entry.DocNumber}`
 
       // Try to match a client based on:
       // 1. Entity reference on revenue lines
@@ -380,9 +385,7 @@ async function getJournalEntryTransactions(calculator, startDate, endDate, asOf 
       let matchSource = 'none'
 
       // First, check if any revenue line has an entity (customer) reference
-      const entityNames = revenueLines
-        .map(line => line.entity)
-        .filter(entity => entity && entity !== '')
+      const entityNames = revenueLines.map((line) => line.entity).filter((entity) => entity && entity !== '')
 
       if (entityNames.length > 0) {
         // Use the first entity found and resolve it
@@ -416,10 +419,10 @@ async function getJournalEntryTransactions(calculator, startDate, endDate, asOf 
           privateNote: entry.PrivateNote || '',
           allLines: allLines,
           revenueLines: revenueLines,
-          debitsTotal: allLines.filter(l => l.postingType === 'Debit').reduce((sum, l) => sum + l.amount, 0),
-          creditsTotal: allLines.filter(l => l.postingType === 'Credit').reduce((sum, l) => sum + l.amount, 0),
-          clientMatchSource: matchSource
-        }
+          debitsTotal: allLines.filter((l) => l.postingType === 'Debit').reduce((sum, l) => sum + l.amount, 0),
+          creditsTotal: allLines.filter((l) => l.postingType === 'Credit').reduce((sum, l) => sum + l.amount, 0),
+          clientMatchSource: matchSource,
+        },
       })
     }
   }
@@ -434,7 +437,7 @@ async function getDelayedChargeTransactions(calculator, startDate, endDate, asOf
   const startDateObj = new Date(startDate + 'T00:00:00.000Z')
   const endDateObj = new Date(endDate + 'T23:59:59.999Z')
 
-  let filteredCharges = delayedCharges.filter(charge => {
+  let filteredCharges = delayedCharges.filter((charge) => {
     const txnDate = new Date(charge.TxnDate + 'T00:00:00.000Z')
     return txnDate >= startDateObj && txnDate <= endDateObj
   })
@@ -442,7 +445,7 @@ async function getDelayedChargeTransactions(calculator, startDate, endDate, asOf
   // If using fallback mode (as_of provided and archive has no data), filter by creation time
   if (asOf && calculator.isUsingFallback) {
     const asOfDate = new Date(asOf + 'T23:59:59.999Z')
-    filteredCharges = filteredCharges.filter(charge => {
+    filteredCharges = filteredCharges.filter((charge) => {
       if (charge.MetaData && charge.MetaData.CreateTime) {
         const createTime = new Date(charge.MetaData.CreateTime)
         return createTime <= asOfDate
@@ -452,7 +455,7 @@ async function getDelayedChargeTransactions(calculator, startDate, endDate, asOf
     })
     console.log(`[Transaction Details] Fallback: Filtered delayed charges by CreateTime <= ${asOf}`)
   }
-  return filteredCharges.map(charge => ({
+  return filteredCharges.map((charge) => ({
     id: charge.Id || `dc-${charge.DocNumber}`,
     type: 'delayedCharge',
     docNumber: charge.DocNumber,
@@ -465,7 +468,7 @@ async function getDelayedChargeTransactions(calculator, startDate, endDate, asOf
     details: {
       balance: charge.Balance || 0,
       lineCount: (charge.Line || []).length,
-      lines: (charge.Line || []).map(line => {
+      lines: (charge.Line || []).map((line) => {
         const detailType = line.DetailType
         const salesDetail = line.SalesItemLineDetail
         const incomeAccount = salesDetail?.IncomeAccountRef || salesDetail?.AccountRef
@@ -479,10 +482,10 @@ async function getDelayedChargeTransactions(calculator, startDate, endDate, asOf
           revenueAccountNumber: incomeAccount?.value || '',
           itemName: salesDetail?.ItemRef?.name,
           qty: salesDetail?.Qty,
-          unitPrice: salesDetail?.UnitPrice
+          unitPrice: salesDetail?.UnitPrice,
         }
-      })
-    }
+      }),
+    },
   }))
 }
 
@@ -505,7 +508,11 @@ async function getMonthlyRecurringTransactions(calculator, startDate, endDate, m
   const sourceMonthEnd = sourceResult.end
   const sourceMonthName = sourceResult.name
 
-  const baselineTransactions = await getHistoricalMonthlyRecurringTransactions(calculator, sourceMonthStart, sourceMonthEnd)
+  const baselineTransactions = await getHistoricalMonthlyRecurringTransactions(
+    calculator,
+    sourceMonthStart,
+    sourceMonthEnd,
+  )
 
   // Add each baseline transaction with updated dates and descriptions for future projection
   for (const baselineTxn of baselineTransactions) {
@@ -518,8 +525,8 @@ async function getMonthlyRecurringTransactions(calculator, startDate, endDate, m
         ...baselineTxn.details,
         note: `Projected recurring revenue based on ${sourceMonthName} actuals`,
         originalDate: baselineTxn.date,
-        projectedFor: format(monthDate, 'MMM yyyy')
-      }
+        projectedFor: format(monthDate, 'MMM yyyy'),
+      },
     })
   }
 
@@ -546,7 +553,7 @@ async function getMonthlyRecurringTransactions(calculator, startDate, endDate, m
           description: line.Description || 'No description',
           amount: line.Amount || 0,
           accountName: accountRef?.name,
-          itemName: itemRef?.name
+          itemName: itemRef?.name,
         })
       }
     }
@@ -565,8 +572,8 @@ async function getMonthlyRecurringTransactions(calculator, startDate, endDate, m
         details: {
           totalInvoiceAmount: invoice.TotalAmt || 0,
           monthlyLines: monthlyLines,
-          note: 'Additional estimated recurring revenue from invoice analysis'
-        }
+          note: 'Additional estimated recurring revenue from invoice analysis',
+        },
       })
     }
   }
@@ -586,14 +593,14 @@ async function getLatestSourceMonthForMRR(calculator) {
   const currentTransactions = await getHistoricalMonthlyRecurringTransactions(
     calculator,
     format(currentMonthStart, 'yyyy-MM-dd'),
-    format(currentMonthEnd, 'yyyy-MM-dd')
+    format(currentMonthEnd, 'yyyy-MM-dd'),
   )
 
   if (currentTransactions.length > 0) {
     return {
       start: format(currentMonthStart, 'yyyy-MM-dd'),
       end: format(currentMonthEnd, 'yyyy-MM-dd'),
-      name: format(currentMonthStart, 'MMM yyyy')
+      name: format(currentMonthStart, 'MMM yyyy'),
     }
   }
 
@@ -605,7 +612,7 @@ async function getLatestSourceMonthForMRR(calculator) {
   return {
     start: format(previousMonthStart, 'yyyy-MM-dd'),
     end: format(previousMonthEnd, 'yyyy-MM-dd'),
-    name: format(previousMonth, 'MMM yyyy') // Corrected from previousMonthName
+    name: format(previousMonth, 'MMM yyyy'), // Corrected from previousMonthName
   }
 }
 
@@ -615,7 +622,7 @@ async function calculateBaselineMonthlyRecurringAmount(calculator) {
     const transactions = await getHistoricalMonthlyRecurringTransactions(
       calculator,
       sourceResult.start,
-      sourceResult.end
+      sourceResult.end,
     )
     return transactions.reduce((sum, txn) => sum + (txn.amount || 0), 0)
   } catch (error) {
@@ -629,7 +636,7 @@ async function getHistoricalMonthlyRecurringTransactions(calculator, startDate, 
     // Get invoices and journal entries from the specified period
     let [invoices, journalEntries] = await Promise.all([
       calculator.qbo.getInvoices(startDate, endDate),
-      calculator.qbo.getJournalEntries(startDate, endDate)
+      calculator.qbo.getJournalEntries(startDate, endDate),
     ])
 
     // If using fallback mode, filter by CreateTime
@@ -637,24 +644,28 @@ async function getHistoricalMonthlyRecurringTransactions(calculator, startDate, 
       const asOfDate = new Date(asOf + 'T23:59:59.999Z')
 
       const originalInvoiceCount = invoices.length
-      invoices = invoices.filter(invoice => {
+      invoices = invoices.filter((invoice) => {
         if (invoice.MetaData && invoice.MetaData.CreateTime) {
           const createTime = new Date(invoice.MetaData.CreateTime)
           return createTime <= asOfDate
         }
         return true
       })
-      console.log(`[Monthly Recurring] Fallback: Filtered invoices by CreateTime <= ${asOf}: ${originalInvoiceCount} → ${invoices.length}`)
+      console.log(
+        `[Monthly Recurring] Fallback: Filtered invoices by CreateTime <= ${asOf}: ${originalInvoiceCount} → ${invoices.length}`,
+      )
 
       const originalJECount = journalEntries.length
-      journalEntries = journalEntries.filter(entry => {
+      journalEntries = journalEntries.filter((entry) => {
         if (entry.MetaData && entry.MetaData.CreateTime) {
           const createTime = new Date(entry.MetaData.CreateTime)
           return createTime <= asOfDate
         }
         return true
       })
-      console.log(`[Monthly Recurring] Fallback: Filtered journal entries by CreateTime <= ${asOf}: ${originalJECount} → ${journalEntries.length}`)
+      console.log(
+        `[Monthly Recurring] Fallback: Filtered journal entries by CreateTime <= ${asOf}: ${originalJECount} → ${journalEntries.length}`,
+      )
     }
 
     const transactions = []
@@ -680,7 +691,7 @@ async function getHistoricalMonthlyRecurringTransactions(calculator, startDate, 
             description: line.Description || 'No description',
             amount: line.Amount || 0,
             accountName: accountRef?.name,
-            itemName: itemRef?.name
+            itemName: itemRef?.name,
           })
         }
       }
@@ -697,8 +708,8 @@ async function getHistoricalMonthlyRecurringTransactions(calculator, startDate, 
           details: {
             totalInvoiceAmount: invoice.TotalAmt || 0,
             monthlyLines: monthlyLines,
-            source: 'QuickBooks Invoice'
-          }
+            source: 'QuickBooks Invoice',
+          },
         })
       }
     }
@@ -713,10 +724,11 @@ async function getHistoricalMonthlyRecurringTransactions(calculator, startDate, 
         const accountRef = line.JournalEntryLineDetail?.AccountRef
         const postingType = line.JournalEntryLineDetail?.PostingType
 
-        if (accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
+        if (
+          accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
           accountRef?.name?.toLowerCase().includes('monthly') &&
-          !accountRef?.name?.toLowerCase().includes('unearned')) {
-
+          !accountRef?.name?.toLowerCase().includes('unearned')
+        ) {
           const lineAmount = (line.Amount || 0) * (postingType === 'Credit' ? 1 : -1)
           monthlyAmount += lineAmount
 
@@ -724,16 +736,17 @@ async function getHistoricalMonthlyRecurringTransactions(calculator, startDate, 
             description: line.Description || 'No description',
             amount: lineAmount,
             accountName: accountRef.name,
-            postingType: postingType
+            postingType: postingType,
           })
         }
       }
 
       if (monthlyAmount > 0) {
-        const description = monthlyLines
-          .filter(line => line.description && line.description !== 'No description')
-          .map(line => line.description)
-          .join('; ') || `Journal Entry ${entry.DocNumber}`
+        const description =
+          monthlyLines
+            .filter((line) => line.description && line.description !== 'No description')
+            .map((line) => line.description)
+            .join('; ') || `Journal Entry ${entry.DocNumber}`
 
         transactions.push({
           id: `mr-je-${entry.Id}`,
@@ -745,8 +758,8 @@ async function getHistoricalMonthlyRecurringTransactions(calculator, startDate, 
           description: `Monthly Recurring Revenue (${description})`,
           details: {
             revenueLines: monthlyLines,
-            source: 'QuickBooks Journal Entry'
-          }
+            source: 'QuickBooks Journal Entry',
+          },
         })
       }
     }
@@ -808,8 +821,8 @@ async function getWonUnscheduledTransactions(calculator, monthDate, asOf = null)
               projectStartDate: deal.projectStartDate,
               wonTime: deal.wonTime,
               currentMonth: `Month ${i + 1} of ${duration}`,
-              calculation: `$${deal.value?.toLocaleString()} ÷ ${duration} month${duration !== 1 ? 's' : ''} = $${Math.round(monthlyAmount)?.toLocaleString()}/month`
-            }
+              calculation: `$${deal.value?.toLocaleString()} ÷ ${duration} month${duration !== 1 ? 's' : ''} = $${Math.round(monthlyAmount)?.toLocaleString()}/month`,
+            },
           })
           break
         }
@@ -841,7 +854,6 @@ async function getWeightedSalesTransactions(calculator, monthDate, asOf = null) 
 
     const monthStr = format(monthDate, 'yyyy-MM')
     const transactions = []
-
 
     let dealsForMonth = 0
     for (const deal of openDeals) {
@@ -875,7 +887,7 @@ async function getWeightedSalesTransactions(calculator, monthDate, asOf = null) 
       if (!shouldIncludeDeal) continue
 
       // Calculate monthly weighted value: total weighted value / duration
-      const baseWeightedValue = deal.weightedValue || (deal.value * (deal.probability || 0) / 100)
+      const baseWeightedValue = deal.weightedValue || (deal.value * (deal.probability || 0)) / 100
       const monthlyWeightedValue = baseWeightedValue / duration
 
       transactions.push({
@@ -900,8 +912,11 @@ async function getWeightedSalesTransactions(calculator, monthDate, asOf = null) 
           durationMonths: `${duration} month${duration !== 1 ? 's' : ''}`,
           durationSource: deal.duration > 1 ? 'Custom field: Project Duration' : 'Default (single month)',
           calculation: `$${deal.value?.toLocaleString()} × ${deal.probability || 0}% ÷ ${duration} month${duration !== 1 ? 's' : ''} = $${Math.round(monthlyWeightedValue)?.toLocaleString()}/month`,
-          fullCalculation: duration > 1 ? `Total: $${Math.round(baseWeightedValue)?.toLocaleString()} over ${duration} months` : 'Single month deal'
-        }
+          fullCalculation:
+            duration > 1
+              ? `Total: $${Math.round(baseWeightedValue)?.toLocaleString()} over ${duration} months`
+              : 'Single month deal',
+        },
       })
     }
 

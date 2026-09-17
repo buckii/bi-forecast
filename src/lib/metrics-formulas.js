@@ -8,13 +8,7 @@
 
 const CASH_ACCOUNT_TYPES = ['Checking', 'Savings', 'UndepositedFunds']
 
-const THREE_MONTH_KEYS = [
-  'invoiced',
-  'journalEntries',
-  'delayedCharges',
-  'monthlyRecurring',
-  'wonUnscheduled'
-]
+const THREE_MONTH_KEYS = ['invoiced', 'journalEntries', 'delayedCharges', 'monthlyRecurring', 'wonUnscheduled']
 
 const YEAR_KEYS = ['monthlyRecurring', 'wonUnscheduled', 'journalEntries']
 
@@ -29,7 +23,7 @@ function monthKeyFromOffset(currentMonthKey, offset) {
 
 function findMonth(months, key) {
   if (!Array.isArray(months)) return null
-  return months.find(m => m.month === key) || null
+  return months.find((m) => m.month === key) || null
 }
 
 // Sum the given component keys across `count` months starting at currentMonthKey.
@@ -46,16 +40,12 @@ function sumMonths(months, currentMonthKey, count, componentKeys) {
 }
 
 function currentMonthRevenue(months, currentMonthKey, includeWeightedSales = true) {
-  const keys = includeWeightedSales
-    ? [...THREE_MONTH_KEYS, 'weightedSales']
-    : THREE_MONTH_KEYS
+  const keys = includeWeightedSales ? [...THREE_MONTH_KEYS, 'weightedSales'] : THREE_MONTH_KEYS
   return sumMonths(months, currentMonthKey, 1, keys)
 }
 
 function threeMonthRevenue(months, currentMonthKey, includeWeightedSales = true) {
-  const keys = includeWeightedSales
-    ? [...THREE_MONTH_KEYS, 'weightedSales']
-    : THREE_MONTH_KEYS
+  const keys = includeWeightedSales ? [...THREE_MONTH_KEYS, 'weightedSales'] : THREE_MONTH_KEYS
   return sumMonths(months, currentMonthKey, 3, keys)
 }
 
@@ -78,11 +68,13 @@ function totalReceivables(receivables) {
   if (typeof receivables === 'number') return receivables
   if (receivables.total !== undefined) return receivables.total
   if (receivables.current !== undefined) {
-    return (receivables.current || 0) +
+    return (
+      (receivables.current || 0) +
       (receivables.days1to30 || 0) +
       (receivables.days31to60 || 0) +
       (receivables.days61to90 || 0) +
       (receivables.over90 || 0)
+    )
   }
   return 0
 }
@@ -140,13 +132,18 @@ const DAYS_PER_MONTH = 30
 // Returns null when expenses are non-positive or there is no month data. If the
 // threshold is never crossed within the available future months, returns the
 // available window in days (a floor — the true horizon is at least this long).
-function daysOfWork(months, currentMonthKey, monthlyExpenses, targetMargin, includeWeightedSales = true, elapsedDays = 0) {
+function daysOfWork(
+  months,
+  currentMonthKey,
+  monthlyExpenses,
+  targetMargin,
+  includeWeightedSales = true,
+  elapsedDays = 0,
+) {
   if (!monthlyExpenses || monthlyExpenses <= 0) return null
   if (!Array.isArray(months) || months.length === 0) return null
 
-  const keys = includeWeightedSales
-    ? [...THREE_MONTH_KEYS, 'weightedSales']
-    : THREE_MONTH_KEYS
+  const keys = includeWeightedSales ? [...THREE_MONTH_KEYS, 'weightedSales'] : THREE_MONTH_KEYS
 
   // Required revenue-to-expense multiplier at the crossing point. For a target
   // net margin m, (rev - exp)/rev = m  =>  rev = exp / (1 - m).
@@ -197,7 +194,7 @@ function allDaysOfWork(months, currentMonthKey, monthlyExpenses, targetMargin, e
     targetForecasted: daysOfWork(months, currentMonthKey, monthlyExpenses, targetMargin, true, elapsedDays),
     targetWon: daysOfWork(months, currentMonthKey, monthlyExpenses, targetMargin, false, elapsedDays),
     breakEvenForecasted: daysOfWork(months, currentMonthKey, monthlyExpenses, 0, true, elapsedDays),
-    breakEvenWon: daysOfWork(months, currentMonthKey, monthlyExpenses, 0, false, elapsedDays)
+    breakEvenWon: daysOfWork(months, currentMonthKey, monthlyExpenses, 0, false, elapsedDays),
   }
 }
 
@@ -216,7 +213,7 @@ export {
   daysCash,
   daysCashPlusAR,
   daysOfWork,
-  allDaysOfWork
+  allDaysOfWork,
 }
 
 export default {
@@ -234,5 +231,5 @@ export default {
   daysCash,
   daysCashPlusAR,
   daysOfWork,
-  allDaysOfWork
+  allDaysOfWork,
 }

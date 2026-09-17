@@ -22,7 +22,7 @@ function monthKeyFromOffset(currentMonthKey, offset) {
 
 function findMonth(months, key) {
   if (!Array.isArray(months)) return null
-  return months.find(m => m.month === key) || null
+  return months.find((m) => m.month === key) || null
 }
 
 // Sum the given component keys across `count` months starting at currentMonthKey.
@@ -60,11 +60,13 @@ function totalReceivables(receivables) {
   if (typeof receivables === 'number') return receivables
   if (receivables.total !== undefined) return receivables.total
   if (receivables.current !== undefined) {
-    return (receivables.current || 0) +
+    return (
+      (receivables.current || 0) +
       (receivables.days1to30 || 0) +
       (receivables.days31to60 || 0) +
       (receivables.days61to90 || 0) +
       (receivables.over90 || 0)
+    )
   }
   return 0
 }
@@ -97,7 +99,14 @@ const DAYS_PER_MONTH = 30
 
 // "Days of work" horizon — see src/lib/metrics-formulas.js for the full doc.
 // Kept in lockstep with that file.
-function daysOfWork(months, currentMonthKey, monthlyExpenses, targetMargin, includeWeightedSales = true, elapsedDays = 0) {
+function daysOfWork(
+  months,
+  currentMonthKey,
+  monthlyExpenses,
+  targetMargin,
+  includeWeightedSales = true,
+  elapsedDays = 0,
+) {
   if (!monthlyExpenses || monthlyExpenses <= 0) return null
   if (!Array.isArray(months) || months.length === 0) return null
 
@@ -140,7 +149,7 @@ function allDaysOfWork(months, currentMonthKey, monthlyExpenses, targetMargin, e
     targetForecasted: daysOfWork(months, currentMonthKey, monthlyExpenses, targetMargin, true, elapsedDays),
     targetWon: daysOfWork(months, currentMonthKey, monthlyExpenses, targetMargin, false, elapsedDays),
     breakEvenForecasted: daysOfWork(months, currentMonthKey, monthlyExpenses, 0, true, elapsedDays),
-    breakEvenWon: daysOfWork(months, currentMonthKey, monthlyExpenses, 0, false, elapsedDays)
+    breakEvenWon: daysOfWork(months, currentMonthKey, monthlyExpenses, 0, false, elapsedDays),
   }
 }
 
@@ -149,11 +158,11 @@ function todayInET() {
     timeZone: 'America/New_York',
     year: 'numeric',
     month: '2-digit',
-    day: '2-digit'
+    day: '2-digit',
   }).formatToParts(new Date())
-  const y = parts.find(p => p.type === 'year').value
-  const m = parts.find(p => p.type === 'month').value
-  const d = parts.find(p => p.type === 'day').value
+  const y = parts.find((p) => p.type === 'year').value
+  const m = parts.find((p) => p.type === 'month').value
+  const d = parts.find((p) => p.type === 'day').value
   return `${y}-${m}-${d}`
 }
 
@@ -162,12 +171,12 @@ function monthKeyFromDateStr(dateStr) {
   return `${y}-${m}-01`
 }
 
-exports.handler = async function(event) {
+exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
       headers: { 'Access-Control-Allow-Origin': '*' },
-      body: ''
+      body: '',
     }
   }
 
@@ -176,16 +185,13 @@ exports.handler = async function(event) {
   }
 
   try {
-    const asOfParam =
-      event.queryStringParameters?.as_of ||
-      event.queryStringParameters?.date ||
-      todayInET()
+    const asOfParam = event.queryStringParameters?.as_of || event.queryStringParameters?.date || todayInET()
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(asOfParam)) {
       return {
         statusCode: 400,
         headers: { 'Content-Type': 'text/plain' },
-        body: 'Error: as_of must be YYYY-MM-DD'
+        body: 'Error: as_of must be YYYY-MM-DD',
       }
     }
 
@@ -202,7 +208,7 @@ exports.handler = async function(event) {
       return {
         statusCode: 400,
         headers: { 'Content-Type': 'text/plain' },
-        body: 'Error: invalid as_of date'
+        body: 'Error: invalid as_of date',
       }
     }
 
@@ -217,9 +223,9 @@ exports.handler = async function(event) {
     const archive = await archivesCollection.findOne(
       {
         companyId: company._id,
-        archiveDate: { $lt: asOfDayEnd }
+        archiveDate: { $lt: asOfDayEnd },
       },
-      { sort: { archiveDate: -1 } }
+      { sort: { archiveDate: -1 } },
     )
 
     let months, balances
@@ -237,7 +243,7 @@ exports.handler = async function(event) {
       return {
         statusCode: 404,
         headers: { 'Content-Type': 'text/plain' },
-        body: 'Error: no archive on or before ' + asOfParam
+        body: 'Error: no archive on or before ' + asOfParam,
       }
     }
 
@@ -266,7 +272,7 @@ exports.handler = async function(event) {
       dowLine(dow.targetWon),
       dowLine(dow.targetForecasted),
       dowLine(dow.breakEvenWon),
-      dowLine(dow.breakEvenForecasted)
+      dowLine(dow.breakEvenForecasted),
     ].join('\n')
 
     return {
@@ -274,16 +280,16 @@ exports.handler = async function(event) {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
         'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'no-store'
+        'Cache-Control': 'no-store',
       },
-      body: output
+      body: output,
     }
   } catch (err) {
     console.error('metrics-plain error:', err)
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'text/plain' },
-      body: 'Error: ' + (err.message || 'Failed to fetch metrics')
+      body: 'Error: ' + (err.message || 'Failed to fetch metrics'),
     }
   }
 }

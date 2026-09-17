@@ -9,6 +9,7 @@ The Journal Entries page allows users to view, create, and manage QuickBooks jou
 The following QuickBooks account IDs are used throughout this feature and **MUST be stored in Company Settings** (see Settings Configuration section below):
 
 **Default Account Numbers** (from Buckeye Innovation):
+
 - **Unearned Revenue**: `246` (name: "Unearned Revenue")
 - **Project Income - Points**: `342` (name: "Project Income:Project Income - Points")
 - **Recurring Income - Support**: `341` (name: "Recurring Income:Recurring Income - Support")
@@ -27,6 +28,7 @@ These are company-specific and must be configurable per company in the database.
 ## Filtering Criteria
 
 The page displays ONLY journal entries that meet this criteria:
+
 - At least one line item contains "unearned" in the account name (case-insensitive)
 - This includes:
   - "Unearned Revenue" (main account)
@@ -37,6 +39,7 @@ The page displays ONLY journal entries that meet this criteria:
 ## Page Layout
 
 ### Header Section
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │ Journal Entries                          [+ Create New Entry] │
@@ -256,6 +259,7 @@ When viewing invoices or delayed charges in the Transaction Details Modal:
 ```
 
 Clicking "[Create Journal Entry]" pre-fills the shift/spread modal:
+
 - Client name: Auto-filled from invoice customer
 - Amount: Auto-filled from invoice total
 - Invoice date: Auto-filled from invoice date
@@ -322,40 +326,42 @@ Two journal entries are considered a "pair" if they meet ALL of these criteria:
 **Endpoint**: POST to QuickBooks `/v3/company/{realmId}/journalentry`
 
 **Request Body** (for shifting example):
+
 ```json
 {
   "Line": [
     {
       "Description": "ACE 25pts invoiced November, completed October",
-      "Amount": 5000.00,
+      "Amount": 5000.0,
       "DetailType": "JournalEntryLineDetail",
       "JournalEntryLineDetail": {
         "PostingType": "Debit",
         "AccountRef": {
-          "value": "342",  // From company.settings.journalEntryAccounts.projectIncomePoints
+          "value": "342", // From company.settings.journalEntryAccounts.projectIncomePoints
           "name": "Project Income:Project Income - Points"
         }
       }
     },
     {
       "Description": "ACE 25pts invoiced November, completed October",
-      "Amount": 5000.00,
+      "Amount": 5000.0,
       "DetailType": "JournalEntryLineDetail",
       "JournalEntryLineDetail": {
         "PostingType": "Credit",
         "AccountRef": {
-          "value": "246",  // From company.settings.journalEntryAccounts.unearnedRevenue
+          "value": "246", // From company.settings.journalEntryAccounts.unearnedRevenue
           "name": "Unearned Revenue"
         }
       }
     }
   ],
   "TxnDate": "2025-11-01",
-  "PrivateNote": ""  // Optional field, can be empty
+  "PrivateNote": "" // Optional field, can be empty
 }
 ```
 
 **Important Notes:**
+
 - Account `value` fields come from Company Settings (see Settings Configuration)
 - Account `name` fields are for display only (QB will validate against `value`)
 - No `DocNumber` field - QuickBooks will auto-generate or leave blank
@@ -370,6 +376,7 @@ Already implemented in `quickbooks.js:getJournalEntries()`
 **Endpoint**: POST to QuickBooks `/v3/company/{realmId}/journalentry?operation=update`
 
 Requires:
+
 - Complete journal entry object
 - SyncToken for optimistic locking
 - Id of the entry to update
@@ -379,9 +386,11 @@ Requires:
 **Endpoint**: POST to QuickBooks `/v3/company/{realmId}/journalentry?operation=delete`
 
 Requires:
+
 - Id and SyncToken
 
 **Confirmation**: Show warning modal before deletion:
+
 ```
 Are you sure you want to delete this journal entry?
 
@@ -401,20 +410,24 @@ If this is part of a pair, you may want to delete both entries.
 ### Revenue Accounts Dropdown
 
 Populated from QuickBooks accounts that match:
+
 - AccountType = "Income" OR
 - Account name starts with "4" OR
 - Account name contains "revenue" or "income"
 
 Exclude:
+
 - Accounts with "unearned" in the name
 
 ### Unearned Revenue Accounts Dropdown
 
 Populated from QuickBooks accounts that match:
+
 - Account name contains "unearned" (case-insensitive) OR
 - Account name contains "deferred" (case-insensitive)
 
 Options should include:
+
 - Main account: "Unearned Revenue"
 - Sub-accounts: "Unearned Revenue:[Client Name]" (if they exist)
 - "+ Create New Sub-Account" option
@@ -456,6 +469,7 @@ Before creating journal entries:
 ### Pagination
 
 If more than 100 entries:
+
 - Show 50 entries per page
 - Add pagination controls at bottom
 - Filter/search should search ALL entries, not just current page
@@ -470,15 +484,18 @@ If more than 100 entries:
 ## Mobile Responsiveness
 
 ### Desktop (>1024px)
+
 - Show full two-column pair view
 - All details visible
 
 ### Tablet (768-1024px)
+
 - Stack pair columns vertically
 - Reduce font sizes slightly
 - Collapse details by default (click to expand)
 
 ### Mobile (<768px)
+
 - Single column layout
 - Show one entry at a time
 - "View Pair" button to see matching entry
@@ -487,6 +504,7 @@ If more than 100 entries:
 ## Analytics & Tracking
 
 Track these events:
+
 - `journal_entry_viewed` - User opens Journal Entries page
 - `journal_entry_created` - User creates new entry (with type: shift/spread)
 - `journal_entry_pair_created` - User creates a pair of entries
@@ -586,6 +604,7 @@ Add new section to Settings page (after API Connections):
 ### Backend Function for Account Dropdowns
 
 Create `journal-entry-accounts.js` function that:
+
 1. Fetches all QB Income accounts (for revenue accounts dropdown)
 2. Fetches all QB accounts containing "unearned" (for unearned revenue dropdown)
 3. Returns formatted list with `{ value: "246", name: "Unearned Revenue" }`
@@ -594,26 +613,27 @@ Create `journal-entry-accounts.js` function that:
 ### Usage in Journal Entry Creation
 
 When creating journal entries:
+
 ```javascript
-const company = await getCompany(companyId);
-const unearnedAccountId = company.settings.journalEntryAccounts.unearnedRevenue || "246";
-const revenueAccountId = company.settings.journalEntryAccounts.projectIncomePoints || "342";
+const company = await getCompany(companyId)
+const unearnedAccountId = company.settings.journalEntryAccounts.unearnedRevenue || '246'
+const revenueAccountId = company.settings.journalEntryAccounts.projectIncomePoints || '342'
 
 // Use these IDs in the QB API request
 const journalEntry = {
   Line: [
     {
       JournalEntryLineDetail: {
-        AccountRef: { value: revenueAccountId }
-      }
+        AccountRef: { value: revenueAccountId },
+      },
     },
     {
       JournalEntryLineDetail: {
-        AccountRef: { value: unearnedAccountId }
-      }
-    }
-  ]
-};
+        AccountRef: { value: unearnedAccountId },
+      },
+    },
+  ],
+}
 ```
 
 ## Dependencies
@@ -645,22 +665,23 @@ const journalEntry = {
 ### Database Migration
 
 Add migration script to update existing companies collection:
+
 ```javascript
 // migration: add-journal-entry-accounts-settings.js
 db.companies.updateMany(
-  { "settings.journalEntryAccounts": { $exists: false } },
+  { 'settings.journalEntryAccounts': { $exists: false } },
   {
     $set: {
-      "settings.journalEntryAccounts": {
-        unearnedRevenue: "246",
-        projectIncomePoints: "342",
-        recurringIncomeSupport: "341",
-        recurringIncomePoints: "213",
-        unearnedRevenueSubAccounts: []
-      }
-    }
-  }
-);
+      'settings.journalEntryAccounts': {
+        unearnedRevenue: '246',
+        projectIncomePoints: '342',
+        recurringIncomeSupport: '341',
+        recurringIncomePoints: '213',
+        unearnedRevenueSubAccounts: [],
+      },
+    },
+  },
+)
 ```
 
 ## Timeline Estimate

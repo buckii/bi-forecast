@@ -15,16 +15,16 @@ exports.handler = createHandler(
 
     if (body.clientAliases.length > 0) {
       await clientAliasesCollection.insertMany(
-        body.clientAliases.map(client => ({
+        body.clientAliases.map((client) => ({
           companyId: company._id,
           primaryName: client.primaryName,
           aliases: client.aliases,
           createdAt: new Date(),
-          updatedAt: new Date()
-        }))
+          updatedAt: new Date(),
+        })),
       )
     }
 
     return { message: 'Client aliases updated successfully' }
-  }
+  },
 )

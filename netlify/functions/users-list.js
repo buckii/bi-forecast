@@ -6,12 +6,12 @@ exports.handler = createHandler({ role: 'admin', errorMessage: 'Failed to get us
   const users = await usersCollection.find({ companyId: company._id }).toArray()
 
   return {
-    users: users.map(user => ({
+    users: users.map((user) => ({
       _id: user._id,
       email: user.email,
       role: user.role,
       createdAt: user.createdAt,
-      lastLoginAt: user.lastLoginAt
-    }))
+      lastLoginAt: user.lastLoginAt,
+    })),
   }
 })

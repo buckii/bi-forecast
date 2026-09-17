@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Development Commands
 
 ### Local Development
+
 ```bash
 npm run dev              # Start Netlify Dev (Vite + Functions)
 npm run dev:local        # Start Vite only (no functions)
@@ -12,6 +13,7 @@ npm run tunnel           # Start Cloudflare tunnel for external access
 ```
 
 ### Testing
+
 ```bash
 npm test                 # Run tests in watch mode
 npm run test:run         # Run tests once
@@ -20,6 +22,7 @@ npm run test:coverage    # Generate coverage report
 ```
 
 ### Build & Deploy
+
 ```bash
 npm run build           # Build frontend for production
 npm run deploy          # Build and deploy to Netlify production
@@ -28,6 +31,7 @@ npm run deploy          # Build and deploy to Netlify production
 ## Architecture Overview
 
 ### Frontend (Vue 3)
+
 - **Composition API**: All components use `<script setup>` syntax
 - **State Management**: Pinia stores in `src/stores/`
 - **Routing**: Vue Router with auth guards in `src/router/`
@@ -37,6 +41,7 @@ npm run deploy          # Build and deploy to Netlify production
   redefine one in a component.
 
 ### Backend (Netlify Functions)
+
 - **Location**: `netlify/functions/`
 - **Style**: CommonJS (not ES modules) for AWS Lambda compatibility
 - **Services**: Shared business logic in `netlify/functions/services/`
@@ -68,7 +73,7 @@ exports.handler = createHandler(
   async ({ user, company, body, query }) => {
     if (!body.email) throw new HttpError('Email is required', 400)
     return { message: 'Done' }
-  }
+  },
 )
 ```
 
@@ -77,7 +82,9 @@ Throw `HttpError` for a controlled status. A service can tag its own error with
 `err.statusCode` and the wrapper honors it.
 
 ### Database (MongoDB)
+
 Collections:
+
 - `companies` - Multi-tenant company data
 - `users` - User profiles with company associations
 - `oauth_tokens` - Encrypted API credentials
@@ -88,6 +95,7 @@ Collections:
 ## Critical Patterns & Conventions
 
 ### Date Handling (Timezone Safety)
+
 **ALWAYS** use date-only strings (`YYYY-MM-DD`) when passing dates between frontend and backend to avoid timezone shifts. Never use `.toISOString()` for dates.
 
 ```javascript
@@ -100,12 +108,13 @@ api.get(`/endpoint?date=${date.toISOString()}`)
 ```
 
 Backend parsing goes through `utils/dates.js`. Do not hand-roll it:
+
 ```javascript
 const { parseDate, toDateString, monthStartString, addDays } = require('./utils/dates.js')
 
-parseDate('2026-09-16')            // UTC midnight
-toDateString(date)                 // 'YYYY-MM-DD', UTC components
-monthStartString('2026-01-31', 1)  // '2026-02-01', never rolls a short month forward
+parseDate('2026-09-16') // UTC midnight
+toDateString(date) // 'YYYY-MM-DD', UTC components
+monthStartString('2026-01-31', 1) // '2026-02-01', never rolls a short month forward
 ```
 
 Archive and cache documents are keyed by UTC midnight (`startOfDay`, `todayDate`). Local-time
@@ -113,17 +122,19 @@ Archive and cache documents are keyed by UTC midnight (`startOfDay`, `todayDate`
 developer's machine.
 
 **CRITICAL**: journal entry dates must land on the 1st of the month. Use `monthStartString`:
+
 ```javascript
 // ✅ CORRECT
-const dateStr = monthStartString(recognitionStartDate, i); // 'YYYY-MM-01'
+const dateStr = monthStartString(recognitionStartDate, i) // 'YYYY-MM-01'
 
 // ❌ WRONG - local timezone plus setMonth() shifts the day
-const recognitionDate = new Date(recognitionStartDate);
-recognitionDate.setMonth(recognitionDate.getMonth() + i);
-const dateStr = recognitionDate.toISOString().split('T')[0];
+const recognitionDate = new Date(recognitionStartDate)
+recognitionDate.setMonth(recognitionDate.getMonth() + i)
+const dateStr = recognitionDate.toISOString().split('T')[0]
 ```
 
 ### API Optimization (Rate Limiting)
+
 QuickBooks has a 500 req/min limit. The codebase uses several strategies:
 
 1. **100-150ms spacing** between API calls in `revenue-calculator.js` and cache prefetching
@@ -134,11 +145,12 @@ QuickBooks has a 500 req/min limit. The codebase uses several strategies:
 6. **Fallback mode protection** - Pipedrive refresh detects incomplete QB data and prevents overwriting good archive data
 
 When modifying revenue calculations, always pass cached data to avoid N+1 queries:
+
 ```javascript
 const revenueResult = await calculator.calculateMonthlyRevenue(18, -6)
 const balances = await calculator.getBalances(
-  revenueResult.months,  // Pass months to avoid re-fetching
-  calculator.cachedQBOData  // Pass cached data
+  revenueResult.months, // Pass months to avoid re-fetching
+  calculator.cachedQBOData, // Pass cached data
 )
 ```
 
@@ -146,6 +158,7 @@ const balances = await calculator.getBalances(
 `qbo.getJournalEntries(startDate, endDate, maxPages)` rather than querying directly; a single
 query silently truncates at 100 and hides shift pairs whose other half falls on a later page.
 It paginates like this:
+
 ```javascript
 const allEntries = []
 const pageSize = 100
@@ -155,12 +168,13 @@ for (let page = 0; page < maxPages; page++) {
   const startPosition = page * pageSize + 1
   const query = `SELECT * FROM JournalEntry WHERE ... STARTPOSITION ${startPosition} MAXRESULTS ${pageSize}`
   // ... fetch and accumulate
-  if (entries.length < pageSize) break; // No more pages
-  await new Promise(resolve => setTimeout(resolve, 100)); // Rate limit delay
+  if (entries.length < pageSize) break // No more pages
+  await new Promise((resolve) => setTimeout(resolve, 100)) // Rate limit delay
 }
 ```
 
 ### Authentication Flow
+
 - **Development**: `BYPASS_AUTH_LOCALHOST=true` skips auth on localhost
 - **Production**: JWT tokens with 7-day expiry
 - **OAuth Tokens**: AES-encrypted in MongoDB using `ENCRYPTION_KEY`
@@ -173,7 +187,9 @@ for (let page = 0; page < maxPages; page++) {
   of logging the user out.
 
 ### Revenue Calculation Components
+
 6 components make up monthly revenue (in order):
+
 1. Invoiced Revenue (QB invoices)
 2. Journal Entries (QB accounting adjustments - revenue recognition)
 3. Delayed Charges (QB unbilled items)
@@ -202,6 +218,7 @@ Unmatched entries fall back to `'Journal Entries'` in the by-client totals and `
 
 **Journal Entry Filtering**: account classification lives in `services/qb-accounts.js` so the
 calculator and the endpoints cannot drift apart:
+
 ```javascript
 const { hasUnearnedRevenue, isRevenueLine, revenueAmount } = require('./services/qb-accounts.js')
 
@@ -210,6 +227,7 @@ const amount = revenueAmount(entry) // credits to revenue add, debits subtract
 ```
 
 ### Slack Sharing
+
 Two endpoints post to the channel in `SLACK_CHANNEL_ID` using `services/slack.js`:
 
 - `share-chart.js` - the forecast chart as a PNG (html2canvas capture from the Dashboard)
@@ -218,6 +236,7 @@ Two endpoints post to the channel in `SLACK_CHANNEL_ID` using `services/slack.js
 **Share text, not pictures of text.** A rasterized table has to be zoomed to read, and its contents cannot be searched, copied, or read by a screen reader. Charts are fine as images; tabular data is not. `share-client-revenue.js` posts real text and attaches the chart to the thread via `uploadFile(..., threadTs)`.
 
 **Slack limits `buildBlocks()` is written around** - exceeding any of these rejects the whole message:
+
 - 3000 characters per section block → client lines chunk at `SECTION_CHAR_LIMIT` (2800)
 - 50 blocks per message → at most `MAX_LISTED_CLIENTS` (100) clients are listed individually; the rest become an overflow line
 - `text` is the notification/fallback string and is **required** even when `blocks` is supplied
@@ -229,6 +248,7 @@ Clients below `threshold` (default $3,000) collapse into one rollup line, so the
 `postBlocks()` and `uploadFile()` both use the existing `chat:write` / `files:write` scopes — adding Block Kit needed no re-auth. Note that `SLACK_CHANNEL_ID` is a single hardcoded channel; anything more sensitive than the current internal channel needs channel routing first.
 
 ### Transaction Caching Strategy
+
 - **Prefetch Window**: 6 months (prev 2, current, next 3)
 - **Trigger**: Background job during QB/PD refresh
 - **Purpose**: Instant chart drill-down without API calls
@@ -237,6 +257,7 @@ Clients below `threshold` (default $3,000) collapse into one rollup line, so the
 ## File Organization
 
 ### Netlify Functions
+
 - `auth-*.js` - Authentication endpoints
 - `revenue-*.js` - Revenue data endpoints
 - `qbo-*.js` - QuickBooks OAuth flow
@@ -246,6 +267,7 @@ Clients below `threshold` (default $3,000) collapse into one rollup line, so the
 - `services/` - Business logic (keep functions thin, logic in services)
 
 ### Frontend
+
 - `views/` - Page components (Dashboard, Settings, etc.)
 - `components/` - Reusable UI components
 - `stores/` - Pinia state (auth, revenue)
@@ -257,12 +279,14 @@ Clients below `threshold` (default $3,000) collapse into one rollup line, so the
 Tests use Vitest + Vue Test Utils. Run `npm run test:ui` for the best experience.
 
 Key test files:
+
 - `src/**/__tests__/*.test.js` - Component/store tests
 - `netlify/functions/utils/__tests__/*.test.js` - Backend utility tests
 
 ## Important Environment Variables
 
 Required for local development (see `.env.example`):
+
 - `MONGODB_URI` - MongoDB connection string
 - `JWT_SECRET` - For auth tokens
 - `ENCRYPTION_KEY` - For encrypting OAuth tokens
@@ -298,22 +322,25 @@ Required for local development (see `.env.example`):
     through, because the prefetch cache keys single months as `YYYY-MM-01` and normalizing to a
     month key would miss every cached entry.
 
-
 ## Architecture Decisions
 
 ### Why CommonJS for functions?
+
 AWS Lambda (which powers Netlify Functions) requires CommonJS. All `netlify/functions/**/*.js` files use `require()` and `module.exports`.
 
 ### Why separate refresh endpoints?
+
 - `revenue-refresh-qbo.js` - Full QB refresh (8 API calls) - fetches fresh QuickBooks data
 - `revenue-refresh-pipedrive.js` - PD only, reuses today's QB archive (2 API calls) - preserves QB data integrity
 - Pipedrive refresh includes fallback mode detection to prevent overwriting good QB data with incomplete filtered data
 - Allows targeted refreshes to minimize API usage
 
 ### Why 6-month transaction cache?
+
 Balances chart drill-down performance against storage. Covers typical user navigation patterns (prev 2 months, current, next 3).
 
 ### Why archives instead of live calculation?
+
 - Provides historical "point in time" views
 - Reduces API calls (reuse archived data)
 - Enables comparison features

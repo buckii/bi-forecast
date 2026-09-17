@@ -5,7 +5,7 @@ export default {
     const url = bypassCache ? '/revenue-current?nocache=true' : '/revenue-current'
     return api.get(url)
   },
-  
+
   async getHistoricalData(date) {
     // Send date as YYYY-MM-DD string to avoid timezone issues
     const year = date.getFullYear()
@@ -14,18 +14,18 @@ export default {
     const dateStr = `${year}-${month}-${day}`
     return api.get(`/revenue-historical?date=${dateStr}`)
   },
-  
+
   async refreshQuickbooks() {
     return api.post('/revenue-refresh-qbo')
   },
-  
+
   async refreshPipedrive() {
     return api.post('/revenue-refresh-pipedrive')
   },
-  
+
   async getRevenueByClient(month = null, includeWeightedSales = true, asOf = null) {
     const params = new URLSearchParams({
-      includeWeightedSales: includeWeightedSales.toString()
+      includeWeightedSales: includeWeightedSales.toString(),
     })
 
     if (month) {
@@ -37,5 +37,5 @@ export default {
     }
 
     return api.get(`/revenue-by-client?${params.toString()}`)
-  }
+  },
 }

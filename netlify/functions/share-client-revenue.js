@@ -45,54 +45,66 @@ function periodLabel({ month, startDate, endDate }) {
  * Named clients are listed individually; everything below the threshold is rolled
  * up into a single line so the totals still reconcile without listing every client.
  */
-function buildBlocks({ clients, month, startDate, endDate, asOf, includeWeightedSales, threshold, pricePerPoint, companyName, appUrl }) {
+function buildBlocks({
+  clients,
+  month,
+  startDate,
+  endDate,
+  asOf,
+  includeWeightedSales,
+  threshold,
+  pricePerPoint,
+  companyName,
+  appUrl,
+}) {
   const sorted = [...clients].sort((a, b) => (b.total || 0) - (a.total || 0))
   const total = sorted.reduce((sum, c) => sum + (c.total || 0), 0)
 
-  const aboveThreshold = sorted.filter(c => (c.total || 0) >= threshold)
+  const aboveThreshold = sorted.filter((c) => (c.total || 0) >= threshold)
   const named = aboveThreshold.slice(0, MAX_LISTED_CLIENTS)
   const overflow = aboveThreshold.slice(MAX_LISTED_CLIENTS)
   const overflowTotal = overflow.reduce((sum, c) => sum + (c.total || 0), 0)
 
-  const rest = sorted.filter(c => (c.total || 0) < threshold)
+  const rest = sorted.filter((c) => (c.total || 0) < threshold)
   const restTotal = rest.reduce((sum, c) => sum + (c.total || 0), 0)
 
-  const points = value => (value / pricePerPoint).toFixed(1)
+  const points = (value) => (value / pricePerPoint).toFixed(1)
   const label = periodLabel({ month, startDate, endDate })
 
   const contextParts = [
     asOf ? `As of ${format(parse(asOf, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy')}` : 'As of today',
-    includeWeightedSales ? 'includes weighted sales' : 'excludes weighted sales'
+    includeWeightedSales ? 'includes weighted sales' : 'excludes weighted sales',
   ]
 
   const blocks = [
     {
       type: 'header',
-      text: { type: 'plain_text', text: `Client Revenue — ${label}`, emoji: true }
+      text: { type: 'plain_text', text: `Client Revenue — ${label}`, emoji: true },
     },
     {
       type: 'context',
-      elements: [{ type: 'mrkdwn', text: `${companyName} · ${contextParts.join(' · ')}` }]
+      elements: [{ type: 'mrkdwn', text: `${companyName} · ${contextParts.join(' · ')}` }],
     },
     {
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: `*Total*  ${formatCurrency(total)}  ·  ${points(total)} pts  ·  ${sorted.length} clients`
-      }
+        text: `*Total*  ${formatCurrency(total)}  ·  ${points(total)} pts  ·  ${sorted.length} clients`,
+      },
     },
-    { type: 'divider' }
+    { type: 'divider' },
   ]
 
   // Client lines, chunked across as many section blocks as needed
-  const lines = named.map(client =>
-    `*${client.client}*\n${formatCurrency(client.total)} · ${points(client.total)} pts · ${formatPercent(client.total, total)}`
+  const lines = named.map(
+    (client) =>
+      `*${client.client}*\n${formatCurrency(client.total)} · ${points(client.total)} pts · ${formatPercent(client.total, total)}`,
   )
 
   if (lines.length === 0) {
     blocks.push({
       type: 'section',
-      text: { type: 'mrkdwn', text: `_No clients at or above ${formatCurrency(threshold)} this month._` }
+      text: { type: 'mrkdwn', text: `_No clients at or above ${formatCurrency(threshold)} this month._` },
     })
   } else {
     let chunk = []
@@ -117,10 +129,12 @@ function buildBlocks({ clients, month, startDate, endDate, asOf, includeWeighted
   if (overflow.length > 0) {
     blocks.push({
       type: 'context',
-      elements: [{
-        type: 'mrkdwn',
-        text: `＋ ${overflow.length} more at or above ${formatCurrency(threshold)} — ${formatCurrency(overflowTotal)} · ${points(overflowTotal)} pts · ${formatPercent(overflowTotal, total)}`
-      }]
+      elements: [
+        {
+          type: 'mrkdwn',
+          text: `＋ ${overflow.length} more at or above ${formatCurrency(threshold)} — ${formatCurrency(overflowTotal)} · ${points(overflowTotal)} pts · ${formatPercent(overflowTotal, total)}`,
+        },
+      ],
     })
   }
 
@@ -128,17 +142,19 @@ function buildBlocks({ clients, month, startDate, endDate, asOf, includeWeighted
   if (rest.length > 0) {
     blocks.push({
       type: 'context',
-      elements: [{
-        type: 'mrkdwn',
-        text: `＋ ${rest.length} ${rest.length === 1 ? 'client' : 'clients'} under ${formatCurrency(threshold)} — ${formatCurrency(restTotal)} · ${points(restTotal)} pts · ${formatPercent(restTotal, total)}`
-      }]
+      elements: [
+        {
+          type: 'mrkdwn',
+          text: `＋ ${rest.length} ${rest.length === 1 ? 'client' : 'clients'} under ${formatCurrency(threshold)} — ${formatCurrency(restTotal)} · ${points(restTotal)} pts · ${formatPercent(restTotal, total)}`,
+        },
+      ],
     })
   }
 
   if (appUrl) {
     blocks.push({
       type: 'context',
-      elements: [{ type: 'mrkdwn', text: `<${appUrl}|Open the full breakdown in BI Forecast>` }]
+      elements: [{ type: 'mrkdwn', text: `<${appUrl}|Open the full breakdown in BI Forecast>` }],
     })
   }
 
@@ -160,7 +176,7 @@ exports.handler = createHandler(
       includeWeightedSales = true,
       threshold = 3000,
       appUrl = null,
-      imageData = null
+      imageData = null,
     } = body
 
     if (!Array.isArray(clients) || clients.length === 0) {
@@ -184,7 +200,7 @@ exports.handler = createHandler(
       threshold,
       pricePerPoint,
       companyName: company.name,
-      appUrl
+      appUrl,
     })
 
     const slack = new SlackService()
@@ -210,7 +226,7 @@ exports.handler = createHandler(
           filename,
           `Client Revenue — ${periodLabel({ month, startDate, endDate })}`,
           null,
-          message.ts
+          message.ts,
         )
         chartShared = true
       } catch (uploadError) {
@@ -224,9 +240,9 @@ exports.handler = createHandler(
       namedCount,
       rolledUpCount,
       chartShared,
-      slackMessage: { ts: message.ts, channel: message.channel }
+      slackMessage: { ts: message.ts, channel: message.channel },
     }
-  }
+  },
 )
 
 // Exported for tests

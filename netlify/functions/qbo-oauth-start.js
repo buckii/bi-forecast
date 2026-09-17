@@ -7,8 +7,7 @@ exports.handler = createHandler({ errorMessage: 'Failed to start QuickBooks OAut
   const clientId = process.env.QBO_CLIENT_ID
   if (!clientId) throw new HttpError('QuickBooks OAuth not configured', 500)
 
-  const redirectUri =
-    process.env.QBO_REDIRECT_URI || `${process.env.URL}/.netlify/functions/qbo-oauth-callback`
+  const redirectUri = process.env.QBO_REDIRECT_URI || `${process.env.URL}/.netlify/functions/qbo-oauth-callback`
 
   // NOTE: this state is returned to the client but is not verified on callback,
   // so it is not yet real CSRF protection -- see qbo-oauth-callback.js.
@@ -19,7 +18,7 @@ exports.handler = createHandler({ errorMessage: 'Failed to start QuickBooks OAut
     scope: SCOPE,
     redirect_uri: redirectUri,
     response_type: 'code',
-    state
+    state,
   })
 
   return { authUrl: `https://appcenter.intuit.com/connect/oauth2?${params}`, state }

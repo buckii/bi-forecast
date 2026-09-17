@@ -46,7 +46,7 @@ async function getCollection(collectionName) {
 async function withTransaction(operations) {
   const { client } = await connectToDatabase()
   const session = client.startSession()
-  
+
   try {
     const result = await session.withTransaction(async () => {
       return await operations(session)
@@ -61,5 +61,5 @@ module.exports = {
   connectToDatabase,
   closeConnection,
   getCollection,
-  withTransaction
+  withTransaction,
 }

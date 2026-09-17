@@ -7,6 +7,7 @@ Auto-generated journal entries for revenue recognition were not being created on
 ### Example Issues Found
 
 **City of Hilliard annual support monthly share** (7 entries with wrong dates):
+
 - 2/1/26 ✓ (correct)
 - **3/4/25** should be 3/1/26 ✗
 - **3/31/26** should be 4/1/26 ✗
@@ -25,9 +26,9 @@ The bug was in `netlify/functions/journal-entry-create.js` (lines 197-199 before
 
 ```javascript
 // ❌ WRONG - Causes date shifts
-const recognitionDate = new Date(recognitionStartDate); // Local timezone
-recognitionDate.setMonth(recognitionDate.getMonth() + i); // Can cause day shifts
-const dateStr = recognitionDate.toISOString().split('T')[0]; // UTC conversion shifts dates
+const recognitionDate = new Date(recognitionStartDate) // Local timezone
+recognitionDate.setMonth(recognitionDate.getMonth() + i) // Can cause day shifts
+const dateStr = recognitionDate.toISOString().split('T')[0] // UTC conversion shifts dates
 ```
 
 ### Why This Failed
@@ -44,14 +45,14 @@ Use UTC methods exclusively and always use day 1 of the month:
 
 ```javascript
 // ✅ CORRECT - Parse as UTC to avoid timezone issues
-const [year, month, day] = recognitionStartDate.split('-').map(Number);
-const recognitionDate = new Date(Date.UTC(year, month - 1, 1)); // Start with first day
-recognitionDate.setUTCMonth(recognitionDate.getUTCMonth() + i); // Add months in UTC
+const [year, month, day] = recognitionStartDate.split('-').map(Number)
+const recognitionDate = new Date(Date.UTC(year, month - 1, 1)) // Start with first day
+recognitionDate.setUTCMonth(recognitionDate.getUTCMonth() + i) // Add months in UTC
 
 // Format as YYYY-MM-01 (always first day of month)
-const finalYear = recognitionDate.getUTCFullYear();
-const finalMonth = String(recognitionDate.getUTCMonth() + 1).padStart(2, '0');
-const dateStr = `${finalYear}-${finalMonth}-01`;
+const finalYear = recognitionDate.getUTCFullYear()
+const finalMonth = String(recognitionDate.getUTCMonth() + 1).padStart(2, '0')
+const dateStr = `${finalYear}-${finalMonth}-01`
 ```
 
 ### Why This Works
@@ -74,6 +75,7 @@ node tmp/check-all-journal-dates.cjs <companyId>
 ```
 
 The diagnostic script:
+
 - Fetches all journal entries from 2024-2027
 - Filters for auto-generated entries (containing "Month X of Y" or "Revenue spreading")
 - Excludes "Accelerate" entries (intentionally on last day of month)
@@ -97,6 +99,7 @@ node tmp/fix-connect-the-dots-journal-dates.cjs <companyId>
 ```
 
 Each repair script:
+
 1. Shows entries that will be fixed with before/after dates
 2. Asks for confirmation before making changes
 3. Updates entries via QuickBooks API with 150ms delays between updates
@@ -108,12 +111,12 @@ Each repair script:
 
 ```javascript
 // For any date manipulation in journal entry creation:
-const [year, month, day] = dateStr.split('-').map(Number);
-const date = new Date(Date.UTC(year, month - 1, 1)); // Day 1 in UTC
-date.setUTCMonth(date.getUTCMonth() + offset); // UTC methods only
+const [year, month, day] = dateStr.split('-').map(Number)
+const date = new Date(Date.UTC(year, month - 1, 1)) // Day 1 in UTC
+date.setUTCMonth(date.getUTCMonth() + offset) // UTC methods only
 
 // Format without timezone conversion
-const outputStr = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-01`;
+const outputStr = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-01`
 ```
 
 ## Related Issues
@@ -134,6 +137,7 @@ const outputStr = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).pad
 ## Testing
 
 After applying fixes:
+
 1. Run QB Refresh to get fresh data
 2. Verify October shows $33,250 and November shows -$11,000 for journal entries
 3. Check that all new journal entries are created on the 1st of the month

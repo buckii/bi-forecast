@@ -90,5 +90,5 @@ module.exports = {
   shiftMonthKey,
   todayString,
   startOfDay,
-  todayDate
+  todayDate,
 }

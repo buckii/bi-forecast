@@ -15,15 +15,19 @@ export function useDarkMode() {
   }
 
   // Watch for changes and update the DOM
-  watch(isDarkMode, (newValue) => {
-    if (newValue) {
-      document.documentElement.classList.add('dark')
-      localStorage.setItem('darkMode', 'true')
-    } else {
-      document.documentElement.classList.remove('dark')
-      localStorage.setItem('darkMode', 'false')
-    }
-  }, { immediate: true })
+  watch(
+    isDarkMode,
+    (newValue) => {
+      if (newValue) {
+        document.documentElement.classList.add('dark')
+        localStorage.setItem('darkMode', 'true')
+      } else {
+        document.documentElement.classList.remove('dark')
+        localStorage.setItem('darkMode', 'false')
+      }
+    },
+    { immediate: true },
+  )
 
   // Initialize from localStorage on mount
   onMounted(() => {
@@ -40,6 +44,6 @@ export function useDarkMode() {
     isDarkMode,
     toggleDarkMode,
     setDarkMode,
-    isDarkModeGlobal
+    isDarkModeGlobal,
   }
 }

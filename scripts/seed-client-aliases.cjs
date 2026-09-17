@@ -31,7 +31,9 @@ async function main() {
   try {
     // Read the exported client aliases data
     if (!fs.existsSync(INPUT_FILE)) {
-      throw new Error(`Input file not found: ${INPUT_FILE}\nRun 'node scripts/export-client-aliases.cjs' first to create it.`)
+      throw new Error(
+        `Input file not found: ${INPUT_FILE}\nRun 'node scripts/export-client-aliases.cjs' first to create it.`,
+      )
     }
 
     console.log(`Reading client aliases from: ${INPUT_FILE}`)
@@ -68,12 +70,12 @@ async function main() {
     console.log(`Target company ID: ${targetCompany._id}`)
 
     // Prepare client alias documents for insertion
-    const aliasDocuments = exportData.clientAliases.map(alias => ({
+    const aliasDocuments = exportData.clientAliases.map((alias) => ({
       companyId: targetCompany._id,
       primaryName: alias.primaryName,
       aliases: alias.aliases || [],
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     }))
 
     // Insert into client_aliases collection
@@ -88,7 +90,7 @@ async function main() {
       console.log(`Inserted ${insertResult.insertedCount} client aliases`)
 
       // Summary
-      const withAliases = aliasDocuments.filter(doc => doc.aliases.length > 0)
+      const withAliases = aliasDocuments.filter((doc) => doc.aliases.length > 0)
       const totalAliasCount = aliasDocuments.reduce((sum, doc) => sum + doc.aliases.length, 0)
 
       console.log(`\n✅ Seeding complete!`)
@@ -99,7 +101,6 @@ async function main() {
     } else {
       console.log('\nNo client aliases found in input file')
     }
-
   } catch (error) {
     console.error('\n❌ Error:', error.message)
     process.exit(1)

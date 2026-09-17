@@ -38,7 +38,7 @@ exports.handler = createHandler(
       return {
         message: 'Pipedrive refresh completed but archive not updated (fallback mode - run QB Refresh first)',
         lastUpdated: new Date().toISOString(),
-        warning: 'Archive has incomplete QB data. Run QB Refresh to get fresh QuickBooks data.'
+        warning: 'Archive has incomplete QB data. Run QB Refresh to get fresh QuickBooks data.',
       }
     }
 
@@ -47,5 +47,5 @@ exports.handler = createHandler(
     // No prefetch here: this path reuses archived QB data, and the QB refresh
     // already warms the cache. Running it twice would burn 48 QB calls.
     return { message: 'Pipedrive data refreshed successfully', lastUpdated: new Date().toISOString() }
-  }
+  },
 )

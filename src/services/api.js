@@ -7,25 +7,25 @@ const api = axios.create({
   baseURL,
   timeout: 30000,
   headers: {
-    'Content-Type': 'application/json'
-  }
+    'Content-Type': 'application/json',
+  },
 })
 
 api.interceptors.request.use(
-  config => {
+  (config) => {
     const token = localStorage.getItem('token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
     return config
   },
-  error => {
+  (error) => {
     return Promise.reject(error)
-  }
+  },
 )
 
 api.interceptors.response.use(
-  response => {
+  (response) => {
     // If the response has a data wrapper with success flag, unwrap it
     if (response.data && typeof response.data === 'object' && 'success' in response.data) {
       if (response.data.success && response.data.data !== undefined) {
@@ -38,13 +38,13 @@ api.interceptors.response.use(
     }
     return response.data
   },
-  error => {
+  (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
       window.location.href = '/login'
     }
     return Promise.reject(error)
-  }
+  },
 )
 
 export default api

@@ -18,15 +18,16 @@ const CLAIMS = {
   sub: '1234567890',
   email: 'brad@buckeyeinnovation.com',
   name: 'Brad',
-  hd: 'buckeyeinnovation.com'
+  hd: 'buckeyeinnovation.com',
 }
 
 function sign(privateKey, { claims = CLAIMS, kid = KEY_ID, ...overrides } = {}) {
-  return jwt.sign(
-    { iss: 'https://accounts.google.com', aud: CLIENT_ID, ...claims, ...overrides },
-    privateKey,
-    { algorithm: 'RS256', expiresIn: '1h', header: { kid }, ...(overrides.signOptions || {}) }
-  )
+  return jwt.sign({ iss: 'https://accounts.google.com', aud: CLIENT_ID, ...claims, ...overrides }, privateKey, {
+    algorithm: 'RS256',
+    expiresIn: '1h',
+    header: { kid },
+    ...(overrides.signOptions || {}),
+  })
 }
 
 function verify(token, loadFromGoogle = async () => [google.jwk]) {
@@ -46,7 +47,7 @@ describe('verifyGoogleToken', () => {
       email: 'brad@buckeyeinnovation.com',
       name: 'Brad',
       picture: undefined,
-      domain: 'buckeyeinnovation.com'
+      domain: 'buckeyeinnovation.com',
     })
   })
 
@@ -65,32 +66,28 @@ describe('verifyGoogleToken', () => {
     it('an unsigned token', async () => {
       const unsigned = jwt.sign({ iss: 'https://accounts.google.com', aud: CLIENT_ID, ...CLAIMS }, '', {
         algorithm: 'none',
-        header: { kid: KEY_ID }
+        header: { kid: KEY_ID },
       })
 
       await expect(verify(unsigned)).rejects.toThrow(/Invalid Google token/)
     })
 
     it('an expired token', async () => {
-      const expired = jwt.sign(
-        { iss: 'https://accounts.google.com', aud: CLIENT_ID, ...CLAIMS },
-        google.privateKey,
-        { algorithm: 'RS256', expiresIn: '-1h', header: { kid: KEY_ID } }
-      )
+      const expired = jwt.sign({ iss: 'https://accounts.google.com', aud: CLIENT_ID, ...CLAIMS }, google.privateKey, {
+        algorithm: 'RS256',
+        expiresIn: '-1h',
+        header: { kid: KEY_ID },
+      })
 
       await expect(verify(expired)).rejects.toThrow(/expired/i)
     })
 
     it('a token minted for a different client', async () => {
-      await expect(verify(sign(google.privateKey, { aud: 'someone-elses-app' }))).rejects.toThrow(
-        /audience/i
-      )
+      await expect(verify(sign(google.privateKey, { aud: 'someone-elses-app' }))).rejects.toThrow(/audience/i)
     })
 
     it('a token from a different issuer', async () => {
-      await expect(verify(sign(google.privateKey, { iss: 'https://evil.example.com' }))).rejects.toThrow(
-        /issuer/i
-      )
+      await expect(verify(sign(google.privateKey, { iss: 'https://evil.example.com' }))).rejects.toThrow(/issuer/i)
     })
 
     it('a token signed with a key id Google does not publish', async () => {
@@ -133,15 +130,13 @@ describe('verifyGoogleToken', () => {
 
     const token = sign(rotated.privateKey, { kid: 'google-key-2' })
 
-    expect((await freshVerify(token, { clientId: CLIENT_ID, loadFromGoogle })).email).toBe(
-      'brad@buckeyeinnovation.com'
-    )
+    expect((await freshVerify(token, { clientId: CLIENT_ID, loadFromGoogle })).email).toBe('brad@buckeyeinnovation.com')
     expect(loadFromGoogle).toHaveBeenCalledTimes(2)
   })
 
   it('refuses to run without a configured client id', async () => {
     await expect(
-      verifyGoogleToken(sign(google.privateKey), { clientId: '', loadFromGoogle: async () => [google.jwk] })
+      verifyGoogleToken(sign(google.privateKey), { clientId: '', loadFromGoogle: async () => [google.jwk] }),
     ).rejects.toThrow(/GOOGLE_CLIENT_ID/)
   })
 })

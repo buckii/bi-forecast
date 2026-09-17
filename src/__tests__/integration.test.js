@@ -22,7 +22,7 @@ describe('Integration Tests - Complex User Flows', () => {
     revenueStore = useRevenueStore()
     authStore = useAuthStore()
     vi.clearAllMocks()
-    
+
     // Mock auth store state
     authStore.token = 'mock-jwt-token'
     authStore.user = { id: 1, name: 'Test User' }
@@ -41,8 +41,8 @@ describe('Integration Tests - Complex User Flows', () => {
               delayedCharges: 2000,
               monthlyRecurring: 3000,
               wonUnscheduled: 1000,
-              weightedSales: 1500
-            }
+              weightedSales: 1500,
+            },
           },
           {
             month: '2024-02-01',
@@ -52,26 +52,26 @@ describe('Integration Tests - Complex User Flows', () => {
               delayedCharges: 2200,
               monthlyRecurring: 3000,
               wonUnscheduled: 800,
-              weightedSales: 2000
-            }
-          }
+              weightedSales: 2000,
+            },
+          },
         ],
         exceptions: {
           overdueDeals: [{ id: 1, amount: 5000 }],
           pastDelayedCharges: [{ id: 2, amount: 1000 }],
-          wonUnscheduled: []
+          wonUnscheduled: [],
         },
         balances: {
           assets: [
             { name: 'Checking', balance: 50000 },
-            { name: 'Savings', balance: 100000 }
+            { name: 'Savings', balance: 100000 },
           ],
           receivables: { total: 25000 },
           monthlyExpenses: 15000,
           yearUnbilled: 120000,
-          thirtyDaysUnbilled: 10000
+          thirtyDaysUnbilled: 10000,
         },
-        lastUpdated: '2024-01-15T10:00:00Z'
+        lastUpdated: '2024-01-15T10:00:00Z',
       }
 
       revenueService.getCurrentData.mockResolvedValue(mockRevenueData)
@@ -93,19 +93,21 @@ describe('Integration Tests - Complex User Flows', () => {
       // Use current month for the test data
       const currentMonthString = format(startOfMonth(new Date()), 'yyyy-MM-dd')
       const mockRevenueData = {
-        months: [{
-          month: currentMonthString,
-          components: {
-            invoiced: 10000,
-            journalEntries: 5000,
-            delayedCharges: 2000,
-            monthlyRecurring: 3000,
-            wonUnscheduled: 1000,
-            weightedSales: 5000
-          }
-        }],
+        months: [
+          {
+            month: currentMonthString,
+            components: {
+              invoiced: 10000,
+              journalEntries: 5000,
+              delayedCharges: 2000,
+              monthlyRecurring: 3000,
+              wonUnscheduled: 1000,
+              weightedSales: 5000,
+            },
+          },
+        ],
         exceptions: { overdueDeals: [], pastDelayedCharges: [], wonUnscheduled: [] },
-        balances: { assets: [], receivables: null, monthlyExpenses: 0 }
+        balances: { assets: [], receivables: null, monthlyExpenses: 0 },
       }
 
       revenueService.getCurrentData.mockResolvedValue(mockRevenueData)
@@ -134,15 +136,15 @@ describe('Integration Tests - Complex User Flows', () => {
       global.fetch.mockResolvedValue({
         ok: true,
         json: vi.fn().mockResolvedValue({
-          data: { lastUpdated: '2024-01-15T11:00:00Z' }
-        })
+          data: { lastUpdated: '2024-01-15T11:00:00Z' },
+        }),
       })
 
       // Mock revenue data reload
       const updatedRevenueData = {
         months: [{ month: '2024-01-01', components: { invoiced: 15000 } }],
         exceptions: { overdueDeals: [], pastDelayedCharges: [], wonUnscheduled: [] },
-        balances: { assets: [], receivables: null, monthlyExpenses: 0 }
+        balances: { assets: [], receivables: null, monthlyExpenses: 0 },
       }
       revenueService.getCurrentData.mockResolvedValue(updatedRevenueData)
 
@@ -184,14 +186,14 @@ describe('Integration Tests - Complex User Flows', () => {
       global.fetch.mockResolvedValue({
         ok: true,
         json: vi.fn().mockResolvedValue({
-          data: { lastUpdated: '2024-01-15T12:00:00Z' }
-        })
+          data: { lastUpdated: '2024-01-15T12:00:00Z' },
+        }),
       })
 
       revenueService.getCurrentData.mockResolvedValue({
         months: [],
         exceptions: { overdueDeals: [], pastDelayedCharges: [], wonUnscheduled: [] },
-        balances: { assets: [], receivables: null, monthlyExpenses: 0 }
+        balances: { assets: [], receivables: null, monthlyExpenses: 0 },
       })
 
       // Retry should work
@@ -207,7 +209,7 @@ describe('Integration Tests - Complex User Flows', () => {
         months: [{ month: '2024-01-01', components: { invoiced: 10000 } }],
         exceptions: { overdueDeals: [], pastDelayedCharges: [], wonUnscheduled: [] },
         balances: { assets: [], receivables: null, monthlyExpenses: 0 },
-        lastUpdated: '2024-01-15T10:00:00Z'
+        lastUpdated: '2024-01-15T10:00:00Z',
       }
       revenueService.getCurrentData.mockResolvedValue(currentData)
 
@@ -219,7 +221,7 @@ describe('Integration Tests - Complex User Flows', () => {
       const historicalData = {
         months: [{ month: '2023-12-01', components: { invoiced: 8000 } }],
         exceptions: { overdueDeals: [], pastDelayedCharges: [], wonUnscheduled: [] },
-        balances: { assets: [], receivables: null, monthlyExpenses: 0 }
+        balances: { assets: [], receivables: null, monthlyExpenses: 0 },
       }
       revenueService.getHistoricalData.mockResolvedValue(historicalData)
 
@@ -262,7 +264,7 @@ describe('Integration Tests - Complex User Flows', () => {
       const recoveryData = {
         months: [{ month: '2024-01-01', components: { invoiced: 5000 } }],
         exceptions: { overdueDeals: [], pastDelayedCharges: [], wonUnscheduled: [] },
-        balances: { assets: [], receivables: null, monthlyExpenses: 0 }
+        balances: { assets: [], receivables: null, monthlyExpenses: 0 },
       }
       revenueService.getCurrentData.mockResolvedValue(recoveryData)
 
@@ -276,12 +278,12 @@ describe('Integration Tests - Complex User Flows', () => {
   describe('Cache Behavior Integration', () => {
     it('should handle cache bypass flow correctly', async () => {
       const { refreshQBO } = useDataRefresh()
-      
+
       // Normal load should use cache
       const cachedData = {
         months: [{ month: '2024-01-01', components: { invoiced: 10000 } }],
         exceptions: { overdueDeals: [], pastDelayedCharges: [], wonUnscheduled: [] },
-        balances: { assets: [], receivables: null, monthlyExpenses: 0 }
+        balances: { assets: [], receivables: null, monthlyExpenses: 0 },
       }
       revenueService.getCurrentData.mockResolvedValue(cachedData)
 
@@ -292,14 +294,14 @@ describe('Integration Tests - Complex User Flows', () => {
       global.fetch.mockResolvedValue({
         ok: true,
         json: vi.fn().mockResolvedValue({
-          data: { lastUpdated: '2024-01-15T10:00:00Z' }
-        })
+          data: { lastUpdated: '2024-01-15T10:00:00Z' },
+        }),
       })
 
       const freshData = {
         months: [{ month: '2024-01-01', components: { invoiced: 12000 } }],
         exceptions: { overdueDeals: [], pastDelayedCharges: [], wonUnscheduled: [] },
-        balances: { assets: [], receivables: null, monthlyExpenses: 0 }
+        balances: { assets: [], receivables: null, monthlyExpenses: 0 },
       }
       revenueService.getCurrentData.mockResolvedValue(freshData)
 
@@ -318,21 +320,21 @@ describe('Integration Tests - Complex User Flows', () => {
         .mockResolvedValueOnce({
           ok: true,
           json: vi.fn().mockResolvedValue({
-            data: { lastUpdated: '2024-01-15T10:00:00Z' }
-          })
+            data: { lastUpdated: '2024-01-15T10:00:00Z' },
+          }),
         })
         .mockResolvedValueOnce({
           ok: true,
           json: vi.fn().mockResolvedValue({
-            data: { lastUpdated: '2024-01-15T10:05:00Z' }
-          })
+            data: { lastUpdated: '2024-01-15T10:05:00Z' },
+          }),
         })
 
       // Mock revenue reload calls
       revenueService.getCurrentData.mockResolvedValue({
         months: [],
         exceptions: { overdueDeals: [], pastDelayedCharges: [], wonUnscheduled: [] },
-        balances: { assets: [], receivables: null, monthlyExpenses: 0 }
+        balances: { assets: [], receivables: null, monthlyExpenses: 0 },
       })
 
       // Start both refreshes concurrently

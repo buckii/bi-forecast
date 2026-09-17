@@ -19,9 +19,9 @@ exports.handler = createHandler(
         email: user.email,
         name: user.name,
         picture: user.picture,
-        role: user.role
+        role: user.role,
       },
-      company: { id: company._id, name: company.name, domain: company.domain }
+      company: { id: company._id, name: company.name, domain: company.domain },
     }
-  }
+  },
 )

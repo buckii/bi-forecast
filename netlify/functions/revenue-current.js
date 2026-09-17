@@ -1,11 +1,6 @@
 // Current revenue: today's archive when there is one, otherwise a fresh calculation that is archived.
 const { createHandler } = require('./utils/handler.js')
-const {
-  findArchiveOn,
-  findArchiveSince,
-  upsertTodaysArchive,
-  toRevenueResponse
-} = require('./services/archives.js')
+const { findArchiveOn, findArchiveSince, upsertTodaysArchive, toRevenueResponse } = require('./services/archives.js')
 const { todayString, addDays, toDateString } = require('./utils/dates.js')
 
 // 3 prior + current + 12 forward, so the 1-Year Forecast's final month has data.
@@ -40,10 +35,7 @@ exports.handler = createHandler({ errorMessage: 'Failed to get current revenue d
   const revenueResult = await calculator.calculateMonthlyRevenue(FORECAST_MONTHS, FORECAST_START_OFFSET)
   const months = revenueResult.months || revenueResult
 
-  const [exceptions, balances] = await Promise.all([
-    calculator.getExceptions(),
-    calculator.getBalances(months)
-  ])
+  const [exceptions, balances] = await Promise.all([calculator.getExceptions(), calculator.getBalances(months)])
 
   await upsertTodaysArchive(company._id, { months, exceptions, balances })
 

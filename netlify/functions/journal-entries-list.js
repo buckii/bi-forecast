@@ -24,6 +24,6 @@ exports.handler = createHandler({ errorMessage: 'Failed to fetch journal entries
     paired: view === 'singles' ? [] : paired,
     unpaired: view === 'pairs' ? [] : unpaired,
     pairedCount: paired.length * 2, // each pair is two entries
-    unpairedCount: unpaired.length
+    unpairedCount: unpaired.length,
   }
 })

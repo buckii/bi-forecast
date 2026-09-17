@@ -1,11 +1,13 @@
 # BI-Forecast Product Requirements Document v2.0
 
 ## Executive Summary
+
 A multi-tenant Progressive Web Application for revenue forecasting that integrates QuickBooks Online and Pipedrive to provide accurate 3-month forecasts with 12-month visibility, historical data tracking, and offline capabilities for management teams.
 
 ## Technical Architecture
 
 ### Stack
+
 - **Frontend**: Vue.js 3, Tailwind CSS, Chart.js, PWA with Service Workers
 - **Backend**: Netlify Functions (serverless)
 - **Database**: MongoDB Atlas
@@ -106,6 +108,7 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 ## Core Features
 
 ### 1. Revenue Dashboard
+
 - **Historical Date Selector** (Top of page)
   - Date picker to view any archived snapshot
   - "Viewing as of [date]" indicator when historical
@@ -120,6 +123,7 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
   - Pinch-to-zoom on mobile
 
 ### 2. Key Metrics
+
 - **This Month Revenue Forecast**: Sum of all components for current month
 - **3-Month Revenue Forecast**: Rolling 3-month total
 - **1-Year Won**: 12 months of recurring revenue + won unscheduled + journal entries + unbilled charges
@@ -132,26 +136,30 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 ### 3. Revenue Components
 
 #### From QuickBooks Online:
+
 - **Invoiced Revenue**: Posted invoices by date
 - **Journal Entries**: Accounting adjustments affecting revenue
 - **Delayed Charges**: Using Charge report type via `reportTransactionList`
 - **Monthly Recurring**: Previous month's revenue with "Monthly" in income account name
 
 #### From Pipedrive:
+
 - **Won Unscheduled**: Deals with 100% probability where `invoices_scheduled` = false
-- **Weighted Sales**: 
-  - Formula: `(deal_value × probability) ÷ project_duration`  
+- **Weighted Sales**:
+  - Formula: `(deal_value × probability) ÷ project_duration`
   - Distribution: Spread across project duration starting from expected close date
   - Multi-month support: Properly distributes deals across multiple months
   - Start date: `project_start_date` (custom field) or `expected_close_date`
   - Exclude if `invoices_scheduled` = true
 
 ### 4. Exceptions Page
+
 - **Overdue Pipedrive Deals**: Open deals past expected close date
 - **Past Delayed Charges**: Delayed charges with dates < today
 - **Won Unscheduled Deals**: All deals needing invoice scheduling
 
 ### 5. Client Revenue Breakdown
+
 - **Client Detail Modal**
   - Triggered by clicking any month on the revenue chart
   - Shows revenue breakdown by client for selected month
@@ -173,6 +181,7 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
   - Weighted Sales: Pipedrive organization name
 
 ### 6. Balances Page
+
 - **Asset Accounts from QBO**
   - Bank accounts with current balances
   - Credit card accounts
@@ -184,6 +193,7 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
   - Drill-down by customer
 
 ### 7. Settings Page
+
 - **API Connections**
   - QuickBooks OAuth status and reconnect
   - Pipedrive API key management
@@ -203,6 +213,7 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
   - Financial settings for charts
 
 ### 8. Progressive Web App Features
+
 - **Installation**
   - App manifest for home screen installation
   - Custom app icon and splash screen
@@ -223,6 +234,7 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 ## Data Management
 
 ### Daily Archiving
+
 - **Automatic Snapshot**: 3am ET daily
 - **Archive Contents**:
   - Complete revenue forecast for all months
@@ -233,6 +245,7 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 - **Retention**: 365 days default (configurable per company)
 
 ### Data Refresh
+
 - **Automatic**: 3am ET daily via Netlify scheduled function
 - **Manual**: Refresh buttons per data source
 - **Incremental**: Only fetch changes since last sync
@@ -240,6 +253,7 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 ## API Integrations
 
 ### QuickBooks Online
+
 - OAuth2 flow for authorization
 - Endpoints needed:
   - `/v3/company/{realmId}/reports/TransactionList` (delayed charges)
@@ -250,6 +264,7 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
   - `/v3/company/{realmId}/account` (account list and balances)
 
 ### Pipedrive
+
 - API key authentication
 - Custom fields:
   - `project_duration`: 3a1ab14edd3330c02bbbbfa0535a042bcd4a7fff
@@ -280,6 +295,7 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
    - Review exceptions and balances tabs
 
 ## Mobile Optimization
+
 - **PWA-specific**
   - Touch gestures (swipe between months)
   - Pull-to-refresh
@@ -293,6 +309,7 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
   - Horizontal scroll for wide content
 
 ## Security Requirements
+
 - Encrypted OAuth tokens in database
 - Company-level data isolation
 - Domain-validated Google SSO
@@ -302,6 +319,7 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 - Content Security Policy headers
 
 ## Performance Targets
+
 - Dashboard load: <2 seconds (cached), <4 seconds (fresh)
 - Time to Interactive: <3 seconds
 - Lighthouse PWA score: >90
@@ -312,37 +330,44 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 ## Recent Major Enhancements (Phase 3 Completed)
 
 ### Chart & Visualization Improvements
+
 - **Horizontal Reference Lines**: Added configurable reference lines showing monthly expense levels and target revenue based on net margin settings
 - **Chart Total Fixes**: Resolved duplicate calculation issues causing incorrect total labels above stacked bars
 - **Enhanced User Experience**: Added loading spinners, refresh timestamps, and tooltip enhancements
 
 ### Multi-month Deal Distribution
+
 - **Accurate Weighted Sales Calculation**: Fixed critical bug where multi-month Pipedrive deals were only showing in one month instead of being distributed across their full project duration
 - **Consistent Logic**: Ensured transaction details modal uses the same distribution logic as the main chart
 - **Debug & Monitoring**: Added comprehensive logging and discrepancy detection between chart and transaction totals
 
 ### Company Financial Settings
+
 - **Target Net Margin Configuration**: Added company-wide configurable target net margin (1-50%) used for reference line calculations
 - **Monthly Expenses Override**: Optional override for monthly expenses affecting cash flow and reference line calculations
 - **Settings Persistence**: Fixed settings not persisting across page reloads
 
 ### Enhanced Transaction Details
+
 - **Monthly Recurring Breakdown**: Replaced generic "Baseline" entries with detailed individual invoice breakdowns showing actual source invoices
 - **Sorted Invoice Lists**: Monthly recurring invoices now sorted by dollar amount (highest first) for better visibility
 - **Historical vs Future Logic**: Different handling for past months (actual invoices) vs future months (projected from previous month)
 
 ### Code Quality & Architecture
+
 - **Eliminated Code Duplication**: Consolidated duplicate revenue calculator implementations, removing 600+ lines of duplicate code
 - **Reusable Composables**: Created `useDataRefresh` Vue composable eliminating ~130 lines of duplicate refresh logic across Dashboard and Settings
 - **Improved Error Handling**: Standardized error handling and added user-friendly loading states
 
 ### Payment & A/R Enhancements
+
 - **Payment Recording Protection**: Added loading spinner and disabled state to payment recording button to prevent double-clicks and duplicate payments
 - **Enhanced A/R Management**: Improved accounts receivable tracking with better payment workflows
 
 ## Future Enhancements
 
 ### Phase 4 (Next)
+
 - **Journal Entry Tool**
   - Create revenue deferral entries
   - Debit: Project revenue → Credit: Unearned Revenue
@@ -360,6 +385,7 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
   - Delta analysis for each component
 
 ### Phase 3
+
 - Customer name matching across systems
 - Budget vs actual comparisons
 - Email/Slack alerts for forecast changes
@@ -371,6 +397,7 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 ## Implementation Status
 
 ### ✅ COMPLETED - Phase 1: Core MVP
+
 1. ✅ Project setup (Vue 3, Tailwind, PWA)
 2. ✅ Database schema and auth (Google SSO)
 3. ✅ QBO OAuth2 and basic API integration
@@ -380,6 +407,7 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 7. ✅ Daily archiving system
 
 ### ✅ COMPLETED - Phase 2: Full Features
+
 1. ✅ Exceptions page
 2. ✅ Balances page
 3. ✅ Historical date selector
@@ -388,9 +416,10 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 6. ✅ Mobile optimizations
 
 ### ✅ COMPLETED - Phase 3: Enhanced Features & Polish
+
 1. ✅ Core functionality testing
 2. ✅ Multi-month deal distribution fixes
-3. ✅ Chart enhancements with reference lines  
+3. ✅ Chart enhancements with reference lines
 4. ✅ Company financial settings
 5. ✅ Enhanced transaction details with invoice breakdowns
 6. ✅ Real-time refresh status indicators
@@ -400,6 +429,7 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 10. ✅ Deployment to Netlify ready
 
 ### 🚧 IN PROGRESS - Phase 4: Final Polish & Deploy
+
 1. 🚧 Performance optimization
 2. 📋 User training (pending deployment)
 3. 📋 Production monitoring setup
@@ -409,6 +439,7 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 ### ✅ Implemented Features
 
 #### Core Infrastructure
+
 - Vue.js 3 with Composition API and Pinia state management
 - Tailwind CSS responsive design
 - Progressive Web App with manifest and service worker ready
@@ -417,6 +448,7 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 - JWT authentication with Google SSO
 
 #### Revenue Dashboard
+
 - Chart.js stacked bar chart with 24-month view
 - Historical date selector for archived data viewing
 - Key metrics display (current month, 3-month, 1-year forecasts)
@@ -424,12 +456,14 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 - Transaction details drill-down modal
 
 #### Data Sources & Integrations
+
 - QuickBooks Online OAuth2 flow and API integration
 - Pipedrive API key authentication and data fetching
 - Daily automated archiving system (scheduled function)
 - Manual refresh capabilities for both QBO and Pipedrive
 
 #### Revenue Components (All 6 Implemented)
+
 - Invoiced Revenue from QBO
 - Journal Entries from QBO
 - Delayed Charges from QBO
@@ -438,11 +472,13 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 - Weighted Sales calculations from Pipedrive
 
 #### Additional Pages
+
 - Exceptions page for tracking overdue/problematic items
 - Balances page for asset accounts and A/R aging
 - Settings page for API connections and company management
 
 #### Backend Functions
+
 - `auth-google.js` - Google OAuth authentication
 - `auth-current.js` - Current user session management
 - `qbo-oauth-start.js` / `qbo-oauth-callback.js` - QBO OAuth flow
@@ -457,18 +493,21 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 ### 📋 Remaining Tasks
 
 #### Performance Optimization
+
 - Service worker implementation for offline functionality
 - IndexedDB caching for offline data access
 - Image optimization and lazy loading
 - Bundle size optimization
 
 #### Testing & Quality Assurance
+
 - End-to-end testing with real API data
 - Performance testing under load
 - Mobile device testing across platforms
 - Cross-browser compatibility testing
 
 #### Production Readiness
+
 - Environment-specific configuration
 - Error monitoring and logging
 - API rate limiting implementation
@@ -477,6 +516,7 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 ## Revenue Component Details
 
 ### Total Monthly Revenue Components:
+
 1. **Invoiced Revenue** (QBO)
    - Already sent invoices showing in QuickBooks
 
@@ -502,11 +542,13 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
    - Spread evenly across project duration months
 
 ## Pipedrive Custom Fields
+
 - **project_duration**: `3a1ab14edd3330c02bbbbfa0535a042bcd4a7fff`
 - **project_start_date**: `a82757d0f7820a7d15dface24eb041eede43ac1a`
 - **invoices_scheduled**: `93bdab5b65406067ccdc160849aa7324a0283036`
 
 ## Key Features Summary
+
 - Multi-tenant SaaS application
 - Progressive Web App with offline support
 - Daily data archiving with historical viewing

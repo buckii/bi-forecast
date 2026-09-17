@@ -6,11 +6,9 @@
         <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-gray-100">
           Sign in to your account
         </h2>
-        <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-          Revenue forecasting and analytics
-        </p>
+        <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">Revenue forecasting and analytics</p>
       </div>
-      
+
       <div class="card">
         <!-- Google Sign-In Button -->
         <div v-if="googleAuth.isLoaded" id="google-signin-button" class="mb-4"></div>
@@ -23,10 +21,22 @@
           class="w-full flex justify-center items-center px-4 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24">
-            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            <path
+              fill="#4285F4"
+              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+            />
+            <path
+              fill="#34A853"
+              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+            />
+            <path
+              fill="#FBBC05"
+              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+            />
+            <path
+              fill="#EA4335"
+              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+            />
           </svg>
           {{ getButtonText() }}
         </button>
@@ -39,26 +49,32 @@
           class="w-full mt-4 flex justify-center items-center px-4 py-3 border-2 border-dashed border-yellow-400 rounded-md shadow-sm text-sm font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <svg v-if="!devLoginLoading" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+            />
           </svg>
-          <div v-if="devLoginLoading" class="animate-spin h-5 w-5 mr-2 border-2 border-yellow-700 border-t-transparent rounded-full"></div>
+          <div
+            v-if="devLoginLoading"
+            class="animate-spin h-5 w-5 mr-2 border-2 border-yellow-700 border-t-transparent rounded-full"
+          ></div>
           {{ devLoginLoading ? 'Logging in...' : 'Dev Login (Localhost Only)' }}
         </button>
-        
+
         <div v-if="displayError" class="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
           <p class="text-sm text-red-600">{{ displayError }}</p>
         </div>
-        
+
         <div v-if="!clientIdConfigured" class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
           <p class="text-sm text-yellow-600">
             Google Client ID not configured. Please add VITE_GOOGLE_CLIENT_ID to your .env file.
           </p>
         </div>
       </div>
-      
-      <p class="mt-4 text-center text-xs text-gray-500">
-        Only authorized company domain emails are allowed
-      </p>
+
+      <p class="mt-4 text-center text-xs text-gray-500">Only authorized company domain emails are allowed</p>
     </div>
   </div>
 </template>
@@ -107,7 +123,8 @@ async function handleDevLogin() {
     router.push('/')
   } catch (err) {
     console.error('Dev login error:', err)
-    googleAuth.error.value = err.message || 'Dev login failed. Make sure BYPASS_AUTH_LOCALHOST=true is set and you have data in your database.'
+    googleAuth.error.value =
+      err.message || 'Dev login failed. Make sure BYPASS_AUTH_LOCALHOST=true is set and you have data in your database.'
   } finally {
     devLoginLoading.value = false
   }
@@ -118,7 +135,7 @@ async function handleAuthSuccess(authData) {
   try {
     // Update auth store
     await authStore.login(authData.token)
-    
+
     // Redirect to dashboard
     router.push('/')
   } catch (err) {
@@ -142,21 +159,24 @@ onUnmounted(() => {
 })
 
 // Render Google button when loaded
-watch(() => googleAuth.isLoaded.value, async (isLoaded) => {
-  if (isLoaded && clientIdConfigured.value) {
-    await nextTick()
-    try {
-      googleAuth.renderButton('google-signin-button', {
-        theme: 'outline',
-        size: 'large',
-        width: '100%',
-        text: 'signin_with'
-      })
-    } catch (err) {
-      googleAuth.error.value = 'Failed to initialize Google Sign-In'
+watch(
+  () => googleAuth.isLoaded.value,
+  async (isLoaded) => {
+    if (isLoaded && clientIdConfigured.value) {
+      await nextTick()
+      try {
+        googleAuth.renderButton('google-signin-button', {
+          theme: 'outline',
+          size: 'large',
+          width: '100%',
+          text: 'signin_with',
+        })
+      } catch (err) {
+        googleAuth.error.value = 'Failed to initialize Google Sign-In'
+      }
     }
-  }
-})
+  },
+)
 
 onMounted(() => {
   // Disable One Tap for development to avoid origin issues

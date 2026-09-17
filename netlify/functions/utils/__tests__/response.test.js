@@ -23,12 +23,12 @@ describe('Response Utils', () => {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
         },
         body: JSON.stringify({
           success: true,
-          data
-        })
+          data,
+        }),
       })
     })
 
@@ -39,7 +39,7 @@ describe('Response Utils', () => {
       expect(result.statusCode).toBe(201)
       expect(JSON.parse(result.body)).toEqual({
         success: true,
-        data
+        data,
       })
     })
 
@@ -49,7 +49,7 @@ describe('Response Utils', () => {
       expect(result.statusCode).toBe(200)
       expect(JSON.parse(result.body)).toEqual({
         success: true,
-        data: null
+        data: null,
       })
     })
 
@@ -57,7 +57,7 @@ describe('Response Utils', () => {
       const data = {
         users: [{ id: 1, name: 'John' }],
         pagination: { page: 1, total: 10 },
-        metadata: { timestamp: '2024-01-01' }
+        metadata: { timestamp: '2024-01-01' },
       }
       const result = success(data)
 
@@ -76,12 +76,12 @@ describe('Response Utils', () => {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
         },
         body: JSON.stringify({
           success: false,
-          error: message
-        })
+          error: message,
+        }),
       })
     })
 
@@ -92,7 +92,7 @@ describe('Response Utils', () => {
       expect(result.statusCode).toBe(404)
       expect(JSON.parse(result.body)).toEqual({
         success: false,
-        error: message
+        error: message,
       })
     })
 
@@ -105,14 +105,14 @@ describe('Response Utils', () => {
       expect(JSON.parse(result.body)).toEqual({
         success: false,
         error: message,
-        details
+        details,
       })
     })
 
     it('should log error to console', () => {
       const message = 'Test error'
       const details = { code: 'TEST_ERROR' }
-      
+
       error(message, 500, details)
 
       expect(consoleSpy).toHaveBeenCalledWith('API Error:', message, details)
@@ -123,7 +123,7 @@ describe('Response Utils', () => {
       const details = {
         query: 'SELECT * FROM users',
         error: 'Connection timeout',
-        stack: 'Error stack trace...'
+        stack: 'Error stack trace...',
       }
       const result = error(message, 500, details)
 
@@ -140,9 +140,9 @@ describe('Response Utils', () => {
         headers: {
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
         },
-        body: ''
+        body: '',
       })
     })
 
@@ -159,7 +159,7 @@ describe('Response Utils', () => {
       expect(corsHeaders['Access-Control-Allow-Origin']).toBe(successHeaders['Access-Control-Allow-Origin'])
       expect(corsHeaders['Access-Control-Allow-Headers']).toBe(successHeaders['Access-Control-Allow-Headers'])
       expect(corsHeaders['Access-Control-Allow-Methods']).toBe(successHeaders['Access-Control-Allow-Methods'])
-      
+
       expect(corsHeaders['Access-Control-Allow-Origin']).toBe(errorHeaders['Access-Control-Allow-Origin'])
       expect(corsHeaders['Access-Control-Allow-Headers']).toBe(errorHeaders['Access-Control-Allow-Headers'])
       expect(corsHeaders['Access-Control-Allow-Methods']).toBe(errorHeaders['Access-Control-Allow-Methods'])
@@ -169,7 +169,7 @@ describe('Response Utils', () => {
   describe('edge cases', () => {
     it('should handle very large data objects', () => {
       const largeData = {
-        items: new Array(1000).fill(0).map((_, i) => ({ id: i, data: `item-${i}` }))
+        items: new Array(1000).fill(0).map((_, i) => ({ id: i, data: `item-${i}` })),
       }
       const result = success(largeData)
 

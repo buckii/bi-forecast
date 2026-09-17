@@ -23,19 +23,19 @@ const RATE_LIMIT_DELAY_MS = 100
 const MODES = {
   shift: {
     requiredFields: ['invoiceDate', 'workDate'],
-    build: buildShiftEntries
+    build: buildShiftEntries,
   },
   spread: {
     requiredFields: ['invoiceDate', 'numberOfMonths', 'recognitionStartDate'],
     build: buildSpreadEntries,
-    validate: body => {
+    validate: (body) => {
       if (body.numberOfMonths < 2) throw new HttpError('numberOfMonths must be at least 2', 400)
-    }
-  }
+    },
+  },
 }
 
 function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 exports.handler = createHandler(
@@ -57,7 +57,7 @@ exports.handler = createHandler(
       throw new HttpError('Journal entry accounts not configured. Please configure them in Settings.', 400)
     }
 
-    const missing = modeConfig.requiredFields.filter(field => !body[field])
+    const missing = modeConfig.requiredFields.filter((field) => !body[field])
     if (missing.length > 0) {
       throw new HttpError(`Missing required fields for ${mode} mode: ${missing.join(', ')}`, 400)
     }
@@ -81,7 +81,7 @@ exports.handler = createHandler(
         const result = await qbo.makeRequest('journalentry', realmId, accessToken, 0, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(entry)
+          body: JSON.stringify(entry),
         })
         createdEntries.push(result.JournalEntry)
       } catch (err) {
@@ -99,7 +99,7 @@ exports.handler = createHandler(
       createdEntries,
       errors: errors.length > 0 ? errors : undefined,
       mode,
-      totalAmount: amount
+      totalAmount: amount,
     }
-  }
+  },
 )

@@ -2,7 +2,7 @@
   <AppLayout>
     <div class="space-y-6">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Exceptions</h1>
-      
+
       <!-- Overdue Deals -->
       <div class="card">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
@@ -19,26 +19,24 @@
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Deal Name
                 </th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Company
-                </th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Expected Close
                 </th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Days Overdue
                 </th>
-                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Value
-                </th>
+                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
               <tr v-for="deal in exceptions?.overdueDeals || []" :key="deal.id">
                 <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                  <a :href="`https://buckeyeinnovation.pipedrive.com/deal/${deal.id}`" 
-                     target="_blank" 
-                     class="text-blue-600 hover:text-blue-800 hover:underline">
+                  <a
+                    :href="`https://buckeyeinnovation.pipedrive.com/deal/${deal.id}`"
+                    target="_blank"
+                    class="text-blue-600 hover:text-blue-800 hover:underline"
+                  >
                     {{ deal.title }}
                   </a>
                 </td>
@@ -60,7 +58,7 @@
         </div>
         <p v-else class="text-gray-500">No overdue deals</p>
       </div>
-      
+
       <!-- Past Delayed Charges -->
       <div class="card">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
@@ -74,21 +72,15 @@
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
             <thead>
               <tr>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Customer
-                </th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Description
                 </th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Days Past
                 </th>
-                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Amount
-                </th>
+                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
@@ -114,7 +106,7 @@
         </div>
         <p v-else class="text-gray-500">No past delayed charges</p>
       </div>
-      
+
       <!-- Won Unscheduled Deals -->
       <div class="card">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
@@ -131,23 +123,19 @@
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Deal Name
                 </th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Company
-                </th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Won Date
-                </th>
-                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Value
-                </th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Won Date</th>
+                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
               <tr v-for="deal in exceptions?.wonUnscheduled || []" :key="deal.id">
                 <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                  <a :href="`https://buckeyeinnovation.pipedrive.com/deal/${deal.id}`" 
-                     target="_blank" 
-                     class="text-blue-600 hover:text-blue-800 hover:underline">
+                  <a
+                    :href="`https://buckeyeinnovation.pipedrive.com/deal/${deal.id}`"
+                    target="_blank"
+                    class="text-blue-600 hover:text-blue-800 hover:underline"
+                  >
                     {{ deal.title }}
                   </a>
                 </td>
@@ -180,7 +168,6 @@ import { format, parseISO } from 'date-fns'
 const revenueStore = useRevenueStore()
 
 const exceptions = computed(() => revenueStore.exceptions)
-
 
 function formatDate(date) {
   if (!date) return ''

@@ -6,17 +6,28 @@
 
     <!-- Totals for all visible months: per-revenue-type breakdown + grand total.
          Click a type (or its legend entry) to hide it and drop it from the total. -->
-    <div v-if="data && data.length"
-      class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 pt-2 border-t border-gray-200 dark:border-gray-700">
-      <button v-for="s in SERIES" :key="s.key" type="button" @click="toggleSeries(s.key)"
+    <div
+      v-if="data && data.length"
+      class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 pt-2 border-t border-gray-200 dark:border-gray-700"
+    >
+      <button
+        v-for="s in SERIES"
+        :key="s.key"
+        type="button"
+        @click="toggleSeries(s.key)"
         class="flex items-center space-x-1.5 focus:outline-none"
         :class="seriesVisibility[s.key] ? 'hover:opacity-80' : 'opacity-40'"
-        :title="seriesVisibility[s.key] ? `Hide ${s.label}` : `Show ${s.label}`">
+        :title="seriesVisibility[s.key] ? `Hide ${s.label}` : `Show ${s.label}`"
+      >
         <span class="inline-block w-2.5 h-2.5 rounded-sm" :style="{ backgroundColor: s.color }"></span>
-        <span class="text-xs text-gray-600 dark:text-gray-400"
-          :class="{ 'line-through': !seriesVisibility[s.key] }">{{ s.label }}:</span>
-        <span class="text-xs font-medium text-gray-800 dark:text-gray-200"
-          :class="{ 'line-through': !seriesVisibility[s.key] }">{{ fmt(seriesTotals[s.key]) }}</span>
+        <span class="text-xs text-gray-600 dark:text-gray-400" :class="{ 'line-through': !seriesVisibility[s.key] }"
+          >{{ s.label }}:</span
+        >
+        <span
+          class="text-xs font-medium text-gray-800 dark:text-gray-200"
+          :class="{ 'line-through': !seriesVisibility[s.key] }"
+          >{{ fmt(seriesTotals[s.key]) }}</span
+        >
       </button>
       <div class="flex items-center space-x-1.5 pl-3 ml-1 border-l border-gray-300 dark:border-gray-600">
         <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">Total ({{ data.length }} mo):</span>
@@ -27,13 +38,13 @@
     </div>
 
     <!-- Reference Lines Legend -->
-    <div v-if="referenceLines"
-      class="flex flex-wrap items-center justify-center gap-4 pt-2 border-t border-gray-200 dark:border-gray-700">
+    <div
+      v-if="referenceLines"
+      class="flex flex-wrap items-center justify-center gap-4 pt-2 border-t border-gray-200 dark:border-gray-700"
+    >
       <div class="flex items-center space-x-2">
         <div class="w-4 h-0.5 border-t-2 border-dashed border-red-500"></div>
-        <span class="text-xs text-gray-600 dark:text-gray-400">
-          Monthly Expenses: {{ referenceLines.expenses }}
-        </span>
+        <span class="text-xs text-gray-600 dark:text-gray-400"> Monthly Expenses: {{ referenceLines.expenses }} </span>
       </div>
       <div class="flex items-center space-x-2">
         <div class="w-4 h-0.5 border-t-2 border-dashed border-green-500"></div>
@@ -57,28 +68,28 @@ Chart.register(...registerables, annotationPlugin)
 const props = defineProps({
   data: {
     type: Array,
-    required: true
+    required: true,
   },
   comparisonData: {
     type: Array,
-    default: null
+    default: null,
   },
   selectedDate: {
     type: String,
-    default: ''
+    default: '',
   },
   compareAsOfDate: {
     type: String,
-    default: ''
+    default: '',
   },
   monthlyExpenses: {
     type: Number,
-    default: 0
+    default: 0,
   },
   targetNetMargin: {
     type: Number,
-    default: 20
-  }
+    default: 20,
+  },
 })
 
 const emit = defineEmits(['bar-click'])
@@ -99,23 +110,23 @@ const referenceLines = computed(() => {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 0,
-    maximumFractionDigits: 0
+    maximumFractionDigits: 0,
   })
 
   return {
     expenses: formatter.format(props.monthlyExpenses),
     target: formatter.format(targetRevenue),
-    margin: props.targetNetMargin
+    margin: props.targetNetMargin,
   }
 })
 
 const chartColors = {
-  invoiced: '#3b82f6',      // blue
+  invoiced: '#3b82f6', // blue
   journalEntries: '#10b981', // emerald
   delayedCharges: '#f59e0b', // amber
   monthlyRecurring: '#8b5cf6', // violet
-  wonUnscheduled: '#ec4899',  // pink
-  weightedSales: '#64748b'    // slate
+  wonUnscheduled: '#ec4899', // pink
+  weightedSales: '#64748b', // slate
 }
 
 // Revenue types in stack order. `label` matches each current-stack dataset's
@@ -126,17 +137,17 @@ const SERIES = [
   { key: 'delayedCharges', label: 'Delayed Charges', color: chartColors.delayedCharges },
   { key: 'monthlyRecurring', label: 'Monthly Recurring', color: chartColors.monthlyRecurring },
   { key: 'wonUnscheduled', label: 'Won Unscheduled', color: chartColors.wonUnscheduled },
-  { key: 'weightedSales', label: 'Weighted Sales', color: chartColors.weightedSales }
+  { key: 'weightedSales', label: 'Weighted Sales', color: chartColors.weightedSales },
 ]
 
 // Which revenue types are currently visible (mirrors chart legend toggles).
-const seriesVisibility = ref(Object.fromEntries(SERIES.map(s => [s.key, true])))
+const seriesVisibility = ref(Object.fromEntries(SERIES.map((s) => [s.key, true])))
 
 const currencyFmt = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
   minimumFractionDigits: 0,
-  maximumFractionDigits: 0
+  maximumFractionDigits: 0,
 })
 function fmt(v) {
   return currencyFmt.format(v || 0)
@@ -154,10 +165,7 @@ const seriesTotals = computed(() => {
 
 // Grand total of the visible types only — drops when a type is hidden.
 const grandTotal = computed(() =>
-  SERIES.reduce(
-    (sum, s) => (seriesVisibility.value[s.key] ? sum + seriesTotals.value[s.key] : sum),
-    0
-  )
+  SERIES.reduce((sum, s) => (seriesVisibility.value[s.key] ? sum + seriesTotals.value[s.key] : sum), 0),
 )
 
 // Average per plotted month (grand total / number of months shown).
@@ -170,7 +178,7 @@ const monthlyAverage = computed(() => {
 function syncVisibility() {
   if (!chartInstance) return
   chartInstance.data.datasets.forEach((ds, i) => {
-    const s = SERIES.find(x => x.label === ds.label)
+    const s = SERIES.find((x) => x.label === ds.label)
     if (s) seriesVisibility.value[s.key] = chartInstance.isDatasetVisible(i)
   })
 }
@@ -178,9 +186,9 @@ function syncVisibility() {
 // Toggle a revenue type from the totals strip (keeps the chart legend in sync).
 function toggleSeries(key) {
   if (!chartInstance) return
-  const series = SERIES.find(x => x.key === key)
+  const series = SERIES.find((x) => x.key === key)
   if (!series) return
-  const idx = chartInstance.data.datasets.findIndex(ds => ds.label === series.label)
+  const idx = chartInstance.data.datasets.findIndex((ds) => ds.label === series.label)
   if (idx === -1) return
   chartInstance.isDatasetVisible(idx) ? chartInstance.hide(idx) : chartInstance.show(idx)
   syncVisibility()
@@ -201,8 +209,8 @@ function getAnnotations() {
       borderWidth: 2,
       borderDash: [5, 5],
       label: {
-        display: false
-      }
+        display: false,
+      },
     }
 
     // Target Revenue Line based on configured net margin
@@ -216,8 +224,8 @@ function getAnnotations() {
       borderWidth: 2,
       borderDash: [5, 5],
       label: {
-        display: false
-      }
+        display: false,
+      },
     }
   }
 
@@ -240,7 +248,7 @@ const totalLabelPlugin = {
     })
 
     // For each stack, calculate totals and draw labels
-    Object.keys(stacks).forEach(stackName => {
+    Object.keys(stacks).forEach((stackName) => {
       const stackDatasets = stacks[stackName]
 
       chart.data.labels.forEach((label, index) => {
@@ -265,8 +273,8 @@ const totalLabelPlugin = {
           if (dataset.label.includes('Journal Entries')) {
             journalEntriesValue = value
             // If Journal Entries are negative, DO NOT add them to the total.
-            // Why? Because we have already deducted this amount from the 'Invoiced' dataset 
-            // to adjust the visual bar height. Adding the negative value here would 
+            // Why? Because we have already deducted this amount from the 'Invoiced' dataset
+            // to adjust the visual bar height. Adding the negative value here would
             // deduct it a second time ("double deduction"), making the total label wrong.
             // The Invoiced bar is already at the "Net Revenue" height.
             if (value < 0) {
@@ -293,7 +301,7 @@ const totalLabelPlugin = {
             style: 'currency',
             currency: 'USD',
             minimumFractionDigits: 0,
-            maximumFractionDigits: 0
+            maximumFractionDigits: 0,
           }).format(total)
 
           // Draw the total with dynamic color based on dark mode
@@ -307,7 +315,7 @@ const totalLabelPlugin = {
         }
       })
     })
-  }
+  },
 }
 
 function createChart() {
@@ -317,7 +325,7 @@ function createChart() {
 
   const ctx = chartCanvas.value.getContext('2d')
 
-  const labels = props.data.map(d => {
+  const labels = props.data.map((d) => {
     const date = parse(d.month, 'yyyy-MM-dd', new Date())
     return format(date, 'MMM yyyy')
   })
@@ -336,78 +344,78 @@ function createChart() {
   // Add comparison datasets first if comparison data is available
   if (props.comparisonData && props.comparisonData.length > 0) {
     // Create a map for quick lookup
-    const comparisonMap = new Map(props.comparisonData.map(d => [d.month, d]))
+    const comparisonMap = new Map(props.comparisonData.map((d) => [d.month, d]))
 
     datasets.push(
       {
         label: 'Invoiced (Compare)',
-        data: props.data.map(d => {
+        data: props.data.map((d) => {
           const comp = comparisonMap.get(d.month)
-          const invoiced = comp ? (comp.invoiced || 0) : 0
-          const journalEntries = comp ? (comp.journalEntries || 0) : 0
+          const invoiced = comp ? comp.invoiced || 0 : 0
+          const journalEntries = comp ? comp.journalEntries || 0 : 0
           // If journal entries are negative, deduct that from invoiced for the chart visual
-          return journalEntries < 0 ? (invoiced + journalEntries) : invoiced
+          return journalEntries < 0 ? invoiced + journalEntries : invoiced
         }),
         backgroundColor: addOpacity(chartColors.invoiced, 0.5),
         stack: 'comparison',
         borderColor: chartColors.invoiced,
-        borderWidth: 1
+        borderWidth: 1,
       },
       {
         label: 'Journal Entries (Compare)',
-        data: props.data.map(d => {
+        data: props.data.map((d) => {
           const comp = comparisonMap.get(d.month)
-          return comp ? (comp.journalEntries || 0) : 0
+          return comp ? comp.journalEntries || 0 : 0
         }),
         backgroundColor: addOpacity(chartColors.journalEntries, 0.5),
         stack: 'comparison',
         borderColor: chartColors.journalEntries,
-        borderWidth: 1
+        borderWidth: 1,
       },
       {
         label: 'Delayed Charges (Compare)',
-        data: props.data.map(d => {
+        data: props.data.map((d) => {
           const comp = comparisonMap.get(d.month)
-          return comp ? (comp.delayedCharges || 0) : 0
+          return comp ? comp.delayedCharges || 0 : 0
         }),
         backgroundColor: addOpacity(chartColors.delayedCharges, 0.5),
         stack: 'comparison',
         borderColor: chartColors.delayedCharges,
-        borderWidth: 1
+        borderWidth: 1,
       },
       {
         label: 'Monthly Recurring (Compare)',
-        data: props.data.map(d => {
+        data: props.data.map((d) => {
           const comp = comparisonMap.get(d.month)
-          return comp ? (comp.monthlyRecurring || 0) : 0
+          return comp ? comp.monthlyRecurring || 0 : 0
         }),
         backgroundColor: addOpacity(chartColors.monthlyRecurring, 0.5),
         stack: 'comparison',
         borderColor: chartColors.monthlyRecurring,
-        borderWidth: 1
+        borderWidth: 1,
       },
       {
         label: 'Won Unscheduled (Compare)',
-        data: props.data.map(d => {
+        data: props.data.map((d) => {
           const comp = comparisonMap.get(d.month)
-          return comp ? (comp.wonUnscheduled || 0) : 0
+          return comp ? comp.wonUnscheduled || 0 : 0
         }),
         backgroundColor: addOpacity(chartColors.wonUnscheduled, 0.5),
         stack: 'comparison',
         borderColor: chartColors.wonUnscheduled,
-        borderWidth: 1
+        borderWidth: 1,
       },
       {
         label: 'Weighted Sales (Compare)',
-        data: props.data.map(d => {
+        data: props.data.map((d) => {
           const comp = comparisonMap.get(d.month)
-          return comp ? (comp.weightedSales || 0) : 0
+          return comp ? comp.weightedSales || 0 : 0
         }),
         backgroundColor: addOpacity(chartColors.weightedSales, 0.5),
         stack: 'comparison',
         borderColor: chartColors.weightedSales,
-        borderWidth: 1
-      }
+        borderWidth: 1,
+      },
     )
   }
 
@@ -415,45 +423,45 @@ function createChart() {
   datasets.push(
     {
       label: 'Invoiced',
-      data: props.data.map(d => {
+      data: props.data.map((d) => {
         const invoiced = d.invoiced || 0
         const journalEntries = d.journalEntries || 0
         // If journal entries are negative, deduct that from invoiced for the chart visual
-        return journalEntries < 0 ? (invoiced + journalEntries) : invoiced
+        return journalEntries < 0 ? invoiced + journalEntries : invoiced
       }),
       backgroundColor: chartColors.invoiced,
-      stack: 'current'
+      stack: 'current',
     },
     {
       label: 'Journal Entries',
-      data: props.data.map(d => d.journalEntries || 0),
+      data: props.data.map((d) => d.journalEntries || 0),
       backgroundColor: chartColors.journalEntries,
-      stack: 'current'
+      stack: 'current',
     },
     {
       label: 'Delayed Charges',
-      data: props.data.map(d => d.delayedCharges || 0),
+      data: props.data.map((d) => d.delayedCharges || 0),
       backgroundColor: chartColors.delayedCharges,
-      stack: 'current'
+      stack: 'current',
     },
     {
       label: 'Monthly Recurring',
-      data: props.data.map(d => d.monthlyRecurring || 0),
+      data: props.data.map((d) => d.monthlyRecurring || 0),
       backgroundColor: chartColors.monthlyRecurring,
-      stack: 'current'
+      stack: 'current',
     },
     {
       label: 'Won Unscheduled',
-      data: props.data.map(d => d.wonUnscheduled || 0),
+      data: props.data.map((d) => d.wonUnscheduled || 0),
       backgroundColor: chartColors.wonUnscheduled,
-      stack: 'current'
+      stack: 'current',
     },
     {
       label: 'Weighted Sales',
-      data: props.data.map(d => d.weightedSales || 0),
+      data: props.data.map((d) => d.weightedSales || 0),
       backgroundColor: chartColors.weightedSales,
-      stack: 'current'
-    }
+      stack: 'current',
+    },
   )
 
   chartInstance = new Chart(ctx, {
@@ -461,28 +469,28 @@ function createChart() {
     plugins: [totalLabelPlugin],
     data: {
       labels,
-      datasets
+      datasets,
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       interaction: {
-        mode: 'index'
+        mode: 'index',
       },
       scales: {
         x: {
           stacked: true,
           grid: {
-            display: false
+            display: false,
           },
           ticks: {
-            color: isDarkModeGlobal.value ? '#ffffff' : '#374151'
-          }
+            color: isDarkModeGlobal.value ? '#ffffff' : '#374151',
+          },
         },
         y: {
           stacked: true,
           grid: {
-            color: isDarkModeGlobal.value ? '#374151' : '#e5e7eb'
+            color: isDarkModeGlobal.value ? '#374151' : '#e5e7eb',
           },
           ticks: {
             color: isDarkModeGlobal.value ? '#ffffff' : '#374151',
@@ -491,11 +499,11 @@ function createChart() {
                 style: 'currency',
                 currency: 'USD',
                 minimumFractionDigits: 0,
-                maximumFractionDigits: 0
+                maximumFractionDigits: 0,
               }).format(value)
-            }
-          }
-        }
+            },
+          },
+        },
       },
       plugins: {
         legend: {
@@ -507,7 +515,7 @@ function createChart() {
             filter: function (legendItem, chartData) {
               // Only show main datasets in legend, hide comparison datasets
               return !legendItem.text.includes('(Compare)')
-            }
+            },
           },
           onClick: function (e, legendItem, legend) {
             // Default toggle behavior, then mirror visibility into the totals strip
@@ -515,7 +523,7 @@ function createChart() {
             const index = legendItem.datasetIndex
             ci.isDatasetVisible(index) ? ci.hide(index) : ci.show(index)
             syncVisibility()
-          }
+          },
         },
         tooltip: {
           callbacks: {
@@ -531,8 +539,8 @@ function createChart() {
                 if (isComparison && props.comparisonData) {
                   // Find matching comparison month
                   const currentMonth = props.data[dataIndex].month
-                  const compData = props.comparisonData.find(d => d.month === currentMonth)
-                  value = compData ? (compData.invoiced || 0) : 0
+                  const compData = props.comparisonData.find((d) => d.month === currentMonth)
+                  value = compData ? compData.invoiced || 0 : 0
                 } else {
                   value = props.data[dataIndex].invoiced || 0
                 }
@@ -542,7 +550,7 @@ function createChart() {
                 style: 'currency',
                 currency: 'USD',
                 minimumFractionDigits: 0,
-                maximumFractionDigits: 0
+                maximumFractionDigits: 0,
               }).format(value)
               return `${label}: ${formattedValue}`
             },
@@ -551,7 +559,7 @@ function createChart() {
               let currentTotal = 0
               let comparisonTotal = 0
 
-              tooltipItems.forEach(item => {
+              tooltipItems.forEach((item) => {
                 const dataIndex = item.dataIndex
                 const label = item.dataset.label || ''
                 let value = item.parsed.y
@@ -560,10 +568,10 @@ function createChart() {
                 // BUT the user might expect the Sum of Positive amounts or Net Total.
                 // The visual height (Total at top of bar) is calculated by Chart.js automatically for stacking.
                 // Here we want to calculate the logic sum.
-                // If Invoiced was reduced visually, we should add back the reduction amount to get the "Real Total" 
+                // If Invoiced was reduced visually, we should add back the reduction amount to get the "Real Total"
                 // OR we accept that the visual total = Net Revenue.
                 // The request says "deduct that amount from the invoiced revenue for the value charted".
-                // This implies the Bar Total will be lower (Net Revenue). 
+                // This implies the Bar Total will be lower (Net Revenue).
                 // So summing parser.y (adjusted values) is actually correct for "Effective Total Revenue".
 
                 if (item.dataset.stack === 'current') {
@@ -577,7 +585,7 @@ function createChart() {
                 style: 'currency',
                 currency: 'USD',
                 minimumFractionDigits: 0,
-                maximumFractionDigits: 0
+                maximumFractionDigits: 0,
               })
 
               // Format dates
@@ -606,16 +614,16 @@ function createChart() {
               if (comparisonTotal > 0) {
                 footer += `\n${compareDateLabel}: ${formatter.format(comparisonTotal)}`
                 const diff = currentTotal - comparisonTotal
-                const diffPercent = comparisonTotal !== 0 ? ((diff / comparisonTotal) * 100) : 0
+                const diffPercent = comparisonTotal !== 0 ? (diff / comparisonTotal) * 100 : 0
                 footer += `\n${diff >= 0 ? '+' : ''}${formatter.format(diff)} (${diffPercent >= 0 ? '+' : ''}${diffPercent.toFixed(1)}%)`
               }
               return footer
-            }
-          }
+            },
+          },
         },
         annotation: {
-          annotations: getAnnotations()
-        }
+          annotations: getAnnotations(),
+        },
       },
       onClick: (event, elements) => {
         if (elements.length > 0) {
@@ -631,12 +639,12 @@ function createChart() {
             emit('bar-click', {
               month,
               component,
-              value: props.data[monthIndex][component]
+              value: props.data[monthIndex][component],
             })
           }
         }
-      }
-    }
+      },
+    },
   })
 
   // Initialize the totals strip visibility from the freshly created chart
@@ -660,7 +668,7 @@ function updateChart() {
     console.log('[RevenueChart] Dataset count changed, recreating chart:', {
       current: chartInstance.data.datasets.length,
       expected: expectedDatasets,
-      hasComparison
+      hasComparison,
     })
     createChart()
     return
@@ -673,22 +681,22 @@ function updateChart() {
   }
 
   // Update chart data for non-comparison updates
-  const labels = props.data.map(d => {
+  const labels = props.data.map((d) => {
     const date = parse(d.month, 'yyyy-MM-dd', new Date())
     return format(date, 'MMM yyyy')
   })
 
   chartInstance.data.labels = labels
-  chartInstance.data.datasets[0].data = props.data.map(d => {
+  chartInstance.data.datasets[0].data = props.data.map((d) => {
     const invoiced = d.invoiced || 0
     const journalEntries = d.journalEntries || 0
-    return journalEntries < 0 ? (invoiced + journalEntries) : invoiced
+    return journalEntries < 0 ? invoiced + journalEntries : invoiced
   })
-  chartInstance.data.datasets[1].data = props.data.map(d => d.journalEntries || 0)
-  chartInstance.data.datasets[2].data = props.data.map(d => d.delayedCharges || 0)
-  chartInstance.data.datasets[3].data = props.data.map(d => d.monthlyRecurring || 0)
-  chartInstance.data.datasets[4].data = props.data.map(d => d.wonUnscheduled || 0)
-  chartInstance.data.datasets[5].data = props.data.map(d => d.weightedSales || 0)
+  chartInstance.data.datasets[1].data = props.data.map((d) => d.journalEntries || 0)
+  chartInstance.data.datasets[2].data = props.data.map((d) => d.delayedCharges || 0)
+  chartInstance.data.datasets[3].data = props.data.map((d) => d.monthlyRecurring || 0)
+  chartInstance.data.datasets[4].data = props.data.map((d) => d.wonUnscheduled || 0)
+  chartInstance.data.datasets[5].data = props.data.map((d) => d.weightedSales || 0)
 
   // Update annotations for reference lines
   if (chartInstance.options.plugins.annotation) {
@@ -721,24 +729,38 @@ onUnmounted(() => {
   }
 })
 
-watch(() => props.data, () => {
-  updateChart()
-}, { deep: true })
+watch(
+  () => props.data,
+  () => {
+    updateChart()
+  },
+  { deep: true },
+)
 
 // Watch for comparison data changes
-watch(() => props.comparisonData, () => {
-  updateChart()
-}, { deep: true })
+watch(
+  () => props.comparisonData,
+  () => {
+    updateChart()
+  },
+  { deep: true },
+)
 
 // Watch for monthly expenses changes
-watch(() => props.monthlyExpenses, () => {
-  updateChart()
-})
+watch(
+  () => props.monthlyExpenses,
+  () => {
+    updateChart()
+  },
+)
 
 // Watch for target margin changes
-watch(() => props.targetNetMargin, () => {
-  updateChart()
-})
+watch(
+  () => props.targetNetMargin,
+  () => {
+    updateChart()
+  },
+)
 
 // Watch for dark mode changes
 watch(isDarkModeGlobal, () => {

@@ -11,8 +11,8 @@ function line(description, amount, postingType, accountId) {
     DetailType: 'JournalEntryLineDetail',
     JournalEntryLineDetail: {
       PostingType: postingType,
-      AccountRef: { value: accountId }
-    }
+      AccountRef: { value: accountId },
+    },
   }
 }
 
@@ -21,10 +21,7 @@ function pairEntry({ date, note, description, amount, debitAccount, creditAccoun
   return {
     TxnDate: date,
     PrivateNote: note,
-    Line: [
-      line(description, amount, 'Debit', debitAccount),
-      line(description, amount, 'Credit', creditAccount)
-    ]
+    Line: [line(description, amount, 'Debit', debitAccount), line(description, amount, 'Credit', creditAccount)],
   }
 }
 
@@ -32,18 +29,13 @@ function pairEntry({ date, note, description, amount, debitAccount, creditAccoun
 function buildLines(lines) {
   return lines.map((entryLine, index) => ({
     LineNum: index + 1,
-    ...line(
-      entryLine.description || '',
-      entryLine.amount,
-      entryLine.postingType,
-      entryLine.accountId
-    )
+    ...line(entryLine.description || '', entryLine.amount, entryLine.postingType, entryLine.accountId),
   }))
 }
 
 function sumBy(lines, postingType) {
   return lines
-    .filter(entryLine => entryLine.postingType === postingType)
+    .filter((entryLine) => entryLine.postingType === postingType)
     .reduce((total, entryLine) => total + entryLine.amount, 0)
 }
 
@@ -65,7 +57,7 @@ function buildShiftEntries(params, settings) {
       description,
       amount,
       debitAccount: revenueAccount,
-      creditAccount: unearnedAccount
+      creditAccount: unearnedAccount,
     }),
     pairEntry({
       date: workDate,
@@ -73,8 +65,8 @@ function buildShiftEntries(params, settings) {
       description,
       amount,
       debitAccount: unearnedAccount,
-      creditAccount: revenueAccount
-    })
+      creditAccount: revenueAccount,
+    }),
   ]
 }
 
@@ -95,33 +87,35 @@ function buildSpreadEntries(params, settings) {
 
   if (deferralAmount > 0) {
     const deferralDescription = `${description} - Deferral (${monthsToDefer} months)`
-    entries.push(pairEntry({
-      date: invoiceDate,
-      note: `Revenue spreading - ${description} (deferral for ${monthsToDefer} months)`,
-      description: deferralDescription,
-      amount: deferralAmount,
-      debitAccount: revenueAccount,
-      creditAccount: unearnedAccount
-    }))
+    entries.push(
+      pairEntry({
+        date: invoiceDate,
+        note: `Revenue spreading - ${description} (deferral for ${monthsToDefer} months)`,
+        description: deferralDescription,
+        amount: deferralAmount,
+        debitAccount: revenueAccount,
+        creditAccount: unearnedAccount,
+      }),
+    )
   }
 
   for (let i = 0; i < monthsToDefer; i++) {
     // The final month absorbs the rounding remainder, or cents stay in unearned revenue forever.
     const isLastMonth = i === monthsToDefer - 1
-    const monthAmount = isLastMonth
-      ? deferralAmount - monthlyAmount * (monthsToDefer - 1)
-      : monthlyAmount
+    const monthAmount = isLastMonth ? deferralAmount - monthlyAmount * (monthsToDefer - 1) : monthlyAmount
 
     const monthLabel = `Month ${i + 2} of ${numberOfMonths}`
 
-    entries.push(pairEntry({
-      date: monthStartString(recognitionStartDate, i),
-      note: `Revenue spreading - ${description} (month ${i + 2} of ${numberOfMonths})`,
-      description: `${description} - ${monthLabel}`,
-      amount: Math.abs(monthAmount),
-      debitAccount: unearnedAccount,
-      creditAccount: revenueAccount
-    }))
+    entries.push(
+      pairEntry({
+        date: monthStartString(recognitionStartDate, i),
+        note: `Revenue spreading - ${description} (month ${i + 2} of ${numberOfMonths})`,
+        description: `${description} - ${monthLabel}`,
+        amount: Math.abs(monthAmount),
+        debitAccount: unearnedAccount,
+        creditAccount: revenueAccount,
+      }),
+    )
   }
 
   return entries
@@ -133,5 +127,5 @@ module.exports = {
   isBalanced,
   buildShiftEntries,
   buildSpreadEntries,
-  BALANCE_TOLERANCE
+  BALANCE_TOLERANCE,
 }

@@ -52,9 +52,9 @@ Use Node.js to generate secure random keys:
 
 ```javascript
 // Run in Node.js console or script
-const crypto = require('crypto');
-console.log('JWT_SECRET:', crypto.randomBytes(32).toString('hex'));
-console.log('ENCRYPTION_KEY:', crypto.randomBytes(32).toString('hex'));
+const crypto = require('crypto')
+console.log('JWT_SECRET:', crypto.randomBytes(32).toString('hex'))
+console.log('ENCRYPTION_KEY:', crypto.randomBytes(32).toString('hex'))
 ```
 
 ## Security Configuration
@@ -127,23 +127,28 @@ netlify deploy --prod
 After deploying to production, migrate client alias data from development:
 
 1. **Export from Development**
+
    ```bash
    # In your development environment
    node scripts/export-client-aliases.cjs
    ```
+
    This creates `scripts/client-aliases-data.json` with all your configured client aliases.
 
 2. **Update Environment for Production**
+
    ```bash
    # Update .env to point to production MongoDB
    MONGODB_URI=mongodb+srv://production-cluster...
    ```
 
 3. **Import to Production**
+
    ```bash
    # Run the seeder script
    node scripts/seed-client-aliases.cjs
    ```
+
    This imports all client aliases into the production database.
 
 4. **Verify Import**
@@ -229,6 +234,7 @@ Set up monitoring for:
 ### Debug Mode
 
 For debugging in production (temporary):
+
 1. Set `NODE_ENV=development` temporarily
 2. Check Netlify function logs
 3. Monitor MongoDB Atlas logs

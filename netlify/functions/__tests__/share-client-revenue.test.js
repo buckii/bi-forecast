@@ -9,7 +9,7 @@ const base = {
   threshold: 3000,
   pricePerPoint: 550,
   companyName: 'Buckeye Innovation',
-  appUrl: 'https://forecast.buckeyeinnovation.com/?month=2026-08-01'
+  appUrl: 'https://forecast.buckeyeinnovation.com/?month=2026-08-01',
 }
 
 const clients = [
@@ -17,13 +17,11 @@ const clients = [
   { client: 'Columbus State Community College', total: 18200 },
   { client: 'New Albany Community Authority', total: 12750 },
   { client: 'Small Client A', total: 2200 },
-  { client: 'Small Client B', total: 800 }
+  { client: 'Small Client B', total: 800 },
 ]
 
 function textOf(blocks) {
-  return blocks
-    .map(b => b.text?.text || (b.elements || []).map(e => e.text).join(' '))
-    .join('\n')
+  return blocks.map((b) => b.text?.text || (b.elements || []).map((e) => e.text).join(' ')).join('\n')
 }
 
 describe('share-client-revenue buildBlocks', () => {
@@ -66,7 +64,7 @@ describe('share-client-revenue buildBlocks', () => {
     const { blocks } = buildBlocks({
       ...base,
       pricePerPoint: 500,
-      clients: [{ client: 'Vineyard Community Center', total: 20000 }]
+      clients: [{ client: 'Vineyard Community Center', total: 20000 }],
     })
 
     expect(textOf(blocks)).toContain('40.0 pts')
@@ -75,13 +73,13 @@ describe('share-client-revenue buildBlocks', () => {
   it('chunks a long client list across multiple section blocks under the 3000 char cap', () => {
     const many = Array.from({ length: 120 }, (_, i) => ({
       client: `A Fairly Long Client Name Number ${i}`,
-      total: 5000 + i
+      total: 5000 + i,
     }))
     const { blocks } = buildBlocks({ ...base, clients: many })
 
-    const sections = blocks.filter(b => b.type === 'section')
+    const sections = blocks.filter((b) => b.type === 'section')
     expect(sections.length).toBeGreaterThan(1)
-    sections.forEach(section => {
+    sections.forEach((section) => {
       expect(section.text.text.length).toBeLessThanOrEqual(3000)
     })
     // Slack rejects messages over 50 blocks
@@ -91,7 +89,7 @@ describe('share-client-revenue buildBlocks', () => {
   it('stays within Slack limits for a pathologically long client list', () => {
     const many = Array.from({ length: 400 }, (_, i) => ({
       client: `A Fairly Long Client Name Number ${i}`,
-      total: 5000 + i
+      total: 5000 + i,
     }))
     const { blocks } = buildBlocks({ ...base, clients: many })
     const text = textOf(blocks)
@@ -103,7 +101,7 @@ describe('share-client-revenue buildBlocks', () => {
   it('handles a month where no client clears the threshold', () => {
     const { blocks, namedCount } = buildBlocks({
       ...base,
-      clients: [{ client: 'Small Client A', total: 900 }]
+      clients: [{ client: 'Small Client A', total: 900 }],
     })
 
     expect(namedCount).toBe(0)
@@ -126,7 +124,7 @@ describe('share-client-revenue buildBlocks', () => {
       month: null,
       startDate: '2026-08-01',
       endDate: '2026-10-31',
-      clients
+      clients,
     })
 
     expect(textOf(blocks)).toContain('Client Revenue — Aug 1, 2026 – Oct 31, 2026')
@@ -138,7 +136,7 @@ describe('share-client-revenue buildBlocks', () => {
       ...base,
       startDate: '2026-08-01',
       endDate: '2026-10-31',
-      clients
+      clients,
     })
 
     expect(textOf(blocks)).toContain('Client Revenue — August 2026')

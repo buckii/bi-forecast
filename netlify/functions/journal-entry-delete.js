@@ -19,10 +19,10 @@ exports.handler = createHandler(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         Id: journalEntryId,
-        SyncToken: existingEntry.JournalEntry.SyncToken
-      })
+        SyncToken: existingEntry.JournalEntry.SyncToken,
+      }),
     })
 
     return { message: 'Journal entry deleted successfully', journalEntryId, response }
-  }
+  },
 )

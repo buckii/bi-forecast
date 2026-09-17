@@ -6,16 +6,16 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
   const token = ref(localStorage.getItem('token'))
   const company = ref(null)
-  
+
   const isAuthenticated = computed(() => !!token.value)
-  
+
   async function login(jwtToken) {
     try {
       // If we receive a JWT token directly, use it
       if (jwtToken) {
         token.value = jwtToken
         localStorage.setItem('token', jwtToken)
-        
+
         // Fetch user data with the token
         const response = await authService.getCurrentUser()
         user.value = response.user
@@ -29,7 +29,7 @@ export const useAuthStore = defineStore('auth', () => {
       throw error
     }
   }
-  
+
   async function loginWithGoogle(googleToken) {
     try {
       const response = await authService.googleLogin(googleToken)
@@ -57,17 +57,17 @@ export const useAuthStore = defineStore('auth', () => {
       throw error
     }
   }
-  
+
   function logout() {
     user.value = null
     token.value = null
     company.value = null
     localStorage.removeItem('token')
   }
-  
+
   async function fetchCurrentUser() {
     if (!token.value) return null
-    
+
     try {
       const response = await authService.getCurrentUser()
       user.value = response.user
@@ -79,7 +79,7 @@ export const useAuthStore = defineStore('auth', () => {
       throw error
     }
   }
-  
+
   return {
     user,
     token,
@@ -89,6 +89,6 @@ export const useAuthStore = defineStore('auth', () => {
     loginWithGoogle,
     devLogin,
     logout,
-    fetchCurrentUser
+    fetchCurrentUser,
   }
 })

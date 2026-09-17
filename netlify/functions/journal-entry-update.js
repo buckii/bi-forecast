@@ -42,10 +42,10 @@ exports.handler = createHandler(
         TxnDate: txnDate,
         PrivateNote: body.privateNote || existing.JournalEntry.PrivateNote || '',
         Line: buildLines(lines),
-        sparse: true
-      })
+        sparse: true,
+      }),
     })
 
     return { message: 'Journal entry updated successfully', journalEntry: response.JournalEntry }
-  }
+  },
 )

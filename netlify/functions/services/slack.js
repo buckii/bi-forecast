@@ -15,32 +15,32 @@ class SlackService {
       const payload = {
         channel: this.channelId,
         text: message,
-        ...options
+        ...options,
       }
 
       console.log('Slack API request:', {
         url: `${this.baseUrl}/chat.postMessage`,
         channel: this.channelId,
         tokenPrefix: this.botToken.substring(0, 10) + '...',
-        messageLength: message.length
+        messageLength: message.length,
       })
 
       const response = await fetch(`${this.baseUrl}/chat.postMessage`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.botToken}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${this.botToken}`,
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       })
 
       const result = await response.json()
-      
+
       console.log('Slack API response:', {
         status: response.status,
         ok: result.ok,
         error: result.error,
-        warning: result.warning
+        warning: result.warning,
       })
 
       if (!result.ok) {
@@ -58,7 +58,7 @@ class SlackService {
   async sendNightlyJobFailure(companyName, failedDataSources, errors) {
     const failedSources = Array.isArray(failedDataSources) ? failedDataSources.join(', ') : failedDataSources
     const errorDetails = errors ? `\nErrors: ${JSON.stringify(errors, null, 2)}` : ''
-    
+
     const message = `:warning: *Nightly Revenue Forecast Job Failed*
 
 :office: **Company:** ${companyName}
@@ -69,7 +69,7 @@ The revenue forecast data may be incomplete. Please check the system logs and da
 
     return this.sendMessage(message, {
       username: 'BI Forecast Bot',
-      icon_emoji: ':chart_with_downwards_trend:'
+      icon_emoji: ':chart_with_downwards_trend:',
     })
   }
 
@@ -84,7 +84,7 @@ The ${dataSource} integration is experiencing issues. This may affect revenue fo
 
     return this.sendMessage(message, {
       username: 'BI Forecast Bot',
-      icon_emoji: ':warning:'
+      icon_emoji: ':warning:',
     })
   }
 
@@ -110,20 +110,20 @@ The ${dataSource} integration is experiencing issues. This may affect revenue fo
       // Step 1: Get upload URL using the new files.getUploadURLExternal method
       const formParams = new URLSearchParams({
         filename: filename,
-        length: fileBuffer.length.toString()
+        length: fileBuffer.length.toString(),
       })
-      
+
       const uploadUrlResponse = await fetch(`${this.baseUrl}/files.getUploadURLExternal`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.botToken}`,
-          'Content-Type': 'application/x-www-form-urlencoded'
+          Authorization: `Bearer ${this.botToken}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: formParams
+        body: formParams,
       })
 
       const uploadUrlResult = await uploadUrlResponse.json()
-      
+
       if (!uploadUrlResult.ok) {
         console.error('Failed to get Slack upload URL:', uploadUrlResult)
         throw new Error(`Slack upload URL error: ${uploadUrlResult.error}`)
@@ -137,8 +137,8 @@ The ${dataSource} integration is experiencing issues. This may affect revenue fo
         body: fileBuffer,
         headers: {
           'Content-Type': 'image/png',
-          'Content-Length': fileBuffer.length.toString()
-        }
+          'Content-Length': fileBuffer.length.toString(),
+        },
       })
 
       if (!uploadResponse.ok) {
@@ -149,20 +149,20 @@ The ${dataSource} integration is experiencing issues. This may affect revenue fo
       const completeResponse = await fetch(`${this.baseUrl}/files.completeUploadExternal`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.botToken}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${this.botToken}`,
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           files: [
             {
               id: file_id,
-              title: title
-            }
+              title: title,
+            },
           ],
           channel_id: this.channelId,
           initial_comment: initialComment || undefined,
-          thread_ts: threadTs || undefined
-        })
+          thread_ts: threadTs || undefined,
+        }),
       })
 
       const completeResult = await completeResponse.json()

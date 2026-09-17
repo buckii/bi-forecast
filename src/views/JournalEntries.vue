@@ -4,10 +4,7 @@
       <!-- Header -->
       <div class="flex items-center justify-between">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Journal Entries</h1>
-        <button
-          @click="showCreateModal = true"
-          class="btn-primary flex items-center space-x-2"
-        >
+        <button @click="showCreateModal = true" class="btn-primary flex items-center space-x-2">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
           </svg>
@@ -21,26 +18,13 @@
           <div class="flex items-center space-x-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">From</label>
-              <input
-                type="date"
-                v-model="startDate"
-                class="input"
-              />
+              <input type="date" v-model="startDate" class="input" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">To</label>
-              <input
-                type="date"
-                v-model="endDate"
-                class="input"
-              />
+              <input type="date" v-model="endDate" class="input" />
             </div>
-            <button
-              @click="loadEntries"
-              class="btn-secondary mt-6"
-            >
-              Apply
-            </button>
+            <button @click="loadEntries" class="btn-secondary mt-6">Apply</button>
           </div>
 
           <div class="flex items-center space-x-2">
@@ -53,7 +37,7 @@
                   'px-4 py-2 text-sm font-medium rounded-l-lg border',
                   viewFilter === 'all'
                     ? 'bg-primary-600 text-white border-primary-600'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700',
                 ]"
               >
                 All
@@ -65,7 +49,7 @@
                   'px-4 py-2 text-sm font-medium border-t border-b',
                   viewFilter === 'pairs'
                     ? 'bg-primary-600 text-white border-primary-600'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700',
                 ]"
               >
                 Pairs Only
@@ -77,7 +61,7 @@
                   'px-4 py-2 text-sm font-medium rounded-r-lg border',
                   viewFilter === 'singles'
                     ? 'bg-primary-600 text-white border-primary-600'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700',
                 ]"
               >
                 Single Only
@@ -99,16 +83,19 @@
       <div v-else-if="!entries || (filteredPairs.length === 0 && filteredUnpaired.length === 0)" class="card">
         <div class="text-center py-12">
           <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
           </svg>
           <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No journal entries</h3>
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Get started by creating a journal entry for revenue shifting or spreading.
           </p>
           <div class="mt-6">
-            <button @click="showCreateModal = true" class="btn-primary">
-              Create Journal Entry
-            </button>
+            <button @click="showCreateModal = true" class="btn-primary">Create Journal Entry</button>
           </div>
         </div>
       </div>
@@ -158,9 +145,15 @@
               <thead>
                 <tr>
                   <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                  <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                  <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Description
+                  </th>
+                  <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Amount
+                  </th>
+                  <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -264,13 +257,12 @@ const filteredUnpaired = computed(() => {
   return entries.value.unpaired || []
 })
 
-
 function formatDate(dateStr) {
   const date = new Date(dateStr)
   return new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: 'short',
-    day: 'numeric'
+    day: 'numeric',
   }).format(date)
 }
 
@@ -281,14 +273,14 @@ async function loadEntries() {
     const params = new URLSearchParams({
       startDate: startDate.value,
       endDate: endDate.value,
-      view: 'all' // Always fetch all, filter on frontend
+      view: 'all', // Always fetch all, filter on frontend
     })
 
     const response = await fetch(`/.netlify/functions/journal-entries-list?${params}`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${authStore.token}`
-      }
+        Authorization: `Bearer ${authStore.token}`,
+      },
     })
 
     if (!response.ok) {
@@ -298,7 +290,6 @@ async function loadEntries() {
 
     const data = await response.json()
     entries.value = data.data
-
   } catch (error) {
     console.error('Error loading journal entries:', error)
     toast.error(error.message)
@@ -321,9 +312,9 @@ async function deleteEntry(entryId) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authStore.token}`
+        Authorization: `Bearer ${authStore.token}`,
       },
-      body: JSON.stringify({ journalEntryId: entryId })
+      body: JSON.stringify({ journalEntryId: entryId }),
     })
 
     if (!response.ok) {
@@ -333,7 +324,6 @@ async function deleteEntry(entryId) {
 
     toast.success('Journal entry deleted successfully')
     await loadEntries()
-
   } catch (error) {
     console.error('Error deleting journal entry:', error)
     toast.error(error.message)
@@ -341,7 +331,11 @@ async function deleteEntry(entryId) {
 }
 
 async function deletePair(pair) {
-  if (!confirm('Are you sure you want to delete this pair of journal entries? This will delete BOTH entries and cannot be undone.')) {
+  if (
+    !confirm(
+      'Are you sure you want to delete this pair of journal entries? This will delete BOTH entries and cannot be undone.',
+    )
+  ) {
     return
   }
 
@@ -352,7 +346,6 @@ async function deletePair(pair) {
 
     toast.success('Journal entry pair deleted successfully')
     await loadEntries()
-
   } catch (error) {
     console.error('Error deleting journal entry pair:', error)
     toast.error(error.message)
@@ -384,8 +377,8 @@ async function loadAccounts() {
     const response = await fetch('/.netlify/functions/journal-entry-accounts', {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${authStore.token}`
-      }
+        Authorization: `Bearer ${authStore.token}`,
+      },
     })
 
     if (response.ok) {
@@ -399,10 +392,7 @@ async function loadAccounts() {
 }
 
 onMounted(async () => {
-  await Promise.all([
-    loadEntries(),
-    loadAccounts()
-  ])
+  await Promise.all([loadEntries(), loadAccounts()])
 
   // Check for query parameters to auto-open create modal with prefill
   if (route.query.create === 'true') {
@@ -415,7 +405,7 @@ onMounted(async () => {
       clientName: route.query.customer || '',
       invoiceNumber: invoiceNumber,
       amount: parseFloat(route.query.amount) || null,
-      invoiceDate: route.query.invoiceDate || ''
+      invoiceDate: route.query.invoiceDate || '',
     }
     showCreateModal.value = true
   }

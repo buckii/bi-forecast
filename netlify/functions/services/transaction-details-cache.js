@@ -19,7 +19,9 @@ function cacheDay(asOfDate) {
 async function prefetchTransactionDetails(companyId, asOfDate = null) {
   const effectiveDate = cacheDay(asOfDate)
 
-  console.log(`[Transaction Details Cache] Starting prefetch for company ${companyId}, as of ${format(effectiveDate, 'yyyy-MM-dd')}`)
+  console.log(
+    `[Transaction Details Cache] Starting prefetch for company ${companyId}, as of ${format(effectiveDate, 'yyyy-MM-dd')}`,
+  )
   const startTime = Date.now()
 
   try {
@@ -31,7 +33,9 @@ async function prefetchTransactionDetails(companyId, asOfDate = null) {
         await calculator.loadFromArchive(asOfDate)
         console.log(`[Transaction Details Cache] Using archived data for ${format(asOfDate, 'yyyy-MM-dd')}`)
       } catch (archiveError) {
-        console.warn(`[Transaction Details Cache] Archive not found for ${format(asOfDate, 'yyyy-MM-dd')}, using current data`)
+        console.warn(
+          `[Transaction Details Cache] Archive not found for ${format(asOfDate, 'yyyy-MM-dd')}, using current data`,
+        )
       }
     }
 
@@ -40,10 +44,10 @@ async function prefetchTransactionDetails(companyId, asOfDate = null) {
     const monthsToCache = [
       addMonths(currentMonth, -2), // 2 months ago
       addMonths(currentMonth, -1), // Previous month
-      currentMonth,                 // Current month
-      addMonths(currentMonth, 1),  // Next month
-      addMonths(currentMonth, 2),  // 2 months out
-      addMonths(currentMonth, 3)   // 3 months out
+      currentMonth, // Current month
+      addMonths(currentMonth, 1), // Next month
+      addMonths(currentMonth, 2), // 2 months out
+      addMonths(currentMonth, 3), // 3 months out
     ]
 
     const cacheCollection = await getCollection('transaction_details_cache')
@@ -60,23 +64,23 @@ async function prefetchTransactionDetails(companyId, asOfDate = null) {
       try {
         // Fetch all transaction components with delays between QB API calls
         const invoiced = await fetchInvoicedTransactions(calculator, monthDate, asOfDate)
-        await new Promise(resolve => setTimeout(resolve, 150))
+        await new Promise((resolve) => setTimeout(resolve, 150))
 
         const journalEntries = await fetchJournalEntryTransactions(calculator, monthDate, asOfDate)
-        await new Promise(resolve => setTimeout(resolve, 150))
+        await new Promise((resolve) => setTimeout(resolve, 150))
 
         const delayedCharges = await fetchDelayedChargeTransactions(calculator, monthDate, asOfDate)
-        await new Promise(resolve => setTimeout(resolve, 150))
+        await new Promise((resolve) => setTimeout(resolve, 150))
 
         // Monthly recurring also makes a QB API call
         const monthlyRecurring = await fetchMonthlyRecurringTransactions(calculator, monthDate, asOfDate)
-        await new Promise(resolve => setTimeout(resolve, 150))
+        await new Promise((resolve) => setTimeout(resolve, 150))
 
         // Non-QB calls can run in parallel
         const [wonUnscheduled, weightedSales, clientData] = await Promise.all([
           fetchWonUnscheduledTransactions(calculator, monthDate, asOfDate),
           fetchWeightedSalesTransactions(calculator, monthDate, asOfDate),
-          fetchClientData(calculator, monthDate, asOfDate)
+          fetchClientData(calculator, monthDate, asOfDate),
         ])
 
         // Store in cache
@@ -84,7 +88,7 @@ async function prefetchTransactionDetails(companyId, asOfDate = null) {
           {
             companyId: companyId,
             month: monthStr,
-            asOfDate: effectiveDate
+            asOfDate: effectiveDate,
           },
           {
             $set: {
@@ -94,13 +98,13 @@ async function prefetchTransactionDetails(companyId, asOfDate = null) {
                 delayedCharges,
                 monthlyRecurring,
                 wonUnscheduled,
-                weightedSales
+                weightedSales,
               },
               clients: clientData,
-              updatedAt: new Date()
-            }
+              updatedAt: new Date(),
+            },
           },
-          { upsert: true }
+          { upsert: true },
         )
 
         results.push({ month: monthStr, success: true })
@@ -109,15 +113,17 @@ async function prefetchTransactionDetails(companyId, asOfDate = null) {
         results.push({ month: monthStr, success: false, error: err.message })
       }
     }
-    const successCount = results.filter(r => r.success).length
+    const successCount = results.filter((r) => r.success).length
 
-    console.log(`[Transaction Details Cache] Completed: ${successCount}/${results.length} months cached in ${Date.now() - startTime}ms`)
+    console.log(
+      `[Transaction Details Cache] Completed: ${successCount}/${results.length} months cached in ${Date.now() - startTime}ms`,
+    )
 
     return {
       success: true,
       monthsCached: successCount,
       totalTime: Date.now() - startTime,
-      results
+      results,
     }
   } catch (err) {
     console.error(`[Transaction Details Cache] Prefetch failed:`, err)
@@ -146,7 +152,7 @@ async function getCachedTransactionDetails(companyId, month, asOfDate = null, en
     const cached = await cacheCollection.findOne({
       companyId: companyId,
       month: cacheKey,
-      asOfDate: effectiveDate
+      asOfDate: effectiveDate,
     })
 
     if (cached) {
@@ -162,7 +168,7 @@ async function getCachedTransactionDetails(companyId, month, asOfDate = null, en
       return {
         transactions: cached.transactions,
         clients: cached.clients,
-        cachedAt: cached.updatedAt
+        cachedAt: cached.updatedAt,
       }
     }
 
@@ -196,12 +202,12 @@ async function cacheTransactionDetails(companyId, month, data, asOfDate = null, 
     const existing = await cacheCollection.findOne({
       companyId: companyId,
       month: cacheKey,
-      asOfDate: effectiveDate
+      asOfDate: effectiveDate,
     })
 
     // Merge with existing data to preserve other components
     const updateData = {
-      updatedAt: new Date()
+      updatedAt: new Date(),
     }
 
     if (data.transactions) {
@@ -221,10 +227,10 @@ async function cacheTransactionDetails(companyId, month, data, asOfDate = null, 
       {
         companyId: companyId,
         month: cacheKey,
-        asOfDate: effectiveDate
+        asOfDate: effectiveDate,
       },
       { $set: updateData },
-      { upsert: true }
+      { upsert: true },
     )
 
     return true
@@ -245,10 +251,10 @@ async function fetchInvoicedTransactions(calculator, monthDate, asOf) {
   if (asOf) {
     const asOfDate = new Date(asOf)
     asOfDate.setHours(23, 59, 59, 999)
-    filteredInvoices = invoices.filter(invoice => new Date(invoice.TxnDate) <= asOfDate)
+    filteredInvoices = invoices.filter((invoice) => new Date(invoice.TxnDate) <= asOfDate)
   }
 
-  return filteredInvoices.map(invoice => ({
+  return filteredInvoices.map((invoice) => ({
     id: invoice.Id || `inv-${invoice.DocNumber}`,
     type: 'invoice',
     docNumber: invoice.DocNumber,
@@ -259,8 +265,8 @@ async function fetchInvoicedTransactions(calculator, monthDate, asOf) {
     details: {
       balance: invoice.Balance || 0,
       dueDate: invoice.DueDate,
-      lineCount: (invoice.Line || []).length
-    }
+      lineCount: (invoice.Line || []).length,
+    },
   }))
 }
 
@@ -271,8 +277,8 @@ async function fetchJournalEntryTransactions(calculator, monthDate, asOf) {
   const journalEntries = await calculator.qbo.getJournalEntries(startDate, endDate)
 
   // Filter for entries with unearned revenue accounts (same as journal-entries-list endpoint)
-  let filteredEntries = journalEntries.filter(entry => {
-    return entry.Line?.some(line => {
+  let filteredEntries = journalEntries.filter((entry) => {
+    return entry.Line?.some((line) => {
       const accountName = line.JournalEntryLineDetail?.AccountRef?.name?.toLowerCase() || ''
       return accountName.includes('unearned') || accountName.includes('deferred')
     })
@@ -282,10 +288,10 @@ async function fetchJournalEntryTransactions(calculator, monthDate, asOf) {
   if (asOf) {
     const asOfDate = new Date(asOf)
     asOfDate.setHours(23, 59, 59, 999)
-    filteredEntries = filteredEntries.filter(entry => new Date(entry.TxnDate) <= asOfDate)
+    filteredEntries = filteredEntries.filter((entry) => new Date(entry.TxnDate) <= asOfDate)
   }
 
-  return filteredEntries.map(entry => {
+  return filteredEntries.map((entry) => {
     // Calculate revenue amount from journal entry lines
     // Journal entries have balanced debits/credits, so TotalAmt is always 0
     // We need to sum revenue account lines (Credits = positive, Debits = negative)
@@ -298,8 +304,10 @@ async function fetchJournalEntryTransactions(calculator, monthDate, asOf) {
       const accountName = accountRef?.name?.toLowerCase() || ''
 
       // Look for revenue accounts - match account number (^4\d{3}) or name contains revenue/income
-      const isRevenueAccount = accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
-        !accountName.includes('unearned') && !accountName.includes('deferred')
+      const isRevenueAccount =
+        accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
+        !accountName.includes('unearned') &&
+        !accountName.includes('deferred')
 
       if (isRevenueAccount) {
         const lineAmount = line.Amount || 0
@@ -323,8 +331,8 @@ async function fetchJournalEntryTransactions(calculator, monthDate, asOf) {
       customer: 'Journal Entry',
       description: entry.PrivateNote || '',
       details: {
-        lineCount: lines.length
-      }
+        lineCount: lines.length,
+      },
     }
   })
 }
@@ -336,7 +344,7 @@ async function fetchDelayedChargeTransactions(calculator, monthDate, asOf) {
   const delayedCharges = await calculator.qbo.getDelayedCharges(startDate, endDate)
 
   // Filter by service date
-  let filteredCharges = delayedCharges.filter(charge => {
+  let filteredCharges = delayedCharges.filter((charge) => {
     const lines = charge.Line || []
     for (const line of lines) {
       const serviceDate = line.SalesItemLineDetail?.ServiceDate || line.ServiceDate
@@ -351,7 +359,7 @@ async function fetchDelayedChargeTransactions(calculator, monthDate, asOf) {
   if (asOf) {
     const asOfDate = new Date(asOf)
     asOfDate.setHours(23, 59, 59, 999)
-    filteredCharges = filteredCharges.filter(charge => {
+    filteredCharges = filteredCharges.filter((charge) => {
       if (charge.MetaData?.CreateTime) {
         const createTime = new Date(charge.MetaData.CreateTime)
         return createTime <= asOfDate
@@ -360,7 +368,7 @@ async function fetchDelayedChargeTransactions(calculator, monthDate, asOf) {
     })
   }
 
-  return filteredCharges.map(charge => ({
+  return filteredCharges.map((charge) => ({
     id: charge.Id || `dc-${charge.DocNumber}`,
     type: 'delayedCharge',
     docNumber: charge.DocNumber,
@@ -370,8 +378,8 @@ async function fetchDelayedChargeTransactions(calculator, monthDate, asOf) {
     description: '',
     details: {
       balance: charge.Balance || 0,
-      lineCount: (charge.Line || []).length
-    }
+      lineCount: (charge.Line || []).length,
+    },
   }))
 }
 
@@ -392,13 +400,13 @@ async function fetchMonthlyRecurringTransactions(calculator, monthDate, asOf) {
   const invoices = await calculator.qbo.getInvoices(previousMonthStart, previousMonthEnd)
 
   // Get only recurring invoices
-  const recurringInvoices = invoices.filter(invoice => {
+  const recurringInvoices = invoices.filter((invoice) => {
     const isRecurring = invoice.RecurringInfo?.Type === 'Automated'
     const hasPositiveBalance = (invoice.TotalAmt || 0) > 0
     return isRecurring && hasPositiveBalance
   })
 
-  return recurringInvoices.map(invoice => ({
+  return recurringInvoices.map((invoice) => ({
     id: `mr-${invoice.Id}-${format(monthDate, 'yyyy-MM')}`,
     type: 'monthlyRecurring',
     docNumber: `Projected from ${invoice.DocNumber}`,
@@ -408,8 +416,8 @@ async function fetchMonthlyRecurringTransactions(calculator, monthDate, asOf) {
     description: `Projected monthly recurring revenue from ${format(previousMonth, 'MMM yyyy')}`,
     details: {
       sourceInvoice: invoice.DocNumber,
-      projected: true
-    }
+      projected: true,
+    },
   }))
 }
 
@@ -418,13 +426,13 @@ async function fetchWonUnscheduledTransactions(calculator, monthDate, asOf) {
   const wonDeals = await calculator.pipedrive.getWonUnscheduledDeals()
   const monthStr = format(monthDate, 'yyyy-MM')
 
-  const deals = wonDeals.filter(deal => {
+  const deals = wonDeals.filter((deal) => {
     if (!deal.expected_close_date) return false
     const closeMonth = format(new Date(deal.expected_close_date), 'yyyy-MM')
     return closeMonth === monthStr
   })
 
-  return deals.map(deal => ({
+  return deals.map((deal) => ({
     id: `pd-won-${deal.id}`,
     type: 'wonUnscheduled',
     docNumber: `PD-${deal.id}`,
@@ -435,8 +443,8 @@ async function fetchWonUnscheduledTransactions(calculator, monthDate, asOf) {
     details: {
       probability: deal.probability,
       status: deal.status,
-      stage: deal.stage_name
-    }
+      stage: deal.stage_name,
+    },
   }))
 }
 
@@ -446,7 +454,7 @@ async function fetchWeightedSalesTransactions(calculator, monthDate, asOf) {
   const monthStr = format(monthDate, 'yyyy-MM')
 
   // Filter deals that have expected_close_date in this month or span across this month
-  const relevantDeals = openDeals.filter(deal => {
+  const relevantDeals = openDeals.filter((deal) => {
     if (!deal.expected_close_date) return false
 
     // Calculate deal duration
@@ -471,12 +479,12 @@ async function fetchWeightedSalesTransactions(calculator, monthDate, asOf) {
     return false
   })
 
-  return relevantDeals.map(deal => {
+  return relevantDeals.map((deal) => {
     // Calculate weighted value per month
     const closeDate = new Date(deal.expected_close_date)
     const addDate = deal.add_time ? new Date(deal.add_time) : closeDate
     const duration = Math.max(1, Math.ceil((closeDate - addDate) / (1000 * 60 * 60 * 24 * 30)))
-    const baseWeightedValue = deal.weightedValue || (deal.value * (deal.probability || 0) / 100)
+    const baseWeightedValue = deal.weightedValue || (deal.value * (deal.probability || 0)) / 100
     const monthlyWeightedValue = baseWeightedValue / duration
 
     return {
@@ -494,8 +502,8 @@ async function fetchWeightedSalesTransactions(calculator, monthDate, asOf) {
         monthlyWeightedValue: monthlyWeightedValue,
         status: deal.status,
         stage: deal.stage_name,
-        duration: duration
-      }
+        duration: duration,
+      },
     }
   })
 }
@@ -506,12 +514,12 @@ async function fetchClientData(calculator, monthDate, asOf) {
 
   return {
     month: clientData.month,
-    clients: clientData.clients || []
+    clients: clientData.clients || [],
   }
 }
 
 module.exports = {
   prefetchTransactionDetails,
   getCachedTransactionDetails,
-  cacheTransactionDetails
+  cacheTransactionDetails,
 }

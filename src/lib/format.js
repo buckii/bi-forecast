@@ -4,12 +4,15 @@ const currencyFormatters = new Map()
 
 function currencyFormatter(fractionDigits) {
   if (!currencyFormatters.has(fractionDigits)) {
-    currencyFormatters.set(fractionDigits, new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: fractionDigits,
-      maximumFractionDigits: fractionDigits
-    }))
+    currencyFormatters.set(
+      fractionDigits,
+      new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: fractionDigits,
+        maximumFractionDigits: fractionDigits,
+      }),
+    )
   }
   return currencyFormatters.get(fractionDigits)
 }
@@ -89,5 +92,5 @@ export default {
   formatDate,
   formatDateLong,
   formatMonth,
-  parseDisplayDate
+  parseDisplayDate,
 }

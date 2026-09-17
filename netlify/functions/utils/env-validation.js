@@ -3,13 +3,13 @@
 
 const REQUIRED_ENV_VARS = [
   'MONGODB_URI',
-  'MONGODB_DB_NAME', 
+  'MONGODB_DB_NAME',
   'JWT_SECRET',
   'ENCRYPTION_KEY',
   'GOOGLE_CLIENT_ID',
   'QBO_CLIENT_ID',
   'QBO_CLIENT_SECRET',
-  'URL'
+  'URL',
 ]
 
 function validateEnvironment() {
@@ -18,7 +18,7 @@ function validateEnvironment() {
 
   for (const envVar of REQUIRED_ENV_VARS) {
     const value = process.env[envVar]
-    
+
     if (!value) {
       missing.push(envVar)
       continue
@@ -28,7 +28,7 @@ function validateEnvironment() {
     if (envVar === 'JWT_SECRET' && (value.includes('your-') || value.length < 32)) {
       weak.push(`${envVar}: appears to be default or too short (minimum 32 chars)`)
     }
-    
+
     if (envVar === 'ENCRYPTION_KEY' && (value.includes('your-') || value.length < 32)) {
       weak.push(`${envVar}: appears to be default or too short (minimum 32 chars)`)
     }
@@ -51,12 +51,12 @@ function validateEnvironment() {
 
 // Validate specific function requirements
 function validateFunctionEnv(requiredVars = []) {
-  const missing = requiredVars.filter(envVar => !process.env[envVar])
-  
+  const missing = requiredVars.filter((envVar) => !process.env[envVar])
+
   if (missing.length > 0) {
     throw new Error(`Function missing required environment variables: ${missing.join(', ')}`)
   }
-  
+
   return true
 }
 module.exports = { validateEnvironment, validateFunctionEnv }

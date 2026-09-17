@@ -5,7 +5,7 @@ import { useRevenueStore } from '../stores/revenue'
 export function useDataRefresh() {
   const authStore = useAuthStore()
   const revenueStore = useRevenueStore()
-  
+
   // Reactive state
   const refreshingQBO = ref(false)
   const refreshingPipedrive = ref(false)
@@ -18,47 +18,47 @@ export function useDataRefresh() {
   const lastQBORefresh = ref(0)
   const lastPipedriveRefresh = ref(0)
   const lastAllRefresh = ref(0)
-  
+
   // Format timestamp for display
   function formatLastRefresh(timestamp) {
     if (!timestamp) return 'Never'
-    
+
     const date = new Date(timestamp)
     const now = new Date()
     const diffMinutes = Math.floor((now - date) / 60000)
-    
+
     if (diffMinutes < 1) return 'Just now'
     if (diffMinutes < 60) return `${diffMinutes}m ago`
-    
+
     const diffHours = Math.floor(diffMinutes / 60)
     if (diffHours < 24) return `${diffHours}h ago`
-    
+
     const diffDays = Math.floor(diffHours / 24)
     if (diffDays < 7) return `${diffDays}d ago`
-    
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric'
+
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
     })
   }
-  
+
   // Format timestamp for tooltip (absolute datetime)
   function formatRefreshTooltip(timestamp) {
     if (!timestamp) return 'Never refreshed'
-    
+
     const date = new Date(timestamp)
     return date.toLocaleString('en-US', {
       weekday: 'long',
       year: 'numeric',
-      month: 'long', 
+      month: 'long',
       day: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
       second: '2-digit',
-      timeZoneName: 'short'
+      timeZoneName: 'short',
     })
   }
-  
+
   // Update refresh timestamps from revenue store data
   function updateRefreshTimes() {
     const lastUpdated = revenueStore.lastUpdated
@@ -68,12 +68,15 @@ export function useDataRefresh() {
       pipedriveLastRefresh.value = lastUpdated
     }
   }
-  
+
   // Watch for changes in revenue store's lastUpdated value
-  watch(() => revenueStore.lastUpdated, () => {
-    updateRefreshTimes()
-  })
-  
+  watch(
+    () => revenueStore.lastUpdated,
+    () => {
+      updateRefreshTimes()
+    },
+  )
+
   // Refresh QBO data
   async function refreshQBO() {
     // Check debounce (20 seconds)
@@ -90,23 +93,22 @@ export function useDataRefresh() {
       const response = await fetch('/.netlify/functions/revenue-refresh-qbo', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${authStore.token}`
-        }
+          Authorization: `Bearer ${authStore.token}`,
+        },
       })
-      
+
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.error || 'Failed to refresh QBO data')
       }
-      
+
       const data = await response.json()
       if (data.data && data.data.lastUpdated) {
         qboLastRefresh.value = data.data.lastUpdated
       }
-      
+
       // Trigger revenue store refresh with cache bypass
       await revenueStore.loadRevenueData(null, true)
-      
     } catch (error) {
       console.error('Error refreshing QBO data:', error)
       throw error // Re-throw so calling component can handle UI feedback
@@ -114,7 +116,7 @@ export function useDataRefresh() {
       refreshingQBO.value = false
     }
   }
-  
+
   // Refresh Pipedrive data
   async function refreshPipedrive() {
     // Check debounce (20 seconds)
@@ -131,23 +133,22 @@ export function useDataRefresh() {
       const response = await fetch('/.netlify/functions/revenue-refresh-pipedrive', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${authStore.token}`
-        }
+          Authorization: `Bearer ${authStore.token}`,
+        },
       })
-      
+
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.error || 'Failed to refresh Pipedrive data')
       }
-      
+
       const data = await response.json()
       if (data.data && data.data.lastUpdated) {
         pipedriveLastRefresh.value = data.data.lastUpdated
       }
-      
+
       // Trigger revenue store refresh with cache bypass
       await revenueStore.loadRevenueData(null, true)
-      
     } catch (error) {
       console.error('Error refreshing Pipedrive data:', error)
       throw error // Re-throw so calling component can handle UI feedback
@@ -155,7 +156,7 @@ export function useDataRefresh() {
       refreshingPipedrive.value = false
     }
   }
-  
+
   // Refresh all data (both QBO and Pipedrive)
   async function refreshAll() {
     // Check debounce (20 seconds)
@@ -176,8 +177,8 @@ export function useDataRefresh() {
       const qboResponse = await fetch('/.netlify/functions/revenue-refresh-qbo', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${authStore.token}`
-        }
+          Authorization: `Bearer ${authStore.token}`,
+        },
       })
 
       if (!qboResponse.ok) {
@@ -189,8 +190,8 @@ export function useDataRefresh() {
       const pdResponse = await fetch('/.netlify/functions/revenue-refresh-pipedrive', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${authStore.token}`
-        }
+          Authorization: `Bearer ${authStore.token}`,
+        },
       })
 
       if (!pdResponse.ok) {
@@ -206,7 +207,6 @@ export function useDataRefresh() {
 
       // Trigger revenue store refresh with cache bypass
       await revenueStore.loadRevenueData(null, true)
-
     } catch (error) {
       console.error('Error refreshing all data:', error)
       throw error // Re-throw so calling component can handle UI feedback
@@ -235,6 +235,6 @@ export function useDataRefresh() {
     updateRefreshTimes,
     refreshQBO,
     refreshPipedrive,
-    refreshAll
+    refreshAll,
   }
 }

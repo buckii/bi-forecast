@@ -5,31 +5,22 @@ const { getCollection } = require('./utils/database.js')
 
 function isDevLoginAllowed(event) {
   const host = event.headers?.host || ''
-  return (
-    process.env.BYPASS_AUTH_LOCALHOST === 'true' &&
-    (host.includes('localhost') || host.includes('127.0.0.1'))
-  )
+  return process.env.BYPASS_AUTH_LOCALHOST === 'true' && (host.includes('localhost') || host.includes('127.0.0.1'))
 }
 
 exports.handler = createHandler(
   { methods: ['GET', 'POST'], auth: false, errorMessage: 'Dev login failed' },
   async ({ event }) => {
     if (!isDevLoginAllowed(event)) {
-      throw new HttpError(
-        'Dev login is only available on localhost with BYPASS_AUTH_LOCALHOST=true',
-        403
-      )
+      throw new HttpError('Dev login is only available on localhost with BYPASS_AUTH_LOCALHOST=true', 403)
     }
 
     const [usersCollection, companiesCollection] = await Promise.all([
       getCollection('users'),
-      getCollection('companies')
+      getCollection('companies'),
     ])
 
-    const [user, company] = await Promise.all([
-      usersCollection.findOne({}),
-      companiesCollection.findOne({})
-    ])
+    const [user, company] = await Promise.all([usersCollection.findOne({}), companiesCollection.findOne({})])
 
     if (!user || !company) {
       throw new HttpError('No user or company found in database for dev login', 500)
@@ -42,9 +33,9 @@ exports.handler = createHandler(
         email: user.email,
         name: user.name,
         picture: user.picture,
-        role: user.role
+        role: user.role,
       },
-      company: { id: company._id, name: company.name, domain: company.domain }
+      company: { id: company._id, name: company.name, domain: company.domain },
     }
-  }
+  },
 )

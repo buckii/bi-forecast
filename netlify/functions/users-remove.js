@@ -18,5 +18,5 @@ exports.handler = createHandler(
     if (result.deletedCount === 0) throw new HttpError('User not found', 404)
 
     return { message: 'User access removed successfully' }
-  }
+  },
 )

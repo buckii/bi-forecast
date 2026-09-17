@@ -6,7 +6,7 @@ import {
   formatDate,
   formatDateLong,
   formatMonth,
-  parseDisplayDate
+  parseDisplayDate,
 } from '../format.js'
 
 describe('currency', () => {

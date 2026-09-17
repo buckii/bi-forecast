@@ -49,7 +49,7 @@
               </p>
             </div>
           </div>
-          
+
           <div class="pt-4 border-t">
             <div class="flex justify-between items-center">
               <span class="text-lg font-semibold text-gray-900 dark:text-gray-100">Total A/R:</span>
@@ -58,32 +58,46 @@
               </span>
             </div>
           </div>
-          
+
           <!-- Detailed breakdown -->
           <div v-if="balances.receivables.details && balances.receivables.details.length > 0" class="overflow-x-auto">
             <h3 class="text-md font-semibold text-gray-900 dark:text-gray-100 mb-2">Customer Breakdown</h3>
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
               <thead>
                 <tr>
-                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th
+                    class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                  >
                     Customer
                   </th>
-                  <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th
+                    class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                  >
                     Current
                   </th>
-                  <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th
+                    class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                  >
                     1-15 Days
                   </th>
-                  <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th
+                    class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                  >
                     16-30 Days
                   </th>
-                  <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th
+                    class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                  >
                     31-45 Days
                   </th>
-                  <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th
+                    class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                  >
                     45+ Days
                   </th>
-                  <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th
+                    class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                  >
                     Total
                   </th>
                 </tr>
@@ -108,7 +122,9 @@
                   <td class="px-4 py-2 whitespace-nowrap text-sm text-right text-red-800 dark:text-red-400">
                     {{ customer.days_45_plus > 0 ? formatCurrency(customer.days_45_plus) : '' }}
                   </td>
-                  <td class="px-4 py-2 whitespace-nowrap text-sm text-right font-semibold text-gray-900 dark:text-gray-100">
+                  <td
+                    class="px-4 py-2 whitespace-nowrap text-sm text-right font-semibold text-gray-900 dark:text-gray-100"
+                  >
                     {{ formatCurrency(customer.total) }}
                   </td>
                 </tr>
@@ -116,9 +132,7 @@
               <!-- Total row -->
               <tfoot class="bg-gray-50 dark:bg-gray-800">
                 <tr class="border-t-2 border-gray-300 dark:border-gray-600">
-                  <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-gray-100">
-                    TOTAL
-                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-gray-100">TOTAL</td>
                   <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-green-600">
                     {{ balances.receivables.current > 0 ? formatCurrency(balances.receivables.current) : '' }}
                   </td>
@@ -134,7 +148,9 @@
                   <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-red-800 dark:text-red-400">
                     {{ balances.receivables.days_45_plus > 0 ? formatCurrency(balances.receivables.days_45_plus) : '' }}
                   </td>
-                  <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-primary-600 dark:text-primary-400">
+                  <td
+                    class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-primary-600 dark:text-primary-400"
+                  >
                     {{ formatCurrency(balances.receivables.total) }}
                   </td>
                 </tr>
@@ -152,15 +168,11 @@
       <div class="card">
         <div class="flex justify-between items-center mb-4">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Outstanding Invoices</h2>
-          <button 
-            @click="refreshInvoices"
-            :disabled="loadingInvoices"
-            class="btn-secondary"
-          >
+          <button @click="refreshInvoices" :disabled="loadingInvoices" class="btn-secondary">
             {{ loadingInvoices ? 'Refreshing...' : 'Refresh' }}
           </button>
         </div>
-        
+
         <div v-if="loadingInvoices" class="flex items-center justify-center py-8">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           <span class="ml-3 text-gray-600 dark:text-gray-400">Loading invoices...</span>
@@ -169,25 +181,39 @@
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
             <thead>
               <tr>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th
+                  class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                >
                   Invoice #
                 </th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th
+                  class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                >
                   Customer
                 </th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th
+                  class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                >
                   Invoice Date
                 </th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th
+                  class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                >
                   Due Date
                 </th>
-                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th
+                  class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                >
                   Amount
                 </th>
-                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th
+                  class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                >
                   Balance
                 </th>
-                <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th
+                  class="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                >
                   Actions
                 </th>
               </tr>
@@ -209,16 +235,14 @@
                 <td class="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-100">
                   {{ formatCurrency(invoice.totalAmount) }}
                 </td>
-                <td class="px-4 py-2 whitespace-nowrap text-sm text-right font-semibold" :class="getBalanceClass(invoice.balance)">
+                <td
+                  class="px-4 py-2 whitespace-nowrap text-sm text-right font-semibold"
+                  :class="getBalanceClass(invoice.balance)"
+                >
                   {{ formatCurrency(invoice.balance) }}
                 </td>
                 <td class="px-4 py-2 whitespace-nowrap text-sm text-center">
-                  <button
-                    @click="openPaymentModal(invoice)"
-                    class="btn-primary text-xs px-3 py-1"
-                  >
-                    Mark Paid
-                  </button>
+                  <button @click="openPaymentModal(invoice)" class="btn-primary text-xs px-3 py-1">Mark Paid</button>
                 </td>
               </tr>
             </tbody>
@@ -228,7 +252,9 @@
                 <td colspan="5" class="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-gray-100">
                   TOTAL
                 </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-primary-600 dark:text-primary-400">
+                <td
+                  class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-primary-600 dark:text-primary-400"
+                >
                   {{ formatCurrency(totalInvoiceBalance) }}
                 </td>
                 <td class="px-4 py-3"></td>
@@ -292,7 +318,6 @@ const totalInvoiceBalance = computed(() => {
   return invoices.value.reduce((sum, invoice) => sum + (invoice.balance || 0), 0)
 })
 
-
 function formatDate(date) {
   if (!date) return ''
   return format(parseISO(date), 'MMM dd, yyyy')
@@ -302,7 +327,7 @@ function getDueDateClass(dueDate) {
   if (!dueDate) return ''
   const today = new Date()
   const due = parseISO(dueDate)
-  
+
   if (isBefore(due, today)) {
     return 'text-red-600 font-semibold'
   } else if (isBefore(due, addDays(today, 7))) {
@@ -331,8 +356,8 @@ async function loadInvoices() {
 
     const response = await fetch(url, {
       headers: {
-        'Authorization': `Bearer ${authStore.token}`
-      }
+        Authorization: `Bearer ${authStore.token}`,
+      },
     })
 
     if (!response.ok) {
@@ -369,28 +394,25 @@ async function recordPayment(paymentData) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authStore.token}`
+        Authorization: `Bearer ${authStore.token}`,
       },
       body: JSON.stringify({
         invoiceId: paymentData.invoiceId,
         customerId: paymentData.customerId,
         amount: paymentData.amount,
         paymentMethod: paymentData.paymentMethod,
-        paymentDate: paymentData.paymentDate
-      })
+        paymentDate: paymentData.paymentDate,
+      }),
     })
-    
+
     if (!response.ok) {
       throw new Error(`Failed to record payment: ${response.statusText}`)
     }
-    
+
     // Refresh invoices and balances (including A/R aging)
     // No need to refresh all QuickBooks data - just reload what changed
-    await Promise.all([
-      loadInvoices(),
-      revenueStore.loadRevenueData()
-    ])
-    
+    await Promise.all([loadInvoices(), revenueStore.loadRevenueData()])
+
     closePaymentModal()
   } catch (error) {
     console.error('Error recording payment:', error)

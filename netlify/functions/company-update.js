@@ -3,21 +3,21 @@ const { getCollection } = require('./utils/database.js')
 
 // Each setting validates itself, so adding one is a single line here.
 const SETTING_VALIDATORS = {
-  targetNetMargin: value => {
+  targetNetMargin: (value) => {
     if (typeof value !== 'number' || value < 1 || value > 50) {
       throw new HttpError('Target net margin must be a number between 1 and 50', 400)
     }
   },
-  monthlyExpensesOverride: value => {
+  monthlyExpensesOverride: (value) => {
     if (value !== null && (typeof value !== 'number' || value < 0)) {
       throw new HttpError('Monthly expenses override must be a positive number or null', 400)
     }
   },
-  pricePerPoint: value => {
+  pricePerPoint: (value) => {
     if (typeof value !== 'number' || value <= 0) {
       throw new HttpError('Price per point must be a positive number', 400)
     }
-  }
+  },
 }
 
 exports.handler = createHandler(
@@ -48,5 +48,5 @@ exports.handler = createHandler(
     await companiesCollection.updateOne({ _id: company._id }, { $set: updateData })
 
     return { message: 'Company information updated successfully' }
-  }
+  },
 )

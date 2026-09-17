@@ -27,8 +27,8 @@ Generated on ${format(now, "MMMM d, yyyy 'at' h:mm a")}`
       slackFile: {
         id: result.file?.id,
         url: result.file?.permalink,
-        timestamp: result.file?.timestamp
-      }
+        timestamp: result.file?.timestamp,
+      },
     }
-  }
+  },
 )

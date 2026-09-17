@@ -21,20 +21,20 @@ export default defineConfig({
           {
             src: '/vite.svg',
             sizes: '192x192',
-            type: 'image/svg+xml'
-          },
-          {
-            src: '/vite.svg',
-            sizes: '512x512',
-            type: 'image/svg+xml'
+            type: 'image/svg+xml',
           },
           {
             src: '/vite.svg',
             sizes: '512x512',
             type: 'image/svg+xml',
-            purpose: 'any maskable'
-          }
-        ]
+          },
+          {
+            src: '/vite.svg',
+            sizes: '512x512',
+            type: 'image/svg+xml',
+            purpose: 'any maskable',
+          },
+        ],
       },
       workbox: {
         runtimeCaching: [
@@ -45,29 +45,22 @@ export default defineConfig({
               cacheName: 'api-cache',
               expiration: {
                 maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 // 24 hours
+                maxAgeSeconds: 60 * 60 * 24, // 24 hours
               },
               cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          }
-        ]
-      }
-    })
+                statuses: [0, 200],
+              },
+            },
+          },
+        ],
+      },
+    }),
   ],
   server: {
-    port: 3001,  // Use different port to avoid conflicts with other projects
-    strictPort: false,  // Allow auto-increment if 3001 is taken
+    port: 3001, // Use different port to avoid conflicts with other projects
+    strictPort: false, // Allow auto-increment if 3001 is taken
     host: true,
-    allowedHosts: [
-      'local.buckeye.dev',
-      '.buckeye.dev',
-      'localhost',
-      '.trycloudflare.com',
-      '.netlify.live',
-      '.test'
-    ]
+    allowedHosts: ['local.buckeye.dev', '.buckeye.dev', 'localhost', '.trycloudflare.com', '.netlify.live', '.test'],
     // No proxy needed - Netlify CLI handles function proxying
-  }
+  },
 })

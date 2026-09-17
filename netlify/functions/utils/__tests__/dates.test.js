@@ -9,7 +9,7 @@ import {
   monthStartString,
   shiftMonthKey,
   startOfDay,
-  isDateOnly
+  isDateOnly,
 } from '../dates.js'
 
 describe('date-only parsing', () => {

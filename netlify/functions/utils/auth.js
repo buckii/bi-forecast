@@ -26,35 +26,35 @@ function verifyToken(token) {
 async function getOrCreateUser(googleUserData) {
   const usersCollection = await getCollection('users')
   const companiesCollection = await getCollection('companies')
-  
+
   // First, check if user exists in authorized users list
-  let user = await usersCollection.findOne({ 
-    email: googleUserData.email.toLowerCase()
+  let user = await usersCollection.findOne({
+    email: googleUserData.email.toLowerCase(),
   })
-  
+
   let company = null
-  
+
   if (user) {
     // User found in authorized list
     // Update user info and last login
     await usersCollection.updateOne(
       { _id: user._id },
-      { 
-        $set: { 
+      {
+        $set: {
           name: googleUserData.name,
           picture: googleUserData.picture,
           googleId: googleUserData.googleId,
-          lastLoginAt: new Date()
-        }
-      }
+          lastLoginAt: new Date(),
+        },
+      },
     )
-    
+
     // Update user object with latest data
     user.name = googleUserData.name
     user.picture = googleUserData.picture
     user.googleId = googleUserData.googleId
     user.lastLoginAt = new Date()
-    
+
     // Get the company - handle both old (companies array) and new (companyId) user structures
     const companyId = user.companyId || (user.companies && user.companies[0])
     if (!companyId) {
@@ -64,34 +64,31 @@ async function getOrCreateUser(googleUserData) {
   } else {
     // User not in authorized list - check for domain-based access
     company = await companiesCollection.findOne({ domain: googleUserData.domain })
-    
+
     if (!company) {
       // Neither user nor domain authorized - deny access
       throw new Error('Access denied. Please contact an administrator to request access.')
     }
-    
+
     // Domain is authorized - create/update user automatically
-    user = await usersCollection.findOne({ 
-      $or: [
-        { googleId: googleUserData.googleId },
-        { email: googleUserData.email.toLowerCase() }
-      ]
+    user = await usersCollection.findOne({
+      $or: [{ googleId: googleUserData.googleId }, { email: googleUserData.email.toLowerCase() }],
     })
-    
+
     if (user) {
       // Update existing user
       await usersCollection.updateOne(
         { _id: user._id },
-        { 
-          $set: { 
+        {
+          $set: {
             name: googleUserData.name,
             picture: googleUserData.picture,
             googleId: googleUserData.googleId,
             companyId: company._id,
             role: user.role || 'viewer', // Keep existing role or default to viewer
-            lastLoginAt: new Date()
-          }
-        }
+            lastLoginAt: new Date(),
+          },
+        },
       )
     } else {
       // Create new user with domain-based access
@@ -103,18 +100,18 @@ async function getOrCreateUser(googleUserData) {
         companyId: company._id,
         role: 'admin', // First user in domain gets admin access
         createdAt: new Date(),
-        lastLoginAt: new Date()
+        lastLoginAt: new Date(),
       }
-      
+
       const result = await usersCollection.insertOne(newUser)
       user = { ...newUser, _id: result.insertedId }
     }
   }
-  
+
   if (!company) {
     throw new Error('Company not found')
   }
-  
+
   return { user, company }
 }
 
@@ -187,5 +184,5 @@ module.exports = {
   verifyGoogleToken,
   getOrCreateUser,
   getAuthorizationToken,
-  getCurrentUser
+  getCurrentUser,
 }

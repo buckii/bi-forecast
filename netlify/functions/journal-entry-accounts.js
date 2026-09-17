@@ -14,7 +14,7 @@ function toOption(account, extra = {}) {
     fullyQualifiedName: account.FullyQualifiedName || account.Name,
     accountType: account.AccountType,
     accountSubType: account.AccountSubType,
-    ...extra
+    ...extra,
   }
 }
 
@@ -44,31 +44,31 @@ exports.handler = createHandler({ errorMessage: 'Failed to fetch QuickBooks acco
   const qbo = new QuickBooksService(company._id)
   const { accessToken, realmId } = await qbo.getAccessToken()
 
-  const runQuery = async query => {
+  const runQuery = async (query) => {
     const data = await qbo.makeRequest(`query?query=${encodeURIComponent(query)}`, realmId, accessToken)
     return data.QueryResponse?.Account || []
   }
 
   const [incomeAccounts, activeAccounts] = await Promise.all([
     runQuery("SELECT * FROM Account WHERE AccountType = 'Income' AND Active = true ORDER BY Name"),
-    runQuery('SELECT * FROM Account WHERE Active = true ORDER BY Name')
+    runQuery('SELECT * FROM Account WHERE Active = true ORDER BY Name'),
   ])
 
   const unearnedAccounts = activeAccounts.filter(isUnearnedName)
 
-  const parentIds = new Set(
-    unearnedAccounts.map(account => account.ParentRef?.value).filter(Boolean)
-  )
-  const activeById = new Map(activeAccounts.map(account => [account.Id, account]))
-  const presentParents = [...parentIds].filter(id => activeById.has(id)).map(id => activeById.get(id))
+  const parentIds = new Set(unearnedAccounts.map((account) => account.ParentRef?.value).filter(Boolean))
+  const activeById = new Map(activeAccounts.map((account) => [account.Id, account]))
+  const presentParents = [...parentIds].filter((id) => activeById.has(id)).map((id) => activeById.get(id))
   const missingParents = await fetchMissingParents(
-    qbo, realmId, accessToken,
-    [...parentIds].filter(id => !activeById.has(id))
+    qbo,
+    realmId,
+    accessToken,
+    [...parentIds].filter((id) => !activeById.has(id)),
   )
 
   // Dedupe: a parent may itself be an unearned account.
   const unearnedById = new Map(
-    [...unearnedAccounts, ...presentParents, ...missingParents].map(account => [account.Id, account])
+    [...unearnedAccounts, ...presentParents, ...missingParents].map((account) => [account.Id, account]),
   )
 
   const settings = company.settings?.journalEntryAccounts || {}
@@ -76,13 +76,15 @@ exports.handler = createHandler({ errorMessage: 'Failed to fetch QuickBooks acco
 
   return {
     revenueAccounts: incomeAccounts
-      .filter(account => !isUnearnedName(account))
-      .map(account => toOption(account, { isDefault: defaultIds.has(account.Id) })),
-    unearnedRevenueAccounts: [...unearnedById.values()].map(account => toOption(account, {
-      isDefault: settings.unearnedRevenue === account.Id,
-      isSubAccount: !!account.ParentRef,
-      parentId: account.ParentRef?.value || null
-    })),
-    currentSettings: settings
+      .filter((account) => !isUnearnedName(account))
+      .map((account) => toOption(account, { isDefault: defaultIds.has(account.Id) })),
+    unearnedRevenueAccounts: [...unearnedById.values()].map((account) =>
+      toOption(account, {
+        isDefault: settings.unearnedRevenue === account.Id,
+        isSubAccount: !!account.ParentRef,
+        parentId: account.ParentRef?.value || null,
+      }),
+    ),
+    currentSettings: settings,
   }
 })

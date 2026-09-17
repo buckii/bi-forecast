@@ -23,7 +23,7 @@ const AUTH_FAILURES = [
   'Invalid token',
   'User not found',
   'User has no associated company',
-  'Company not found'
+  'Company not found',
 ]
 
 function statusForError(err) {
@@ -45,10 +45,10 @@ function createHandler(options, fn) {
     role = null,
     parseBody = true,
     errorMessage = 'Request failed',
-    authenticate = getCurrentUser
+    authenticate = getCurrentUser,
   } = options
 
-  const allowed = (Array.isArray(methods) ? methods : [methods]).map(m => m.toUpperCase())
+  const allowed = (Array.isArray(methods) ? methods : [methods]).map((m) => m.toUpperCase())
 
   return async function handler(event, context) {
     const origin = event.headers?.origin || event.headers?.Origin
@@ -64,7 +64,7 @@ function createHandler(options, fn) {
       let company = null
 
       if (auth) {
-        ({ user, company } = await authenticate(event))
+        ;({ user, company } = await authenticate(event))
 
         if (role && user.role !== role) {
           throw new HttpError('Insufficient permissions', 403)
@@ -87,7 +87,7 @@ function createHandler(options, fn) {
         company,
         body,
         query: event.queryStringParameters || {},
-        origin
+        origin,
       })
 
       // A redirect or non-JSON response the handler built itself.
@@ -103,7 +103,7 @@ function createHandler(options, fn) {
         err instanceof HttpError ? err.message : err.message || errorMessage,
         statusCode,
         err instanceof HttpError ? err.details : err.stack,
-        origin
+        origin,
       )
     }
   }

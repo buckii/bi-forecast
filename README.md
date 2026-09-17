@@ -26,7 +26,7 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 The application calculates monthly revenue from 6 components:
 
 1. **Invoiced Revenue** - Posted invoices from QuickBooks Online
-2. **Journal Entries** - Accounting adjustments affecting revenue  
+2. **Journal Entries** - Accounting adjustments affecting revenue
 3. **Delayed Charges** - Unbilled charges using QBO's delayed charge feature
 4. **Monthly Recurring** - Estimated recurring revenue from previous month
 5. **Won Unscheduled** - Pipedrive deals won but not yet scheduled for invoicing
@@ -35,6 +35,7 @@ The application calculates monthly revenue from 6 components:
 ## Tech Stack
 
 ### Frontend
+
 - Vue.js 3 with Composition API
 - Tailwind CSS for styling
 - Chart.js for data visualizations
@@ -43,6 +44,7 @@ The application calculates monthly revenue from 6 components:
 - PWA with service worker
 
 ### Backend
+
 - Netlify Functions (serverless)
 - MongoDB Atlas for data storage
 - JWT authentication
@@ -50,6 +52,7 @@ The application calculates monthly revenue from 6 components:
 - Encrypted OAuth token storage
 
 ### APIs
+
 - QuickBooks Online REST API
 - Pipedrive REST API
 - Google Auth Library
@@ -68,23 +71,27 @@ The application calculates monthly revenue from 6 components:
 ### Local Development
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/your-org/bi-forecast.git
    cd bi-forecast
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Configure environment variables**
+
    ```bash
    cp .env.example .env
    # Edit .env with your actual values
    ```
 
 4. **Required Environment Variables**
+
    ```
    MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority
    MONGODB_DB_NAME=bi-forecast
@@ -110,6 +117,7 @@ The application calculates monthly revenue from 6 components:
    `JWT_SECRET` has no fallback value. A function that needs it fails loudly when it is missing.
 
 5. **Start development server using Netlify**
+
    ```bash
    npm run dev
    ```
@@ -121,37 +129,41 @@ The application calculates monthly revenue from 6 components:
 For secure external access during development (useful for webhook testing or mobile device testing):
 
 1. **Install cloudflared**
+
    ```bash
    # macOS
    brew install cloudflare/cloudflare/cloudflared
-   
+
    # Linux
    wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
    sudo dpkg -i cloudflared-linux-amd64.deb
-   
+
    # Windows
    # Download from https://github.com/cloudflare/cloudflared/releases
    ```
 
 2. **Authenticate with Cloudflare**
+
    ```bash
    cloudflared tunnel login
    ```
 
 3. **Create and configure tunnel**
+
    ```bash
    # Create tunnel
    cloudflared tunnel create bi-forecast-dev
-   
+
    # Get tunnel ID (save this)
    cloudflared tunnel list
    ```
 
 4. **Create config file** (`~/.cloudflared/config.yml`)
+
    ```yaml
    tunnel: YOUR_TUNNEL_ID
    credentials-file: /Users/YOUR_USERNAME/.cloudflared/YOUR_TUNNEL_ID.json
-   
+
    ingress:
      - hostname: your-subdomain.yourdomain.com
        service: http://localhost:8888
@@ -159,6 +171,7 @@ For secure external access during development (useful for webhook testing or mob
    ```
 
 5. **Run tunnel**
+
    ```bash
    # In a separate terminal
    cloudflared tunnel run bi-forecast-dev
@@ -200,10 +213,11 @@ This allows secure HTTPS access to your local development server for webhook tes
 #### Netlify Deployment
 
 1. **Connect to Netlify**
+
    ```bash
    # Install Netlify CLI
    npm install -g netlify-cli
-   
+
    # Login and link site
    netlify login
    netlify init
@@ -228,6 +242,7 @@ This allows secure HTTPS access to your local development server for webhook tes
 ### ✅ Fully Implemented Features
 
 #### Dashboard
+
 - Interactive 24-month revenue chart with Chart.js and horizontal reference lines
 - Chart totals strip: per-revenue-type and grand totals (plus per-month average) for the months currently plotted; clicking a type or its legend entry hides it and drops it from the total
 - Quick Ranges menu including a "Next 3 Months" range (first of next month through +3)
@@ -243,6 +258,7 @@ This allows secure HTTPS access to your local development server for webhook tes
 - Company financial settings (target net margin, monthly expenses override)
 
 #### Revenue Calculation Engine
+
 - All 6 revenue components implemented and tested
 - Real-time calculations with QuickBooks and Pipedrive data
 - Multi-month deal distribution for accurate weighted sales forecasting
@@ -251,29 +267,34 @@ This allows secure HTTPS access to your local development server for webhook tes
 - Enhanced transaction details with comprehensive invoice breakdowns
 
 #### Authentication & Security
+
 - Google SSO with domain validation, verifying the ID token signature against Google's published keys
 - JWT token management with secure storage
 - Encrypted OAuth tokens in MongoDB
 - Company-level data isolation
 
 #### API Integrations
+
 - QuickBooks Online OAuth2 flow fully functional
 - Pipedrive API key authentication and validation
 - Automated daily data refresh via Netlify scheduled functions
 - Real-time API connection status monitoring
 
 #### Exception Management
+
 - Overdue deals tracking from Pipedrive
 - Past delayed charges identification
 - Won unscheduled deals monitoring
 - Exception resolution workflows
 
 #### Balance Monitoring
+
 - Asset account balances from QuickBooks
 - Aged A/R reporting with configurable buckets
 - Real-time balance updates with sync timestamps
 
 #### Progressive Web App
+
 - PWA manifest configured for installation
 - Service worker ready for implementation
 - Mobile-optimized interface
@@ -310,11 +331,13 @@ This allows secure HTTPS access to your local development server for webhook tes
 ### Netlify Functions (API Endpoints)
 
 #### Authentication
+
 - `auth-google.js` - Google OAuth login
 - `auth-current.js` - Get current user session
 - `auth-logout.js` - Logout (client-side token removal)
 
 #### Revenue Data
+
 - `revenue-current.js` - Current revenue forecast calculations with data caching
 - `revenue-historical.js` - Historical archived data retrieval
 - `revenue-by-client.js` - Client-level revenue breakdown with alias resolution and caching
@@ -326,25 +349,30 @@ This allows secure HTTPS access to your local development server for webhook tes
 - `services/revenue-calculator.js` - Core revenue calculation engine with data caching and API call optimization
 
 #### OAuth & API Management
+
 - `qbo-oauth-start.js` - Initiate QuickBooks OAuth flow
 - `qbo-oauth-callback.js` - Handle QuickBooks OAuth callback
 - `pipedrive-connect.js` - Save and validate Pipedrive API key
 
 #### Company & Settings
+
 - `company-update.js` - Company settings management
 - `settings-status.js` - API connection status checks
 - `client-aliases.js` - Client alias data retrieval
 - `settings.js` - Client alias management and updates
 
 #### Slack Sharing
+
 - `share-chart.js` - Post the forecast chart to Slack as a PNG
 - `share-client-revenue.js` - Post the client revenue breakdown as a formatted Block Kit message, with the pie chart attached as a thread reply
 - `services/slack.js` - Slack API wrapper (messages, Block Kit, threaded file uploads)
 
 #### Scheduled Tasks
+
 - `scheduled-archive.js` - Daily data archiving (3am ET)
 
 #### Development & Testing
+
 - `qbo-test.js` - QuickBooks API testing
 - `qb-raw-data.js` - Raw QuickBooks data analysis
 - `test-september-data.js` - September data validation
@@ -363,6 +391,7 @@ This allows secure HTTPS access to your local development server for webhook tes
 ## Recent Enhancements
 
 ### API Optimization & Performance Improvements (Latest)
+
 - **QuickBooks API Rate Limit Prevention**: Eliminated N+1 query patterns and added 100ms spacing between API calls
 - **Data Caching**: QBO and Pipedrive data cached in RevenueCalculator instance and reused across operations
 - **Optimized Refresh Operations**:
@@ -378,6 +407,7 @@ This allows secure HTTPS access to your local development server for webhook tes
 - **Fixed Date Input Debouncing**: Loading spinners only appear after 1 second of no typing
 
 ### Transaction Details Caching & Comparison Views
+
 - **Transaction Caching System**: Prefetches and caches transaction details for 6 months (prev 2, current, next 3) in MongoDB
 - **Background Prefetching**: Runs automatically during QBO and Pipedrive refresh operations without blocking user
 - **Instant Chart Drill-down**: Chart clicks now load transaction details instantly from cache
@@ -393,6 +423,7 @@ This allows secure HTTPS access to your local development server for webhook tes
 - **Improved QBO Integration**: Fixed delayed charges parsing to correctly identify uninvoiced items
 
 ### Client Revenue Attribution
+
 - **Client Breakdown Modal**: Click any month on the revenue chart to see revenue by client
 - **Client Alias System**: Map alternative client names to primary names for accurate tracking across systems
 - **Settings Management**: Inline edit forms for managing client aliases with toast notifications
@@ -402,21 +433,25 @@ This allows secure HTTPS access to your local development server for webhook tes
 - **Share to Slack**: Post the breakdown as real, selectable Slack text rather than a screenshot — clients at or above a threshold (default $3,000) are listed individually, smaller ones roll up into a single reconciling line, and the pie chart is attached as a thread reply
 
 ### Chart & Visualization Improvements
+
 - **Horizontal Reference Lines**: Chart now displays monthly expense levels and target revenue lines based on configured net margins
 - **Fixed Chart Totals**: Eliminated duplicate calculations that caused incorrect total labels above bars
 - **Enhanced Tooltips**: Absolute datetime tooltips on hover for refresh timestamps
 
 ### Multi-month Deal Distribution
+
 - **Accurate Weighted Sales**: Fixed multi-month Pipedrive deals to properly distribute weighted sales across their full project duration
 - **Consistent Transaction Details**: Transaction details modal now uses the same multi-month logic as the main chart, eliminating discrepancies
 - **Debug Improvements**: Added comprehensive logging and discrepancy warnings
 
 ### Company Financial Settings
+
 - **Target Net Margin**: Configurable company-wide target net margin percentage (1-50%)
 - **Monthly Expenses Override**: Optional override for monthly expenses used in cash flow calculations
 - **Reference Line Integration**: Chart reference lines automatically update based on company settings
 
 ### User Experience Enhancements
+
 - **Real-time Refresh Status**: Live timestamps showing when data was last refreshed with relative time display
 - **Loading Indicators**: Spinner animations on refresh buttons and payment recording to prevent double-clicks
 - **Enhanced Transaction Details**: Monthly recurring breakdowns now show individual invoices instead of generic "Baseline" entries
@@ -424,10 +459,12 @@ This allows secure HTTPS access to your local development server for webhook tes
 - **Toast Notifications**: Non-intrusive feedback for user actions replacing browser alerts
 
 ### Development Experience
+
 - **Localhost Auth Bypass**: Optional authentication bypass for local API testing
 - **ID-based Tracking**: Prevents focus jumping issues during form editing
 
 ### Code Quality & Architecture
+
 - **Eliminated Duplication**: Consolidated duplicate revenue calculator implementations
 - **Reusable Composables**: Created `useDataRefresh` and `useToast` composables for common patterns
 - **Consistent Error Handling**: Standardized error handling across refresh operations

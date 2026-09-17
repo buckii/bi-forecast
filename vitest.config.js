@@ -11,20 +11,13 @@ export default defineConfig({
     coverage: {
       provider: 'v8', // Use v8 for coverage reporting
       reporter: ['text', 'json', 'html'],
-      exclude: [
-        'node_modules/',
-        'src/test/',
-        '**/*.d.ts',
-        '**/*.config.js',
-        'dist/',
-        'netlify/functions/'
-      ]
-    }
+      exclude: ['node_modules/', 'src/test/', '**/*.d.ts', '**/*.config.js', 'dist/', 'netlify/functions/'],
+    },
   },
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
-      '~': resolve(__dirname, './src')
-    }
-  }
+      '~': resolve(__dirname, './src'),
+    },
+  },
 })

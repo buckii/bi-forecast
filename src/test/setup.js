@@ -6,9 +6,9 @@ Object.defineProperty(import.meta, 'env', {
   value: {
     DEV: false,
     PROD: true,
-    VITE_GOOGLE_CLIENT_ID: 'mock-google-client-id'
+    VITE_GOOGLE_CLIENT_ID: 'mock-google-client-id',
   },
-  writable: true
+  writable: true,
 })
 
 // Mock localStorage
@@ -18,12 +18,12 @@ const localStorageMock = {
   removeItem: vi.fn(),
   clear: vi.fn(),
   length: 0,
-  key: vi.fn()
+  key: vi.fn(),
 }
 
 Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
-  writable: true
+  writable: true,
 })
 
 // Mock sessionStorage
@@ -33,12 +33,12 @@ const sessionStorageMock = {
   removeItem: vi.fn(),
   clear: vi.fn(),
   length: 0,
-  key: vi.fn()
+  key: vi.fn(),
 }
 
 Object.defineProperty(window, 'sessionStorage', {
   value: sessionStorageMock,
-  writable: true
+  writable: true,
 })
 
 // Mock fetch globally
@@ -54,10 +54,10 @@ vi.mock('axios', () => ({
       delete: vi.fn(),
       interceptors: {
         request: { use: vi.fn() },
-        response: { use: vi.fn() }
-      }
-    }))
-  }
+        response: { use: vi.fn() },
+      },
+    })),
+  },
 }))
 
 // Mock ResizeObserver
@@ -77,7 +77,7 @@ global.IntersectionObserver = vi.fn().mockImplementation(() => ({
 // Mock matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation(query => ({
+  value: vi.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -92,8 +92,8 @@ Object.defineProperty(window, 'matchMedia', {
 // Mock html2canvas
 vi.mock('html2canvas', () => ({
   default: vi.fn().mockResolvedValue({
-    toDataURL: vi.fn().mockReturnValue('data:image/png;base64,mock-image-data')
-  })
+    toDataURL: vi.fn().mockReturnValue('data:image/png;base64,mock-image-data'),
+  }),
 }))
 
 // Clear all mocks before each test

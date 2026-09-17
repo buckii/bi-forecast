@@ -25,19 +25,13 @@ async function findArchiveOn(companyId, date) {
 /** The most recent archive at or before a date: how an "as of" view resolves. */
 async function findArchiveOnOrBefore(companyId, date) {
   const collection = await archivesCollection()
-  return collection.findOne(
-    { companyId, archiveDate: { $lte: startOfDay(date) } },
-    { sort: { archiveDate: -1 } }
-  )
+  return collection.findOne({ companyId, archiveDate: { $lte: startOfDay(date) } }, { sort: { archiveDate: -1 } })
 }
 
 /** The most recent archive at or after a date. */
 async function findArchiveSince(companyId, date) {
   const collection = await archivesCollection()
-  return collection.findOne(
-    { companyId, archiveDate: { $gte: startOfDay(date) } },
-    { sort: { archiveDate: -1 } }
-  )
+  return collection.findOne({ companyId, archiveDate: { $gte: startOfDay(date) } }, { sort: { archiveDate: -1 } })
 }
 
 /** Create or update today's archive with the given fields. */
@@ -49,9 +43,9 @@ async function upsertTodaysArchive(companyId, fields) {
     { companyId, archiveDate },
     {
       $set: { ...fields, updatedAt: new Date() },
-      $setOnInsert: { companyId, archiveDate, createdAt: new Date() }
+      $setOnInsert: { companyId, archiveDate, createdAt: new Date() },
     },
-    { upsert: true }
+    { upsert: true },
   )
 
   return archiveDate
@@ -64,7 +58,7 @@ function toRevenueResponse(archive, extra = {}) {
     exceptions: archive.exceptions || emptyExceptions(),
     balances: archive.balances || emptyBalances(),
     lastUpdated: archive.updatedAt || archive.createdAt,
-    ...extra
+    ...extra,
   }
 }
 
@@ -76,5 +70,5 @@ module.exports = {
   findArchiveOnOrBefore,
   findArchiveSince,
   upsertTodaysArchive,
-  toRevenueResponse
+  toRevenueResponse,
 }

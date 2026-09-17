@@ -19,7 +19,7 @@ export function useGoogleAuth() {
       script.src = 'https://accounts.google.com/gsi/client'
       script.async = true
       script.defer = true
-      
+
       script.onload = () => {
         if (window.google && window.google.accounts) {
           resolve(window.google)
@@ -27,7 +27,7 @@ export function useGoogleAuth() {
           reject(new Error('Google Identity Services failed to load'))
         }
       }
-      
+
       script.onerror = () => {
         reject(new Error('Failed to load Google Identity Services script'))
       }
@@ -44,7 +44,7 @@ export function useGoogleAuth() {
       }
 
       const google = await loadGoogleScript()
-      
+
       google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         callback: handleCredentialResponse,
@@ -88,33 +88,34 @@ export function useGoogleAuth() {
       }
 
       const responseText = await authResponse.text()
-      
+
       if (!responseText) {
         throw new Error('Empty response from server')
       }
-      
+
       const { data } = JSON.parse(responseText)
-      
+
       // Store the JWT token
       localStorage.setItem('token', data.token)
-      
+
       // Trigger redirect by dispatching custom event
-      window.dispatchEvent(new CustomEvent('googleAuthSuccess', {
-        detail: {
-          user: data.user,
-          company: data.company,
-          token: data.token
-        }
-      }))
-      
+      window.dispatchEvent(
+        new CustomEvent('googleAuthSuccess', {
+          detail: {
+            user: data.user,
+            company: data.company,
+            token: data.token,
+          },
+        }),
+      )
+
       // Emit success event or return data
       return {
         success: true,
         user: data.user,
         company: data.company,
-        token: data.token
+        token: data.token,
       }
-      
     } catch (err) {
       error.value = err.message
       throw err
@@ -134,7 +135,6 @@ export function useGoogleAuth() {
 
       // Show the Google Sign-In prompt
       window.google.accounts.id.prompt()
-      
     } catch (err) {
       error.value = err.message
       throw err
@@ -153,7 +153,6 @@ export function useGoogleAuth() {
         // Show One Tap if available
         window.google.accounts.id.prompt()
       }
-      
     } catch (err) {
       error.value = err.message
     }
@@ -173,10 +172,7 @@ export function useGoogleAuth() {
       width: '100%',
     }
 
-    window.google.accounts.id.renderButton(
-      document.getElementById(elementId),
-      { ...defaultOptions, ...options }
-    )
+    window.google.accounts.id.renderButton(document.getElementById(elementId), { ...defaultOptions, ...options })
   }
 
   // Initialize on mount
@@ -196,6 +192,6 @@ export function useGoogleAuth() {
     signIn,
     signInWithOneTap,
     renderButton,
-    handleCredentialResponse
+    handleCredentialResponse,
   }
 }

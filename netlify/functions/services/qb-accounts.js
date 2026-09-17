@@ -41,5 +41,5 @@ module.exports = {
   isUnearnedRevenueLine,
   isRevenueLine,
   hasUnearnedRevenue,
-  revenueAmount
+  revenueAmount,
 }

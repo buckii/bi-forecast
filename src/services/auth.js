@@ -15,5 +15,5 @@ export default {
 
   async logout() {
     return api.post('/auth-logout')
-  }
+  },
 }

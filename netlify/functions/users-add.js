@@ -17,7 +17,7 @@ exports.handler = createHandler(
 
     const existingUser = await usersCollection.findOne({
       email: email.toLowerCase(),
-      companyId: company._id
+      companyId: company._id,
     })
 
     if (existingUser) throw new HttpError('User already has access', 400)
@@ -27,9 +27,9 @@ exports.handler = createHandler(
       companyId: company._id,
       role,
       createdAt: new Date(),
-      lastLoginAt: null
+      lastLoginAt: null,
     })
 
     return { message: 'User access granted successfully', userId: result.insertedId }
-  }
+  },
 )

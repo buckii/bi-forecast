@@ -3,7 +3,10 @@
 
 function allowedOrigins() {
   const configured = process.env.ALLOWED_ORIGINS || process.env.URL || ''
-  return configured.split(',').map(o => o.trim()).filter(Boolean)
+  return configured
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean)
 }
 
 function corsHeaders(requestOrigin) {
@@ -18,7 +21,7 @@ function corsHeaders(requestOrigin) {
   const headers = {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   }
 
   if (origin !== '*') headers['Vary'] = 'Origin'
@@ -37,7 +40,7 @@ function success(data, statusCode = 200, requestOrigin) {
   return {
     statusCode,
     headers: { 'Content-Type': 'application/json', ...corsHeaders(requestOrigin) },
-    body: JSON.stringify({ success: true, data })
+    body: JSON.stringify({ success: true, data }),
   }
 }
 
@@ -50,8 +53,8 @@ function error(message, statusCode = 400, details = null, requestOrigin) {
     body: JSON.stringify({
       success: false,
       error: message,
-      ...(details && exposeErrorDetails() ? { details } : {})
-    })
+      ...(details && exposeErrorDetails() ? { details } : {}),
+    }),
   }
 }
 

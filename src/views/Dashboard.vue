@@ -7,16 +7,22 @@
           <!-- Quick Links -->
           <div class="flex flex-wrap gap-2">
             <!-- First Group -->
-            <button @click="resetToToday"
-              class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors">
+            <button
+              @click="resetToToday"
+              class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors"
+            >
               Reset to Today ({{ format(new Date(), 'MMM d') }})
             </button>
-            <button @click="thisMonthVsPriorMonth"
-              class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors">
+            <button
+              @click="thisMonthVsPriorMonth"
+              class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors"
+            >
               {{ getCurrentMonthName() }} vs {{ getPreviousMonthName() }}
             </button>
-            <button @click="lastMonthVsPriorMonth"
-              class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors">
+            <button
+              @click="lastMonthVsPriorMonth"
+              class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors"
+            >
               {{ getPreviousMonthName() }} vs {{ getTwoMonthsAgoName() }}
             </button>
 
@@ -24,23 +30,30 @@
             <div class="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
 
             <!-- Second Group -->
-            <button @click="todayVsStartOfCurrentMonth"
-              class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors">
+            <button
+              @click="todayVsStartOfCurrentMonth"
+              class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors"
+            >
               Today vs. Start of {{ getCurrentMonthName() }}
             </button>
-            <button @click="todayVsStartOfPriorMonth"
-              class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors">
+            <button
+              @click="todayVsStartOfPriorMonth"
+              class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors"
+            >
               Today vs. Start of {{ getPreviousMonthName() }}
             </button>
-            <button @click="todayVsStartOfTwoMonthsAgo"
-              class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors">
+            <button
+              @click="todayVsStartOfTwoMonthsAgo"
+              class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors"
+            >
               Today vs. Start of {{ getTwoMonthsAgoName() }}
             </button>
           </div>
 
           <!-- Date Inputs, Toggle, and Refresh Buttons -->
           <div
-            class="flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-4 lg:space-y-0 gap-4">
+            class="flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-4 lg:space-y-0 gap-4"
+          >
             <div class="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-6">
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">View as of</label>
@@ -54,8 +67,11 @@
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Compare as of</label>
                 <div class="flex items-center space-x-2">
                   <input type="date" v-model="compareAsOfDate" @change="handleCompareDateChange" class="input" />
-                  <button v-if="compareAsOfDate" @click="clearCompareDate"
-                    class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline">
+                  <button
+                    v-if="compareAsOfDate"
+                    @click="clearCompareDate"
+                    class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline"
+                  >
                     Clear
                   </button>
                 </div>
@@ -67,10 +83,12 @@
                     <input type="checkbox" v-model="revenueStore.includeWeightedSales" class="sr-only" />
                     <div
                       class="w-12 h-6 rounded-full shadow-inner transition-colors duration-200 relative flex items-center"
-                      :class="revenueStore.includeWeightedSales ? 'bg-green-500' : 'bg-red-500'">
-                      <div class="w-5 h-5 bg-white rounded-full shadow-lg transition-transform duration-200 absolute"
-                        :class="revenueStore.includeWeightedSales ? 'translate-x-6' : 'translate-x-0.5'">
-                      </div>
+                      :class="revenueStore.includeWeightedSales ? 'bg-green-500' : 'bg-red-500'"
+                    >
+                      <div
+                        class="w-5 h-5 bg-white rounded-full shadow-lg transition-transform duration-200 absolute"
+                        :class="revenueStore.includeWeightedSales ? 'translate-x-6' : 'translate-x-0.5'"
+                      ></div>
                     </div>
                   </div>
                   <span class="ml-3 text-sm text-gray-700 dark:text-gray-300">Include weighted sales</span>
@@ -80,13 +98,16 @@
 
             <div class="flex flex-col items-end">
               <button @click="refreshAll" :disabled="refreshingAll" class="btn-secondary flex items-center space-x-2">
-                <div v-if="refreshingAll"
-                  class="animate-spin h-4 w-4 border-2 border-gray-600 border-t-transparent rounded-full"></div>
+                <div
+                  v-if="refreshingAll"
+                  class="animate-spin h-4 w-4 border-2 border-gray-600 border-t-transparent rounded-full"
+                ></div>
                 <span>{{ refreshingAll ? 'Refreshing...' : 'Refresh All Data' }}</span>
               </button>
               <div class="flex space-x-6 mt-2 text-xs text-gray-500 dark:text-gray-400">
-                <span :title="formatRefreshTooltip(qboLastRefresh)">Last refreshed: {{ formatLastRefresh(qboLastRefresh)
-                }}</span>
+                <span :title="formatRefreshTooltip(qboLastRefresh)"
+                  >Last refreshed: {{ formatLastRefresh(qboLastRefresh) }}</span
+                >
               </div>
             </div>
           </div>
@@ -97,8 +118,10 @@
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <div class="card relative">
           <!-- Loading overlay -->
-          <div v-if="chartRefreshing"
-            class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg">
+          <div
+            v-if="chartRefreshing"
+            class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg"
+          >
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">This Month</h3>
@@ -110,28 +133,40 @@
             Est. Profit: {{ formatCurrency(thisMonthProfit) }} ({{ thisMonthMargin.toFixed(0) }}%)
           </p>
           <div v-if="!chartRefreshing && comparisonCurrentMonthRevenue !== null" class="mt-3 space-y-1">
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              As of {{ formatCompareDate() }}
-            </p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">As of {{ formatCompareDate() }}</p>
             <p class="text-xl font-semibold text-gray-700 dark:text-gray-300">
               {{ formatCurrency(comparisonCurrentMonthRevenue) }}
             </p>
-            <p :class="calculateChange(revenueStore.currentMonthRevenue, comparisonCurrentMonthRevenue).dollar >= 0 ? 'text-green-600' : 'text-red-600'"
-              class="text-sm font-medium">
-              {{ calculateChange(revenueStore.currentMonthRevenue, comparisonCurrentMonthRevenue).dollar >= 0 ? '+' : ''
-              }}{{ formatCurrency(calculateChange(revenueStore.currentMonthRevenue,
-                comparisonCurrentMonthRevenue).dollar) }}
-              ({{ calculateChange(revenueStore.currentMonthRevenue, comparisonCurrentMonthRevenue).percent >= 0 ? '+' :
-                '' }}{{ calculateChange(revenueStore.currentMonthRevenue,
-                comparisonCurrentMonthRevenue).percent.toFixed(1) }}%)
+            <p
+              :class="
+                calculateChange(revenueStore.currentMonthRevenue, comparisonCurrentMonthRevenue).dollar >= 0
+                  ? 'text-green-600'
+                  : 'text-red-600'
+              "
+              class="text-sm font-medium"
+            >
+              {{
+                calculateChange(revenueStore.currentMonthRevenue, comparisonCurrentMonthRevenue).dollar >= 0 ? '+' : ''
+              }}{{
+                formatCurrency(calculateChange(revenueStore.currentMonthRevenue, comparisonCurrentMonthRevenue).dollar)
+              }}
+              ({{
+                calculateChange(revenueStore.currentMonthRevenue, comparisonCurrentMonthRevenue).percent >= 0
+                  ? '+'
+                  : ''
+              }}{{
+                calculateChange(revenueStore.currentMonthRevenue, comparisonCurrentMonthRevenue).percent.toFixed(1)
+              }}%)
             </p>
           </div>
         </div>
 
         <div class="card relative">
           <!-- Loading overlay -->
-          <div v-if="chartRefreshing"
-            class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg">
+          <div
+            v-if="chartRefreshing"
+            class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg"
+          >
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">3-Month Forecast</h3>
@@ -143,16 +178,21 @@
             Est. Profit: {{ formatCurrency(threeMonthProfit) }} ({{ threeMonthMargin.toFixed(0) }}%)
           </p>
           <div v-if="!chartRefreshing && comparisonThreeMonthRevenue !== null" class="mt-3 space-y-1">
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              As of {{ formatCompareDate() }}
-            </p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">As of {{ formatCompareDate() }}</p>
             <p class="text-xl font-semibold text-gray-700 dark:text-gray-300">
               {{ formatCurrency(comparisonThreeMonthRevenue) }}
             </p>
-            <p :class="calculateChange(revenueStore.threeMonthRevenue, comparisonThreeMonthRevenue).dollar >= 0 ? 'text-green-600' : 'text-red-600'"
-              class="text-sm font-medium">
+            <p
+              :class="
+                calculateChange(revenueStore.threeMonthRevenue, comparisonThreeMonthRevenue).dollar >= 0
+                  ? 'text-green-600'
+                  : 'text-red-600'
+              "
+              class="text-sm font-medium"
+            >
               {{ calculateChange(revenueStore.threeMonthRevenue, comparisonThreeMonthRevenue).dollar >= 0 ? '+' : ''
-              }}{{ formatCurrency(calculateChange(revenueStore.threeMonthRevenue, comparisonThreeMonthRevenue).dollar)
+              }}{{
+                formatCurrency(calculateChange(revenueStore.threeMonthRevenue, comparisonThreeMonthRevenue).dollar)
               }}
               ({{ calculateChange(revenueStore.threeMonthRevenue, comparisonThreeMonthRevenue).percent >= 0 ? '+' : ''
               }}{{ calculateChange(revenueStore.threeMonthRevenue, comparisonThreeMonthRevenue).percent.toFixed(1) }}%)
@@ -162,8 +202,10 @@
 
         <div class="card relative">
           <!-- Loading overlay -->
-          <div v-if="chartRefreshing"
-            class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg">
+          <div
+            v-if="chartRefreshing"
+            class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg"
+          >
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">1-Year Forecast</h3>
@@ -189,26 +231,30 @@
             </p>
           </div>
           <div v-if="!chartRefreshing && comparisonYearForecast !== null" class="mt-3 space-y-1">
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              As of {{ formatCompareDate() }}
-            </p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">As of {{ formatCompareDate() }}</p>
             <p class="text-xl font-semibold text-gray-700 dark:text-gray-300">
               {{ formatCurrency(comparisonYearForecast) }}
             </p>
-            <p :class="calculateChange(yearForecast, comparisonYearForecast).dollar >= 0 ? 'text-green-600' : 'text-red-600'"
-              class="text-sm font-medium">
-              {{ calculateChange(yearForecast, comparisonYearForecast).dollar >= 0 ? '+' : '' }}{{
-                formatCurrency(calculateChange(yearForecast, comparisonYearForecast).dollar) }}
-              ({{ calculateChange(yearForecast, comparisonYearForecast).percent >= 0 ? '+' : '' }}{{
-                calculateChange(yearForecast, comparisonYearForecast).percent.toFixed(1) }}%)
+            <p
+              :class="
+                calculateChange(yearForecast, comparisonYearForecast).dollar >= 0 ? 'text-green-600' : 'text-red-600'
+              "
+              class="text-sm font-medium"
+            >
+              {{ calculateChange(yearForecast, comparisonYearForecast).dollar >= 0 ? '+' : ''
+              }}{{ formatCurrency(calculateChange(yearForecast, comparisonYearForecast).dollar) }} ({{
+                calculateChange(yearForecast, comparisonYearForecast).percent >= 0 ? '+' : ''
+              }}{{ calculateChange(yearForecast, comparisonYearForecast).percent.toFixed(1) }}%)
             </p>
           </div>
         </div>
 
         <div class="card relative">
           <!-- Loading overlay -->
-          <div v-if="chartRefreshing"
-            class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg">
+          <div
+            v-if="chartRefreshing"
+            class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg"
+          >
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">30-Days Unbilled</h3>
@@ -217,19 +263,26 @@
             {{ chartRefreshing ? '—' : formatCurrency(revenueStore.thirtyDaysUnbilled) }}
           </p>
           <div v-if="!chartRefreshing && comparisonThirtyDaysUnbilled !== null" class="mt-3 space-y-1">
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              As of {{ formatCompareDate() }}
-            </p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">As of {{ formatCompareDate() }}</p>
             <p class="text-xl font-semibold text-gray-700 dark:text-gray-300">
               {{ formatCurrency(comparisonThirtyDaysUnbilled) }}
             </p>
-            <p :class="calculateChange(revenueStore.thirtyDaysUnbilled, comparisonThirtyDaysUnbilled).dollar >= 0 ? 'text-green-600' : 'text-red-600'"
-              class="text-sm font-medium">
+            <p
+              :class="
+                calculateChange(revenueStore.thirtyDaysUnbilled, comparisonThirtyDaysUnbilled).dollar >= 0
+                  ? 'text-green-600'
+                  : 'text-red-600'
+              "
+              class="text-sm font-medium"
+            >
               {{ calculateChange(revenueStore.thirtyDaysUnbilled, comparisonThirtyDaysUnbilled).dollar >= 0 ? '+' : ''
-              }}{{ formatCurrency(calculateChange(revenueStore.thirtyDaysUnbilled, comparisonThirtyDaysUnbilled).dollar)
+              }}{{
+                formatCurrency(calculateChange(revenueStore.thirtyDaysUnbilled, comparisonThirtyDaysUnbilled).dollar)
               }}
-              ({{ calculateChange(revenueStore.thirtyDaysUnbilled, comparisonThirtyDaysUnbilled).percent >= 0 ? '+' : ''
-              }}{{ calculateChange(revenueStore.thirtyDaysUnbilled, comparisonThirtyDaysUnbilled).percent.toFixed(1)
+              ({{
+                calculateChange(revenueStore.thirtyDaysUnbilled, comparisonThirtyDaysUnbilled).percent >= 0 ? '+' : ''
+              }}{{
+                calculateChange(revenueStore.thirtyDaysUnbilled, comparisonThirtyDaysUnbilled).percent.toFixed(1)
               }}%)
             </p>
           </div>
@@ -237,8 +290,10 @@
 
         <div class="card relative">
           <!-- Loading overlay -->
-          <div v-if="chartRefreshing"
-            class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg">
+          <div
+            v-if="chartRefreshing"
+            class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg"
+          >
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Days Cash</h3>
@@ -248,39 +303,49 @@
             <!-- Cash only -->
             <div>
               <p class="text-3xl font-bold text-primary-600">
-                {{ chartRefreshing ? '—' : (daysCash || '—') }}
+                {{ chartRefreshing ? '—' : daysCash || '—' }}
               </p>
               <p class="text-xs text-gray-500 dark:text-gray-400">Cash only</p>
               <p v-if="!chartRefreshing" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
                 {{ formatCurrency(revenueStore.totalCashOnHand || 0) }}
               </p>
-              <p v-if="!chartRefreshing && comparisonDaysCash !== null"
+              <p
+                v-if="!chartRefreshing && comparisonDaysCash !== null"
                 :class="calculateChange(daysCash, comparisonDaysCash).dollar >= 0 ? 'text-green-600' : 'text-red-600'"
-                class="text-xs font-medium mt-1">
-                {{ calculateChange(daysCash, comparisonDaysCash).dollar >= 0 ? '+' : '' }}{{ calculateChange(daysCash,
-                  comparisonDaysCash).dollar.toFixed(0) }} days
+                class="text-xs font-medium mt-1"
+              >
+                {{ calculateChange(daysCash, comparisonDaysCash).dollar >= 0 ? '+' : ''
+                }}{{ calculateChange(daysCash, comparisonDaysCash).dollar.toFixed(0) }} days
               </p>
             </div>
             <!-- Cash + AR -->
             <div>
               <p class="text-3xl font-bold text-primary-600">
-                {{ chartRefreshing ? '—' : (daysCashPlusAR || '—') }}
+                {{ chartRefreshing ? '—' : daysCashPlusAR || '—' }}
               </p>
               <p class="text-xs text-gray-500 dark:text-gray-400">Cash + AR</p>
               <p v-if="!chartRefreshing" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
                 {{ formatCurrency((revenueStore.totalCashOnHand || 0) + (revenueStore.totalReceivables || 0)) }}
               </p>
-              <p v-if="!chartRefreshing && comparisonDaysCashPlusAR !== null"
-                :class="calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).dollar >= 0 ? 'text-green-600' : 'text-red-600'"
-                class="text-xs font-medium mt-1">
-                {{ calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).dollar >= 0 ? '+' : '' }}{{
-                  calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).dollar.toFixed(0) }} days
+              <p
+                v-if="!chartRefreshing && comparisonDaysCashPlusAR !== null"
+                :class="
+                  calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).dollar >= 0
+                    ? 'text-green-600'
+                    : 'text-red-600'
+                "
+                class="text-xs font-medium mt-1"
+              >
+                {{ calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).dollar >= 0 ? '+' : ''
+                }}{{ calculateChange(daysCashPlusAR, comparisonDaysCashPlusAR).dollar.toFixed(0) }} days
               </p>
             </div>
           </div>
 
-          <p v-if="!chartRefreshing && (comparisonDaysCash !== null || comparisonDaysCashPlusAR !== null)"
-            class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+          <p
+            v-if="!chartRefreshing && (comparisonDaysCash !== null || comparisonDaysCashPlusAR !== null)"
+            class="text-xs text-gray-500 dark:text-gray-400 mt-2"
+          >
             vs {{ formatCompareDate() }}
           </p>
           <p v-if="!chartRefreshing" class="text-xs text-gray-400 dark:text-gray-500 mt-2">
@@ -292,8 +357,10 @@
 
         <div class="card relative">
           <!-- Loading overlay -->
-          <div v-if="chartRefreshing"
-            class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg">
+          <div
+            v-if="chartRefreshing"
+            class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-lg"
+          >
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Days of Work</h3>
@@ -336,36 +403,57 @@
             <div>
               <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Monthly Revenue Forecast</h2>
               <p v-if="!chartRefreshing" class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                <span>Viewing data as of: <strong>{{ actualDataDates.mainDate }}</strong></span>
-                <span v-if="actualDataDates.compareDate"> | Comparing to: <strong>{{ actualDataDates.compareDate
-                }}</strong></span>
+                <span
+                  >Viewing data as of: <strong>{{ actualDataDates.mainDate }}</strong></span
+                >
+                <span v-if="actualDataDates.compareDate">
+                  | Comparing to: <strong>{{ actualDataDates.compareDate }}</strong></span
+                >
               </p>
             </div>
             <div class="flex items-center space-x-3">
-              <button @click="showDetail" class="btn-secondary inline-flex items-center"
-                title="Show details for current range">
+              <button
+                @click="showDetail"
+                class="btn-secondary inline-flex items-center"
+                title="Show details for current range"
+              >
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
                 Show Detail
               </button>
-              <button @click="shareChartToSlack" :disabled="sharingToSlack || revenueStore.loading"
-                class="btn-secondary inline-flex items-center">
-                <svg v-if="sharingToSlack" class="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg"
-                  fill="none" viewBox="0 0 24 24">
+              <button
+                @click="shareChartToSlack"
+                :disabled="sharingToSlack || revenueStore.loading"
+                class="btn-secondary inline-flex items-center"
+              >
+                <svg
+                  v-if="sharingToSlack"
+                  class="animate-spin -ml-1 mr-2 h-4 w-4"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor"
-                    d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                  </path>
+                  <path
+                    class="opacity-75"
+                    fill="currentColor"
+                    d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
                 </svg>
                 <svg v-else class="-ml-1 mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                   <path
-                    d="M5.042 15.165a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 10.12h6.481v2.522H5.042a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 7.597h6.481V5.074c0-1.393 1.135-2.523 2.52-2.523a2.528 2.528 0 0 1 2.52 2.523v2.523h2.515c1.393 0 2.52 1.135 2.52 2.523a2.528 2.528 0 0 1-2.52 2.523h-2.515v2.522h2.515a2.528 2.528 0 0 1 2.52 2.523A2.528 2.528 0 0 1 16.558 18.88h-2.515v2.523c0 1.393-1.135 2.523-2.52 2.523a2.528 2.528 0 0 1-2.52-2.523V18.88H5.042a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 15.835h6.481v-2.522H5.042z" />
+                    d="M5.042 15.165a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 10.12h6.481v2.522H5.042a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 7.597h6.481V5.074c0-1.393 1.135-2.523 2.52-2.523a2.528 2.528 0 0 1 2.52 2.523v2.523h2.515c1.393 0 2.52 1.135 2.52 2.523a2.528 2.528 0 0 1-2.52 2.523h-2.515v2.522h2.515a2.528 2.528 0 0 1 2.52 2.523A2.528 2.528 0 0 1 16.558 18.88h-2.515v2.523c0 1.393-1.135 2.523-2.52 2.523a2.528 2.528 0 0 1-2.52-2.523V18.88H5.042a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 15.835h6.481v-2.522H5.042z"
+                  />
                 </svg>
                 {{ sharingToSlack ? 'Sending...' : 'Send to Slack' }}
               </button>
-              <button @click="downloadChart" :disabled="revenueStore.loading"
-                class="btn-secondary inline-flex items-center" title="Download chart as image">
+              <button
+                @click="downloadChart"
+                :disabled="revenueStore.loading"
+                class="btn-secondary inline-flex items-center"
+                title="Download chart as image"
+              >
                 <ArrowDownTrayIcon class="-ml-1 mr-2 h-4 w-4" aria-hidden="true" />
                 Download
               </button>
@@ -383,36 +471,52 @@
               </div>
             </div>
             <div class="relative inline-block text-left">
-              <button @click="showRangeMenu = !showRangeMenu"
-                class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex items-center bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-1.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <button
+                @click="showRangeMenu = !showRangeMenu"
+                class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex items-center bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-1.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
                 Quick Ranges
                 <ChevronDownIcon class="w-4 h-4 ml-2" />
               </button>
-              <div v-if="showRangeMenu"
-                class="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-700 ring-1 ring-black ring-opacity-5 focus:outline-none z-10 transition-all transform origin-top-right">
+              <div
+                v-if="showRangeMenu"
+                class="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-700 ring-1 ring-black ring-opacity-5 focus:outline-none z-10 transition-all transform origin-top-right"
+              >
                 <div class="py-1">
-                  <button @click="setQuickRange('default')"
-                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600">
+                  <button
+                    @click="setQuickRange('default')"
+                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+                  >
                     Default (6 Months)
                   </button>
-                  <button @click="setQuickRange('3months')"
-                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600">
+                  <button
+                    @click="setQuickRange('3months')"
+                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+                  >
                     3 Months (Current + 2)
                   </button>
-                  <button @click="setQuickRange('next3months')"
-                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600">
+                  <button
+                    @click="setQuickRange('next3months')"
+                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+                  >
                     Next 3 Months
                   </button>
-                  <button @click="setQuickRange('1year')"
-                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600">
+                  <button
+                    @click="setQuickRange('1year')"
+                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+                  >
                     1-Year Forecast
                   </button>
-                  <button @click="setQuickRange('thisYear')"
-                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600">
+                  <button
+                    @click="setQuickRange('thisYear')"
+                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+                  >
                     This Year (Jan-Dec)
                   </button>
-                  <button @click="setQuickRange('lastYear')"
-                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600">
+                  <button
+                    @click="setQuickRange('lastYear')"
+                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+                  >
                     Last Year (Jan-Dec)
                   </button>
                 </div>
@@ -422,15 +526,23 @@
         </div>
         <div class="relative pb-10" ref="chartContainer" style="height: 60vh">
           <!-- Loading State inside chart area -->
-          <div v-if="revenueStore.loading || chartRefreshing"
-            class="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75">
+          <div
+            v-if="revenueStore.loading || chartRefreshing"
+            class="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75"
+          >
             <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
           </div>
           <!-- Chart content -->
-          <RevenueChart ref="revenueChart" :data="chartData" :comparison-data="comparisonChartData"
-            :selected-date="selectedDateStr" :compare-as-of-date="compareAsOfDate"
-            :monthly-expenses="effectiveMonthlyExpenses" :target-net-margin="targetNetMargin"
-            @bar-click="handleBarClick" />
+          <RevenueChart
+            ref="revenueChart"
+            :data="chartData"
+            :comparison-data="comparisonChartData"
+            :selected-date="selectedDateStr"
+            :compare-as-of-date="compareAsOfDate"
+            :monthly-expenses="effectiveMonthlyExpenses"
+            :target-net-margin="targetNetMargin"
+            @bar-click="handleBarClick"
+          />
         </div>
       </div>
 
@@ -441,22 +553,45 @@
     </div>
 
     <!-- Transaction Details Modal -->
-    <TransactionDetailsModal :is-open="showTransactionModal" :month="selectedTransaction.month"
-      :start-date="selectedTransaction.startDate" :end-date="selectedTransaction.endDate"
-      :as-of="revenueStore.isHistorical ? selectedDateStr : ''" @close="closeTransactionModal" />
+    <TransactionDetailsModal
+      :is-open="showTransactionModal"
+      :month="selectedTransaction.month"
+      :start-date="selectedTransaction.startDate"
+      :end-date="selectedTransaction.endDate"
+      :as-of="revenueStore.isHistorical ? selectedDateStr : ''"
+      @close="closeTransactionModal"
+    />
 
     <!-- Chart Share Modal -->
-    <StatusModal :show="showShareModal" :state="shareModalState" loading-title="Sharing to Slack..."
-      loading-message="Capturing chart and uploading to Slack..." success-title="Chart Shared Successfully!"
-      success-message="Your revenue forecast chart has been posted to Slack." error-title="Failed to Share Chart"
-      :error-message="shareModalError" :error-details="shareModalErrorDetails" @close="closeShareModal"
-      @retry="shareChartToSlack" />
+    <StatusModal
+      :show="showShareModal"
+      :state="shareModalState"
+      loading-title="Sharing to Slack..."
+      loading-message="Capturing chart and uploading to Slack..."
+      success-title="Chart Shared Successfully!"
+      success-message="Your revenue forecast chart has been posted to Slack."
+      error-title="Failed to Share Chart"
+      :error-message="shareModalError"
+      :error-details="shareModalErrorDetails"
+      @close="closeShareModal"
+      @retry="shareChartToSlack"
+    />
   </AppLayout>
 </template>
 
 <script setup>
 import { ArrowDownTrayIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
-import { addMonths, endOfMonth, endOfYear, format, parse, startOfMonth, startOfYear, subMonths, subYears } from 'date-fns'
+import {
+  addMonths,
+  endOfMonth,
+  endOfYear,
+  format,
+  parse,
+  startOfMonth,
+  startOfYear,
+  subMonths,
+  subYears,
+} from 'date-fns'
 import { computed, onMounted, ref, watch } from 'vue'
 import { formatCurrency } from '../lib/format.js'
 import { useRoute, useRouter } from 'vue-router'
@@ -485,7 +620,7 @@ const {
   formatRefreshTooltip,
   refreshQBO,
   refreshPipedrive,
-  refreshAll
+  refreshAll,
 } = useDataRefresh()
 
 // Initialize dates from URL params first, fallback to localStorage, then defaults
@@ -552,13 +687,13 @@ const chartData = computed(() => {
 
   // Filter revenue data based on selected date range
   return revenueStore.revenueData
-    .filter(month => {
+    .filter((month) => {
       return month.month >= chartStartDateStr.value && month.month <= chartEndDateStr.value
     })
-    .map(month => {
+    .map((month) => {
       const data = {
         month: month.month,
-        ...month.components
+        ...month.components,
       }
 
       // Conditionally exclude weighted sales based on setting
@@ -575,7 +710,7 @@ const comparisonChartData = computed(() => {
     chartRefreshing: chartRefreshing.value,
     compareAsOfDate: compareAsOfDate.value,
     hasComparisonData: !!comparisonData.value,
-    hasComparisonMonths: !!(comparisonData.value?.months)
+    hasComparisonMonths: !!comparisonData.value?.months,
   })
 
   // Return null while refreshing to prevent flash of old data
@@ -597,13 +732,13 @@ const comparisonChartData = computed(() => {
 
   // Filter comparison data based on selected date range
   const result = comparisonData.value.months
-    .filter(month => {
+    .filter((month) => {
       return month.month >= chartStartDateStr.value && month.month <= chartEndDateStr.value
     })
-    .map(month => {
+    .map((month) => {
       const data = {
         month: month.month,
-        ...month.components
+        ...month.components,
       }
 
       // Conditionally exclude weighted sales based on setting
@@ -648,7 +783,7 @@ const thisMonthMargin = computed(() => {
 })
 
 const threeMonthProfit = computed(() => {
-  return revenueStore.threeMonthRevenue - (effectiveMonthlyExpenses.value * 3)
+  return revenueStore.threeMonthRevenue - effectiveMonthlyExpenses.value * 3
 })
 
 const threeMonthMargin = computed(() => {
@@ -666,42 +801,32 @@ function handleExportDetail() {
     startDate: start,
     endDate: end,
     title: '12 Month Forecast Detail',
-    autoExport: true
+    autoExport: true,
   }
   showTransactionModal.value = true
 }
 
 // Month key (YYYY-MM-01) for the currently selected as-of date
 const selectedMonthKey = computed(() =>
-  format(startOfMonth(parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())), 'yyyy-MM-dd')
+  format(startOfMonth(parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())), 'yyyy-MM-dd'),
 )
 
 // The 1-Year Forecast starts on the first of the month AFTER the as-of month and
 // spans a full 12 months. The current month's recurring revenue is already billed
 // (it lands in `invoiced`, which the forecast excludes), so starting "this month"
 // would only capture 11 months of recurring.
-const forecastStartMonthKey = computed(() =>
-  formulas.monthKeyFromOffset(selectedMonthKey.value, 1)
-)
+const forecastStartMonthKey = computed(() => formulas.monthKeyFromOffset(selectedMonthKey.value, 1))
 
 // Computed property for days cash using effective monthly expenses
-const daysCash = computed(() =>
-  formulas.daysCash(revenueStore.totalCashOnHand, effectiveMonthlyExpenses.value)
-)
+const daysCash = computed(() => formulas.daysCash(revenueStore.totalCashOnHand, effectiveMonthlyExpenses.value))
 
 // Computed property for days cash + AR using effective monthly expenses
 const daysCashPlusAR = computed(() =>
-  formulas.daysCashPlusAR(
-    revenueStore.totalCashOnHand,
-    revenueStore.totalReceivables,
-    effectiveMonthlyExpenses.value
-  )
+  formulas.daysCashPlusAR(revenueStore.totalCashOnHand, revenueStore.totalReceivables, effectiveMonthlyExpenses.value),
 )
 
 // Days already elapsed in the as-of month (so Days of Work reads "from today").
-const elapsedDays = computed(() =>
-  parse(selectedDateStr.value, 'yyyy-MM-dd', new Date()).getDate() - 1
-)
+const elapsedDays = computed(() => parse(selectedDateStr.value, 'yyyy-MM-dd', new Date()).getDate() - 1)
 
 // Days of Work — horizon (in days) at which cumulative revenue can no longer
 // sustain the target margin / break-even. Four variations: target vs break-even,
@@ -712,27 +837,27 @@ const daysOfWork = computed(() =>
     selectedMonthKey.value,
     effectiveMonthlyExpenses.value,
     targetNetMargin.value / 100,
-    elapsedDays.value
-  )
+    elapsedDays.value,
+  ),
 )
 
 // Format a Days-of-Work value: day count, or em dash when not computable.
 function formatDays(v) {
-  return (v === null || v === undefined) ? '—' : `${v}`
+  return v === null || v === undefined ? '—' : `${v}`
 }
 
 // 12-month component breakdowns (shown beneath the 1-Year Forecast card).
 // All anchored to the first of next month — see forecastStartMonthKey.
 const twelveMonthsRecurring = computed(() =>
-  formulas.sumMonths(revenueStore.revenueData, forecastStartMonthKey.value, 12, ['monthlyRecurring'])
+  formulas.sumMonths(revenueStore.revenueData, forecastStartMonthKey.value, 12, ['monthlyRecurring']),
 )
 
 const twelveMonthsWonUnscheduled = computed(() =>
-  formulas.sumMonths(revenueStore.revenueData, forecastStartMonthKey.value, 12, ['wonUnscheduled'])
+  formulas.sumMonths(revenueStore.revenueData, forecastStartMonthKey.value, 12, ['wonUnscheduled']),
 )
 
 const twelveMonthsJournalEntries = computed(() =>
-  formulas.sumMonths(revenueStore.revenueData, forecastStartMonthKey.value, 12, ['journalEntries'])
+  formulas.sumMonths(revenueStore.revenueData, forecastStartMonthKey.value, 12, ['journalEntries']),
 )
 
 const twelveMonthsWeightedSales = computed(() => {
@@ -746,8 +871,8 @@ const yearForecast = computed(() =>
     revenueStore.revenueData,
     revenueStore.balances,
     forecastStartMonthKey.value,
-    revenueStore.includeWeightedSales
-  )
+    revenueStore.includeWeightedSales,
+  ),
 )
 
 // Comparison metrics computed properties
@@ -756,12 +881,15 @@ const comparisonCurrentMonthRevenue = computed(() => {
   // Use the currently selected date's month, not the comparison date's month
   const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
   const currentMonth = format(startOfMonth(selectedDate), 'yyyy-MM-dd')
-  const monthData = comparisonData.value.months.find(m => m.month === currentMonth)
+  const monthData = comparisonData.value.months.find((m) => m.month === currentMonth)
   if (!monthData) return 0
 
   const components = monthData.components
-  let total = components.invoiced + components.journalEntries +
-    components.delayedCharges + components.monthlyRecurring +
+  let total =
+    components.invoiced +
+    components.journalEntries +
+    components.delayedCharges +
+    components.monthlyRecurring +
     components.wonUnscheduled
 
   if (revenueStore.includeWeightedSales) {
@@ -780,11 +908,14 @@ const comparisonThreeMonthRevenue = computed(() => {
 
   for (let i = 0; i < 3; i++) {
     const month = format(addMonths(start, i), 'yyyy-MM-dd')
-    const monthData = comparisonData.value.months.find(m => m.month === month)
+    const monthData = comparisonData.value.months.find((m) => m.month === month)
     if (monthData) {
       const components = monthData.components
-      total += components.invoiced + components.journalEntries +
-        components.delayedCharges + components.monthlyRecurring +
+      total +=
+        components.invoiced +
+        components.journalEntries +
+        components.delayedCharges +
+        components.monthlyRecurring +
         components.wonUnscheduled
 
       if (revenueStore.includeWeightedSales) {
@@ -810,7 +941,7 @@ const comparisonTwelveMonthsRecurring = computed(() => {
 
   for (let i = 0; i < 12; i++) {
     const month = format(addMonths(start, i), 'yyyy-MM-dd')
-    const monthData = comparisonData.value.months.find(m => m.month === month)
+    const monthData = comparisonData.value.months.find((m) => m.month === month)
     if (monthData) {
       total += monthData.components.monthlyRecurring
     }
@@ -828,7 +959,7 @@ const comparisonTwelveMonthsWonUnscheduled = computed(() => {
 
   for (let i = 0; i < 12; i++) {
     const month = format(addMonths(start, i), 'yyyy-MM-dd')
-    const monthData = comparisonData.value.months.find(m => m.month === month)
+    const monthData = comparisonData.value.months.find((m) => m.month === month)
     if (monthData) {
       total += monthData.components.wonUnscheduled
     }
@@ -846,7 +977,7 @@ const comparisonTwelveMonthsJournalEntries = computed(() => {
 
   for (let i = 0; i < 12; i++) {
     const month = format(addMonths(start, i), 'yyyy-MM-dd')
-    const monthData = comparisonData.value.months.find(m => m.month === month)
+    const monthData = comparisonData.value.months.find((m) => m.month === month)
     if (monthData) {
       total += monthData.components.journalEntries
     }
@@ -864,7 +995,7 @@ const comparisonTwelveMonthsWeightedSales = computed(() => {
 
   for (let i = 0; i < 12; i++) {
     const month = format(addMonths(start, i), 'yyyy-MM-dd')
-    const monthData = comparisonData.value.months.find(m => m.month === month)
+    const monthData = comparisonData.value.months.find((m) => m.month === month)
     if (monthData) {
       total += monthData.components.weightedSales
     }
@@ -875,11 +1006,13 @@ const comparisonTwelveMonthsWeightedSales = computed(() => {
 
 const comparisonYearForecast = computed(() => {
   if (!comparisonData.value || !compareAsOfDate.value) return null
-  return comparisonTwelveMonthsRecurring.value +
+  return (
+    comparisonTwelveMonthsRecurring.value +
     comparisonTwelveMonthsWonUnscheduled.value +
     comparisonTwelveMonthsWeightedSales.value +
     comparisonTwelveMonthsJournalEntries.value +
     comparisonYearUnbilled.value
+  )
 })
 
 const comparisonThirtyDaysUnbilled = computed(() => {
@@ -927,11 +1060,13 @@ const comparisonTotalReceivables = computed(() => {
   }
 
   if (receivables.current !== undefined) {
-    return (receivables.current || 0) +
+    return (
+      (receivables.current || 0) +
       (receivables.days1to30 || 0) +
       (receivables.days31to60 || 0) +
       (receivables.days61to90 || 0) +
       (receivables.over90 || 0)
+    )
   }
 
   return 0
@@ -951,7 +1086,7 @@ const comparisonDaysCashPlusAR = computed(() => {
 function calculateChange(current, comparison) {
   if (comparison === null) return { dollar: 0, percent: 0 }
   const dollar = current - comparison
-  const percent = comparison !== 0 ? ((dollar / comparison) * 100) : 0
+  const percent = comparison !== 0 ? (dollar / comparison) * 100 : 0
   return { dollar, percent }
 }
 
@@ -963,9 +1098,10 @@ const actualDataDates = computed(() => {
   // Get main data date from revenue store
   if (revenueStore.selectedDate) {
     // Extract just the date portion to avoid timezone issues
-    const dateStr = typeof revenueStore.selectedDate === 'string'
-      ? revenueStore.selectedDate.split('T')[0]
-      : format(revenueStore.selectedDate, 'yyyy-MM-dd')
+    const dateStr =
+      typeof revenueStore.selectedDate === 'string'
+        ? revenueStore.selectedDate.split('T')[0]
+        : format(revenueStore.selectedDate, 'yyyy-MM-dd')
     mainDate = format(parse(dateStr, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy')
   } else {
     mainDate = format(new Date(), 'MMM d, yyyy')
@@ -974,9 +1110,10 @@ const actualDataDates = computed(() => {
   // Get comparison data date from comparison data
   if (comparisonData.value && comparisonData.value.archiveDate) {
     // Extract just the date portion to avoid timezone issues
-    const dateStr = typeof comparisonData.value.archiveDate === 'string'
-      ? comparisonData.value.archiveDate.split('T')[0]
-      : format(comparisonData.value.archiveDate, 'yyyy-MM-dd')
+    const dateStr =
+      typeof comparisonData.value.archiveDate === 'string'
+        ? comparisonData.value.archiveDate.split('T')[0]
+        : format(comparisonData.value.archiveDate, 'yyyy-MM-dd')
     compareDate = format(parse(dateStr, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy')
   }
 
@@ -1029,7 +1166,6 @@ function formatCompareDate() {
   }
 }
 
-
 function handleDateChange() {
   // Clear existing timeout
   if (dateChangeTimeout.value) {
@@ -1068,7 +1204,7 @@ async function loadComparisonData(date) {
       balances: response.balances,
       exceptions: response.exceptions,
       archiveDate: response.archiveDate, // Store actual archive date from API
-      lastUpdated: response.lastUpdated
+      lastUpdated: response.lastUpdated,
     }
   } catch (err) {
     console.error('Failed to load comparison data:', err)
@@ -1307,7 +1443,7 @@ function handleBarClick(data) {
     month: data.month,
     startDate: '', // Clear range when selecting single month
     endDate: '',
-    component: data.component
+    component: data.component,
   }
   showTransactionModal.value = true
 
@@ -1336,7 +1472,7 @@ function showDetail() {
     month: '', // Clear specific month to indicate range mode
     startDate: chartStartDateStr.value,
     endDate: chartEndDateStr.value,
-    component: '' // All components
+    component: '', // All components
   }
   showTransactionModal.value = true
 }
@@ -1362,13 +1498,13 @@ async function shareChartToSlack() {
       logging: false,
       onclone: (clonedDoc) => {
         // Find the container in the cloned document and add padding
-        const clonedContainer = clonedDoc.querySelector('[style*="60vh"]');
+        const clonedContainer = clonedDoc.querySelector('[style*="60vh"]')
         if (clonedContainer) {
-          clonedContainer.style.height = 'auto'; // Allow growing
-          clonedContainer.style.paddingBottom = '60px'; // Substantial padding
-          clonedContainer.style.backgroundColor = isDarkModeGlobal.value ? '#111827' : '#ffffff';
+          clonedContainer.style.height = 'auto' // Allow growing
+          clonedContainer.style.paddingBottom = '60px' // Substantial padding
+          clonedContainer.style.backgroundColor = isDarkModeGlobal.value ? '#111827' : '#ffffff'
         }
-      }
+      },
     })
 
     // Step 2: Convert to base64
@@ -1379,12 +1515,12 @@ async function shareChartToSlack() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authStore.token}`
+        Authorization: `Bearer ${authStore.token}`,
       },
       body: JSON.stringify({
         imageData,
-        chartTitle: 'Monthly Revenue Forecast'
-      })
+        chartTitle: 'Monthly Revenue Forecast',
+      }),
     })
 
     const responseData = await response.json()
@@ -1395,7 +1531,6 @@ async function shareChartToSlack() {
 
     // Success!
     shareModalState.value = 'success'
-
   } catch (error) {
     console.error('Error sharing chart to Slack:', error)
 
@@ -1435,13 +1570,13 @@ async function downloadChart() {
       logging: false,
       onclone: (clonedDoc) => {
         // Find the container in the cloned document and add padding
-        const clonedContainer = clonedDoc.querySelector('[style*="60vh"]');
+        const clonedContainer = clonedDoc.querySelector('[style*="60vh"]')
         if (clonedContainer) {
-          clonedContainer.style.height = 'auto'; // Allow growing
-          clonedContainer.style.paddingBottom = '60px'; // Substantial padding
-          clonedContainer.style.backgroundColor = isDarkModeGlobal.value ? '#111827' : '#ffffff';
+          clonedContainer.style.height = 'auto' // Allow growing
+          clonedContainer.style.paddingBottom = '60px' // Substantial padding
+          clonedContainer.style.backgroundColor = isDarkModeGlobal.value ? '#111827' : '#ffffff'
         }
-      }
+      },
     })
 
     const imageData = canvas.toDataURL('image/png', 1.0)
@@ -1529,9 +1664,12 @@ watch([chartStartDateStr, chartEndDateStr], () => {
 })
 
 // Watch weighted sales toggle to update URL
-watch(() => revenueStore.includeWeightedSales, () => {
-  updateURLParams()
-})
+watch(
+  () => revenueStore.includeWeightedSales,
+  () => {
+    updateURLParams()
+  },
+)
 
 onMounted(async () => {
   try {
@@ -1555,7 +1693,7 @@ onMounted(async () => {
     if (route.query.modalMonth) {
       selectedTransaction.value = {
         month: route.query.modalMonth,
-        component: ''
+        component: '',
       }
       showTransactionModal.value = true
     } else if (route.query.modalStart && route.query.modalEnd) {
@@ -1564,7 +1702,7 @@ onMounted(async () => {
         month: '',
         startDate: route.query.modalStart,
         endDate: route.query.modalEnd,
-        component: ''
+        component: '',
       }
       showTransactionModal.value = true
     } else if (route.query.exportStart && route.query.exportEnd) {

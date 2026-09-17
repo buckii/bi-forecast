@@ -55,12 +55,12 @@ describe('createHandler', () => {
   it('passes the authenticated user and company to the handler', async () => {
     const handler = handlerFor({}, async ({ user, company }) => ({
       email: user.email,
-      company: company.name
+      company: company.name,
     }))
 
     expect(bodyOf(await handler(request())).data).toEqual({
       email: 'someone@example.com',
-      company: 'Acme'
+      company: 'Acme',
     })
   })
 

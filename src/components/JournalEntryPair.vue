@@ -32,9 +32,13 @@
           <div class="flex items-center justify-between mb-3">
             <div>
               <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Entry 1 (Defers Revenue)</div>
-              <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ formatDate(pair.creditEntry.TxnDate) }}</div>
+              <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                {{ formatDate(pair.creditEntry.TxnDate) }}
+              </div>
             </div>
-            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
+            <span
+              class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+            >
               -{{ formatCurrency(pair.amount) }}
             </span>
           </div>
@@ -71,10 +75,14 @@
         <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
           <div class="flex items-center justify-between mb-3">
             <div>
-              <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Entry 2 (Recognizes Revenue)</div>
+              <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                Entry 2 (Recognizes Revenue)
+              </div>
               <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ formatDate(pair.debitEntry.TxnDate) }}</div>
             </div>
-            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+            <span
+              class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+            >
               +{{ formatCurrency(pair.amount) }}
             </span>
           </div>
@@ -134,21 +142,20 @@ import { formatCurrencyCents as formatCurrency } from '../lib/format.js'
 defineProps({
   pair: {
     type: Object,
-    required: true
-  }
+    required: true,
+  },
 })
 
 defineEmits(['view-details', 'delete'])
 
 const expanded = ref(false)
 
-
 function formatDate(dateStr) {
   const date = new Date(dateStr)
   return new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: 'short',
-    day: 'numeric'
+    day: 'numeric',
   }).format(date)
 }
 </script>

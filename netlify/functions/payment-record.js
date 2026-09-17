@@ -6,7 +6,7 @@ const PAYMENT_METHOD_MAP = {
   ach: 'Electronic Payment',
   credit_card: 'Credit Card',
   cash: 'Cash',
-  other: 'Other'
+  other: 'Other',
 }
 
 const REQUIRED_FIELDS = ['invoiceId', 'customerId', 'amount', 'paymentMethod', 'paymentDate']
@@ -17,7 +17,7 @@ const UNDEPOSITED_FUNDS_QUERY =
 exports.handler = createHandler(
   { methods: 'POST', errorMessage: 'Failed to record payment' },
   async ({ user, company, body }) => {
-    const missing = REQUIRED_FIELDS.filter(field => !body[field])
+    const missing = REQUIRED_FIELDS.filter((field) => !body[field])
     if (missing.length > 0) {
       throw new HttpError(`Missing required fields: ${missing.join(', ')}`, 400)
     }
@@ -30,7 +30,7 @@ exports.handler = createHandler(
     const accountsData = await qbo.makeRequest(
       `query?query=${encodeURIComponent(UNDEPOSITED_FUNDS_QUERY)}`,
       realmId,
-      accessToken
+      accessToken,
     )
 
     const depositAccount = accountsData?.QueryResponse?.Account?.[0]
@@ -45,14 +45,14 @@ exports.handler = createHandler(
       PrivateNote: `Payment recorded via BI Forecast by ${user.email}`,
       PaymentMethodRef: { name: PAYMENT_METHOD_MAP[paymentMethod] || 'Other' },
       DepositToAccountRef: { value: depositAccount.Id, name: depositAccount.Name },
-      Line: [{ Amount: amount, LinkedTxn: [{ TxnId: invoiceId, TxnType: 'Invoice' }] }]
+      Line: [{ Amount: amount, LinkedTxn: [{ TxnId: invoiceId, TxnType: 'Invoice' }] }],
     }
 
     // Routed through makeRequest so it gets the shared token refresh and retry.
     const paymentData = await qbo.makeRequest('payment', realmId, accessToken, 0, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payment)
+      body: JSON.stringify(payment),
     })
 
     return {
@@ -60,7 +60,7 @@ exports.handler = createHandler(
       paymentNumber: paymentData.Payment?.DocNumber,
       amount: paymentData.Payment?.TotalAmt || amount,
       message: 'Payment recorded successfully',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     }
-  }
+  },
 )

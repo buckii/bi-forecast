@@ -6,12 +6,12 @@ class PipedriveService {
   constructor(companyId) {
     this.companyId = companyId
     this.baseUrl = 'https://api.pipedrive.com/v1'
-    
+
     // Custom field IDs from requirements
     this.customFields = {
       projectDuration: '3a1ab14edd3330c02bbbbfa0535a042bcd4a7fff',
-      projectStartDate: 'a82757d0f7820a7d15dface24eb041eede43ac1a', 
-      invoicesScheduled: '93bdab5b65406067ccdc160849aa7324a0283036'
+      projectStartDate: 'a82757d0f7820a7d15dface24eb041eede43ac1a',
+      invoicesScheduled: '93bdab5b65406067ccdc160849aa7324a0283036',
     }
   }
 
@@ -19,42 +19,42 @@ class PipedriveService {
     const tokensCollection = await getCollection('oauth_tokens')
     const tokenDoc = await tokensCollection.findOne({
       companyId: this.companyId,
-      service: 'pipedrive'
+      service: 'pipedrive',
     })
-    
+
     if (!tokenDoc) {
       throw new Error('Pipedrive not connected. Please add your Pipedrive API key in settings.')
     }
-    
+
     return decrypt(tokenDoc.accessToken)
   }
 
   async makeRequest(endpoint, params = {}) {
     const apiToken = await this.getApiToken()
-    
+
     const url = new URL(`${this.baseUrl}/${endpoint}`)
     url.searchParams.append('api_token', apiToken)
-    
+
     // Add additional parameters
     Object.entries(params).forEach(([key, value]) => {
       if (value !== null && value !== undefined) {
         url.searchParams.append(key, value.toString())
       }
     })
-    
+
     const response = await fetch(url.toString())
-    
+
     if (!response.ok) {
       const errorText = await response.text()
       throw new Error(`Pipedrive API error: ${response.status} ${errorText}`)
     }
-    
+
     const data = await response.json()
-    
+
     if (!data.success) {
       throw new Error(`Pipedrive API error: ${data.error || 'Unknown error'}`)
     }
-    
+
     return data.data
   }
 
@@ -63,22 +63,22 @@ class PipedriveService {
       start_date: startDate,
       interval: 'month',
       field_key: 'expected_close_date',
-      amount: 12
+      amount: 12,
     }
-    
+
     return await this.makeRequest('deals/timeline', params)
   }
 
   async getOpenDeals() {
     const params = {
       status: 'open',
-      sort: 'expected_close_date'
+      sort: 'expected_close_date',
     }
-    
+
     const deals = await this.makeRequest('deals', params)
-    
+
     // Apply field filtering to ensure we have consistent structure
-    return deals.map(deal => this.filterDealFields(deal))
+    return deals.map((deal) => this.filterDealFields(deal))
   }
 
   async getWonDeals(startDate, endDate) {
@@ -86,13 +86,13 @@ class PipedriveService {
       status: 'won',
       start: 0,
       limit: 500,
-      sort: 'won_time DESC'
+      sort: 'won_time DESC',
     }
-    
+
     const deals = await this.makeRequest('deals', params)
-    
+
     // Filter by won date range
-    return deals.filter(deal => {
+    return deals.filter((deal) => {
       if (!deal.won_time) return false
       const wonDate = new Date(deal.won_time)
       return wonDate >= new Date(startDate) && wonDate <= new Date(endDate)
@@ -103,7 +103,7 @@ class PipedriveService {
     const duration = deal[this.customFields.projectDuration] || 1
     const invoicesScheduled = deal[this.customFields.invoicesScheduled] === '44' // Assuming '44' is the "Yes" value
     const projectStartDate = deal[this.customFields.projectStartDate] || null
-    
+
     return {
       id: deal.id,
       title: deal.title,
@@ -119,24 +119,24 @@ class PipedriveService {
       stageId: deal.stage_id,
       probability: deal.probability || 0,
       status: deal.status,
-      wonTime: deal.won_time ? deal.won_time.split(' ')[0] : null
+      wonTime: deal.won_time ? deal.won_time.split(' ')[0] : null,
     }
   }
 
   async getOverdueDeals() {
     const openDeals = await this.getOpenDeals()
     const today = new Date().toISOString().split('T')[0]
-    
+
     return openDeals
-      .filter(deal => deal.expected_close_date && deal.expected_close_date < today)
-      .map(deal => {
+      .filter((deal) => deal.expected_close_date && deal.expected_close_date < today)
+      .map((deal) => {
         const filtered = this.filterDealFields(deal)
         const expectedDate = new Date(deal.expected_close_date)
         const daysDiff = Math.floor((new Date() - expectedDate) / (1000 * 60 * 60 * 24))
-        
+
         return {
           ...filtered,
-          daysOverdue: daysDiff
+          daysOverdue: daysDiff,
         }
       })
   }
@@ -146,92 +146,89 @@ class PipedriveService {
       status: 'won',
       start: 0,
       limit: 500,
-      sort: 'won_time DESC'
+      sort: 'won_time DESC',
     }
-    
+
     const wonDeals = await this.makeRequest('deals', params)
-    
+
     // Won unscheduled deals have invoices_scheduled != '44' (44 means scheduled)
     // and should be relatively recent (within last 12 months to avoid old deals)
     const twelveMonthsAgo = new Date()
     twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12)
-    
-    const filteredDeals = wonDeals.filter(deal => {
+
+    const filteredDeals = wonDeals.filter((deal) => {
       const scheduled = deal[this.customFields.invoicesScheduled]
-      
+
       // Simple check: '44' means scheduled, anything else is unscheduled
       const isScheduled = scheduled === '44'
       const isUnscheduled = !isScheduled
-      
+
       // Check if deal was won recently (within last 12 months)
       let isRecent = true
       if (deal.won_time) {
         const wonDate = new Date(deal.won_time)
         isRecent = wonDate >= twelveMonthsAgo
       }
-      
+
       return isUnscheduled && isRecent
     })
-    
-    return filteredDeals.map(deal => this.filterDealFields(deal))
+
+    return filteredDeals.map((deal) => this.filterDealFields(deal))
   }
 
   async getWeightedSalesForPeriod(startDate, endDate) {
     const timeline = await this.getDealsTimeline(startDate, endDate)
     const dealCalendar = {}
-    
+
     for (const period of timeline) {
       const date = period.period_start.split(' ')[0]
-      
+
       if (!dealCalendar[date]) {
         dealCalendar[date] = {
           openDeals: [],
           weightedValue: 0,
-          totalDeals: 0
+          totalDeals: 0,
         }
       }
-      
+
       for (const deal of period.deals || []) {
         if (deal.status === 'open') {
           const filteredDeal = this.filterDealFields(deal)
-          
-          
+
           // Skip if invoices are already scheduled
           if (filteredDeal.invoicesScheduled) continue
-          
+
           dealCalendar[date].openDeals.push(filteredDeal)
           dealCalendar[date].weightedValue += filteredDeal.monthlyWeightedValue
           dealCalendar[date].totalDeals++
-          
+
           // Add weighted value to additional months for multi-month projects
           const duration = filteredDeal.duration
-          
-          
+
           // Distribute weighted sales across all months of the project duration
           // Strategy: work backwards from expected close date
           const closeDate = new Date(date)
-          
+
           for (let i = 1; i < duration; i++) {
             // Go backwards from the expected close date
             const prevDate = new Date(closeDate)
             prevDate.setMonth(prevDate.getMonth() - i)
             const prevDateStr = prevDate.toISOString().split('T')[0].substring(0, 7) + '-01'
-            
+
             if (!dealCalendar[prevDateStr]) {
               dealCalendar[prevDateStr] = {
                 openDeals: [],
                 weightedValue: 0,
-                totalDeals: 0
+                totalDeals: 0,
               }
             }
-            
+
             dealCalendar[prevDateStr].weightedValue += filteredDeal.monthlyWeightedValue
-            
           }
         }
       }
     }
-    
+
     return dealCalendar
   }
 }

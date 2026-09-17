@@ -51,12 +51,12 @@ async function verifyGoogleToken(token, options = {}) {
     if (!header?.kid) throw new Error('Token is missing a key id')
 
     let keys = await loadKeys(loadFromGoogle, false)
-    let jwk = keys.find(key => key.kid === header.kid)
+    let jwk = keys.find((key) => key.kid === header.kid)
 
     // Google rotates signing keys, so an unknown kid means the cache is behind.
     if (!jwk) {
       keys = await loadKeys(loadFromGoogle, true)
-      jwk = keys.find(key => key.kid === header.kid)
+      jwk = keys.find((key) => key.kid === header.kid)
     }
 
     if (!jwk) throw new Error('Token was not signed by a known Google key')
@@ -64,7 +64,7 @@ async function verifyGoogleToken(token, options = {}) {
     const payload = jwt.verify(token, publicKeyFrom(jwk), {
       algorithms: ['RS256'],
       audience: clientId,
-      issuer: GOOGLE_ISSUERS
+      issuer: GOOGLE_ISSUERS,
     })
 
     if (!payload.email) throw new Error('Token carries no email')
@@ -74,7 +74,7 @@ async function verifyGoogleToken(token, options = {}) {
       email: payload.email,
       name: payload.name,
       picture: payload.picture,
-      domain: payload.hd || payload.email.split('@')[1]
+      domain: payload.hd || payload.email.split('@')[1],
     }
   } catch (err) {
     console.error('Google token verification failed:', err.message)

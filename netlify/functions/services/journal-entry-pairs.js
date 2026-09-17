@@ -11,7 +11,7 @@ function withKeyLines(entry) {
   return {
     ...entry,
     unearnedRevenueLine: entry.Line.find(isUnearnedRevenueLine),
-    revenueLine: entry.Line.find(isRevenueLine)
+    revenueLine: entry.Line.find(isRevenueLine),
   }
 }
 
@@ -51,8 +51,8 @@ function buildPair(entry, candidate) {
     netEffect: {
       fromMonth: monthKey(creditEntry.TxnDate),
       toMonth: monthKey(debitEntry.TxnDate),
-      amount: entry.unearnedRevenueLine.Amount
-    }
+      amount: entry.unearnedRevenueLine.Amount,
+    },
   }
 }
 
@@ -74,12 +74,9 @@ function detectPairs(entries) {
       return
     }
 
-    const matchIndex = annotated.findIndex((candidate, j) =>
-      j > i &&
-      !used.has(j) &&
-      candidate.unearnedRevenueLine &&
-      candidate.revenueLine &&
-      isPair(entry, candidate)
+    const matchIndex = annotated.findIndex(
+      (candidate, j) =>
+        j > i && !used.has(j) && candidate.unearnedRevenueLine && candidate.revenueLine && isPair(entry, candidate),
     )
 
     if (matchIndex === -1) {

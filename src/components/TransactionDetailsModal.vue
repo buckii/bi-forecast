@@ -5,47 +5,74 @@
         <div class="flex-1">
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ modalTitle }}</h3>
           <!-- Cache/Fetch Info with Refresh Button -->
-          <div v-if="activeTab === 'transactions' && cacheMetadata.transactionsCachedAt"
-            class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <div
+            v-if="activeTab === 'transactions' && cacheMetadata.transactionsCachedAt"
+            class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1"
+          >
             <span v-if="cacheMetadata.transactionsFromCache">
               Cached {{ formatRelativeTime(cacheMetadata.transactionsCachedAt) }}
             </span>
-            <span v-else>
-              Fetched {{ formatRelativeTime(cacheMetadata.transactionsCachedAt) }}
-            </span>
-            <button @click="refreshData" :disabled="refreshing || loading"
+            <span v-else> Fetched {{ formatRelativeTime(cacheMetadata.transactionsCachedAt) }} </span>
+            <button
+              @click="refreshData"
+              :disabled="refreshing || loading"
               class="p-0.5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Refresh data">
-              <svg class="w-3.5 h-3.5" :class="{ 'animate-spin': refreshing }" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              title="Refresh data"
+            >
+              <svg
+                class="w-3.5 h-3.5"
+                :class="{ 'animate-spin': refreshing }"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
               </svg>
             </button>
           </div>
-          <div v-if="activeTab === 'clients' && cacheMetadata.clientsCachedAt"
-            class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <div
+            v-if="activeTab === 'clients' && cacheMetadata.clientsCachedAt"
+            class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1"
+          >
             <span v-if="cacheMetadata.clientsFromCache">
               Cached {{ formatRelativeTime(cacheMetadata.clientsCachedAt) }}
             </span>
-            <span v-else>
-              Fetched {{ formatRelativeTime(cacheMetadata.clientsCachedAt) }}
-            </span>
-            <button @click="refreshData" :disabled="refreshing || loading"
+            <span v-else> Fetched {{ formatRelativeTime(cacheMetadata.clientsCachedAt) }} </span>
+            <button
+              @click="refreshData"
+              :disabled="refreshing || loading"
               class="p-0.5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Refresh data">
-              <svg class="w-3.5 h-3.5" :class="{ 'animate-spin': refreshing }" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              title="Refresh data"
+            >
+              <svg
+                class="w-3.5 h-3.5"
+                :class="{ 'animate-spin': refreshing }"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
               </svg>
             </button>
           </div>
         </div>
         <div class="flex items-center space-x-2">
-          <button @click="exportToCSV"
+          <button
+            @click="exportToCSV"
             class="hidden sm:inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 disabled:opacity-50"
-            :disabled="loading || allTransactions.length === 0" title="Export list to CSV">
+            :disabled="loading || allTransactions.length === 0"
+            title="Export list to CSV"
+          >
             <ArrowDownTrayIcon class="h-4 w-4 mr-1.5 text-gray-500 dark:text-gray-400" />
             Export
           </button>
@@ -60,33 +87,42 @@
       <!-- Loading Progress -->
       <div v-if="loading" class="mb-4 bg-blue-50 dark:bg-blue-900/20 p-2 rounded-md">
         <div class="flex justify-between items-center mb-1">
-          <span class="text-xs font-semibold text-blue-700 dark:text-blue-300">{{ loadingStatus || 'Loading...'
+          <span class="text-xs font-semibold text-blue-700 dark:text-blue-300">{{
+            loadingStatus || 'Loading...'
           }}</span>
           <span class="text-xs font-semibold text-blue-700 dark:text-blue-300">{{ loadingProgress }}%</span>
         </div>
         <div class="w-full bg-blue-200 dark:bg-blue-800/40 rounded-full h-1.5">
-          <div class="bg-blue-600 dark:bg-blue-500 h-1.5 rounded-full transition-all duration-300 ease-out"
-            :style="{ width: loadingProgress + '%' }"></div>
+          <div
+            class="bg-blue-600 dark:bg-blue-500 h-1.5 rounded-full transition-all duration-300 ease-out"
+            :style="{ width: loadingProgress + '%' }"
+          ></div>
         </div>
       </div>
 
       <!-- Tab Navigation -->
       <div class="border-b border-gray-200 dark:border-gray-700 mb-6">
         <nav class="-mb-px flex space-x-8">
-          <button @click="activeTab = 'transactions'" :class="[
-            'py-2 px-1 border-b-2 font-medium text-sm',
-            activeTab === 'transactions'
-              ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-          ]">
+          <button
+            @click="activeTab = 'transactions'"
+            :class="[
+              'py-2 px-1 border-b-2 font-medium text-sm',
+              activeTab === 'transactions'
+                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300',
+            ]"
+          >
             Transactions
           </button>
-          <button @click="activeTab = 'clients'" :class="[
-            'py-2 px-1 border-b-2 font-medium text-sm',
-            activeTab === 'clients'
-              ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-          ]">
+          <button
+            @click="activeTab = 'clients'"
+            :class="[
+              'py-2 px-1 border-b-2 font-medium text-sm',
+              activeTab === 'clients'
+                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300',
+            ]"
+          >
             Clients
           </button>
         </nav>
@@ -121,15 +157,23 @@
         <!-- Filter Toggles -->
         <div class="space-y-3">
           <div class="flex flex-wrap gap-3 items-center">
-            <button @click="toggleAllFilters"
-              class="text-sm text-primary-600 dark:text-primary-400 hover:underline font-medium w-20 text-left">
+            <button
+              @click="toggleAllFilters"
+              class="text-sm text-primary-600 dark:text-primary-400 hover:underline font-medium w-20 text-left"
+            >
               {{ allFiltersEnabled ? 'Hide All' : 'Show All' }}
             </button>
             <div class="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
-            <label v-for="type in transactionTypes" :key="type.value"
-              class="flex items-center space-x-2 cursor-pointer">
-              <input type="checkbox" v-model="enabledTypes[type.value]"
-                class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+            <label
+              v-for="type in transactionTypes"
+              :key="type.value"
+              class="flex items-center space-x-2 cursor-pointer"
+            >
+              <input
+                type="checkbox"
+                v-model="enabledTypes[type.value]"
+                class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
               <span class="text-sm text-gray-700 dark:text-gray-300">{{ type.label }}</span>
               <span class="text-xs text-gray-500 dark:text-gray-400">({{ getTypeCount(type.value) }})</span>
             </label>
@@ -138,16 +182,22 @@
           <!-- Sort Options -->
           <div class="flex items-center space-x-4 text-sm">
             <span class="text-gray-500 dark:text-gray-400">Sort by:</span>
-            <button @click="toggleSort('amount')" :class="[
-              'hover:underline font-medium',
-              sortBy === 'amount' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300'
-            ]">
+            <button
+              @click="toggleSort('amount')"
+              :class="[
+                'hover:underline font-medium',
+                sortBy === 'amount' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300',
+              ]"
+            >
               Amount {{ sortBy === 'amount' ? (sortDirection === 'desc' ? '↓' : '↑') : '' }}
             </button>
-            <button @click="toggleSort('date')" :class="[
-              'hover:underline font-medium',
-              sortBy === 'date' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300'
-            ]">
+            <button
+              @click="toggleSort('date')"
+              :class="[
+                'hover:underline font-medium',
+                sortBy === 'date' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300',
+              ]"
+            >
               Date {{ sortBy === 'date' ? (sortDirection === 'desc' ? '↓' : '↑') : '' }}
             </button>
           </div>
@@ -168,23 +218,33 @@
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
               <template v-for="transaction in filteredTransactions" :key="transaction.id">
-                <tr @click="transaction.type !== 'delayedCharge' ? toggleDetails(transaction.id) : null" :class="[
-                  transaction.type !== 'delayedCharge' ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700' : '',
-                  'transition-colors',
-                  transaction.description?.toLowerCase().includes('annual') ? 'opacity-60' : ''
-                ]">
+                <tr
+                  @click="transaction.type !== 'delayedCharge' ? toggleDetails(transaction.id) : null"
+                  :class="[
+                    transaction.type !== 'delayedCharge'
+                      ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700'
+                      : '',
+                    'transition-colors',
+                    transaction.description?.toLowerCase().includes('annual') ? 'opacity-60' : '',
+                  ]"
+                >
                   <td class="px-3 py-3">
                     <div class="flex items-center">
-                      <svg v-if="transaction.type !== 'delayedCharge'"
+                      <svg
+                        v-if="transaction.type !== 'delayedCharge'"
                         class="w-4 h-4 text-gray-400 mr-2 transform transition-transform duration-200"
-                        :class="{ 'rotate-90': expandedTransactions.has(transaction.id) }" fill="none"
-                        stroke="currentColor" viewBox="0 0 24 24">
+                        :class="{ 'rotate-90': expandedTransactions.has(transaction.id) }"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                       </svg>
                       <span
                         class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap"
                         :class="[getTypeColor(transaction.type), transaction.type === 'delayedCharge' ? '' : 'ml-0']"
-                        :style="transaction.type === 'delayedCharge' ? 'margin-left: 24px' : ''">
+                        :style="transaction.type === 'delayedCharge' ? 'margin-left: 24px' : ''"
+                      >
                         {{ formatTransactionType(transaction.type) }}
                       </span>
                     </div>
@@ -203,26 +263,37 @@
                   </td>
                   <td class="px-3 py-3 text-right font-medium text-gray-900 dark:text-gray-100 relative">
                     {{ formatCurrency(transaction.amount) }}
-                    <button v-if="transaction.type === 'invoice' || transaction.type === 'delayedCharge'"
+                    <button
+                      v-if="transaction.type === 'invoice' || transaction.type === 'delayedCharge'"
                       @click.stop="createJournalEntryFromTransaction(transaction)"
                       class="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors"
-                      title="Create Journal Entry">
+                      title="Create Journal Entry"
+                    >
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                       </svg>
                     </button>
-                    <button v-if="transaction.type === 'journalEntry'" @click.stop="editJournalEntry(transaction)"
+                    <button
+                      v-if="transaction.type === 'journalEntry'"
+                      @click.stop="editJournalEntry(transaction)"
                       class="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
-                      title="Edit Journal Entry">
+                      title="Edit Journal Entry"
+                    >
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        />
                       </svg>
                     </button>
                   </td>
                 </tr>
-                <tr v-if="transaction.type !== 'delayedCharge' && expandedTransactions.has(transaction.id)"
-                  class="bg-gray-50 dark:bg-gray-700">
+                <tr
+                  v-if="transaction.type !== 'delayedCharge' && expandedTransactions.has(transaction.id)"
+                  class="bg-gray-50 dark:bg-gray-700"
+                >
                   <td colspan="6" class="px-3 py-4">
                     <div class="space-y-2">
                       <h4 class="font-medium text-gray-900 dark:text-gray-100 text-sm mb-2">Transaction Details</h4>
@@ -263,15 +334,23 @@
         <div class="space-y-3">
           <!-- Transaction Type Filters -->
           <div class="flex flex-wrap gap-3 items-center">
-            <button @click="toggleAllClientFilters"
-              class="text-sm text-primary-600 dark:text-primary-400 hover:underline font-medium w-20 text-left">
+            <button
+              @click="toggleAllClientFilters"
+              class="text-sm text-primary-600 dark:text-primary-400 hover:underline font-medium w-20 text-left"
+            >
               {{ allClientFiltersEnabled ? 'Hide All' : 'Show All' }}
             </button>
             <div class="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
-            <label v-for="type in transactionTypes" :key="type.value"
-              class="flex items-center space-x-2 cursor-pointer">
-              <input type="checkbox" v-model="clientEnabledTypes[type.value]"
-                class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+            <label
+              v-for="type in transactionTypes"
+              :key="type.value"
+              class="flex items-center space-x-2 cursor-pointer"
+            >
+              <input
+                type="checkbox"
+                v-model="clientEnabledTypes[type.value]"
+                class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
               <span class="text-sm text-gray-700 dark:text-gray-300">{{ type.label }}</span>
             </label>
           </div>
@@ -279,16 +358,26 @@
           <!-- Sort Options -->
           <div class="flex items-center space-x-4 text-sm">
             <span class="text-gray-500 dark:text-gray-400">Sort by:</span>
-            <button @click="toggleClientSort('amount')" :class="[
-              'hover:underline font-medium',
-              clientSortBy === 'amount' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300'
-            ]">
+            <button
+              @click="toggleClientSort('amount')"
+              :class="[
+                'hover:underline font-medium',
+                clientSortBy === 'amount'
+                  ? 'text-primary-600 dark:text-primary-400'
+                  : 'text-gray-600 dark:text-gray-300',
+              ]"
+            >
               Amount {{ clientSortBy === 'amount' ? (clientSortDirection === 'desc' ? '↓' : '↑') : '' }}
             </button>
-            <button @click="toggleClientSort('client')" :class="[
-              'hover:underline font-medium',
-              clientSortBy === 'client' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300'
-            ]">
+            <button
+              @click="toggleClientSort('client')"
+              :class="[
+                'hover:underline font-medium',
+                clientSortBy === 'client'
+                  ? 'text-primary-600 dark:text-primary-400'
+                  : 'text-gray-600 dark:text-gray-300',
+              ]"
+            >
               Client (alpha) {{ clientSortBy === 'client' ? (clientSortDirection === 'desc' ? '↓' : '↑') : '' }}
             </button>
           </div>
@@ -299,18 +388,29 @@
           <div class="flex items-start justify-between gap-3 mb-4">
             <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Revenue by Client</h4>
             <div class="flex flex-col items-end gap-1">
-              <button @click="shareClientsToSlack" :disabled="sharingToSlack || !sortedClients.length"
-                class="btn-secondary inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
-                <svg v-if="sharingToSlack" class="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg"
-                  fill="none" viewBox="0 0 24 24">
+              <button
+                @click="shareClientsToSlack"
+                :disabled="sharingToSlack || !sortedClients.length"
+                class="btn-secondary inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg
+                  v-if="sharingToSlack"
+                  class="animate-spin -ml-1 mr-2 h-4 w-4"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor"
-                    d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                  </path>
+                  <path
+                    class="opacity-75"
+                    fill="currentColor"
+                    d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
                 </svg>
                 <svg v-else class="-ml-1 mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                   <path
-                    d="M5.042 15.165a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 10.12h6.481v2.522H5.042a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 7.597h6.481V5.074c0-1.393 1.135-2.523 2.52-2.523a2.528 2.528 0 0 1 2.52 2.523v2.523h2.515c1.393 0 2.52 1.135 2.52 2.523a2.528 2.528 0 0 1-2.52 2.523h-2.515v2.522h2.515a2.528 2.528 0 0 1 2.52 2.523A2.528 2.528 0 0 1 16.558 18.88h-2.515v2.523c0 1.393-1.135 2.523-2.52 2.523a2.528 2.528 0 0 1-2.52-2.523V18.88H5.042a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 15.835h6.481v-2.522H5.042z" />
+                    d="M5.042 15.165a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 10.12h6.481v2.522H5.042a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 7.597h6.481V5.074c0-1.393 1.135-2.523 2.52-2.523a2.528 2.528 0 0 1 2.52 2.523v2.523h2.515c1.393 0 2.52 1.135 2.52 2.523a2.528 2.528 0 0 1-2.52 2.523h-2.515v2.522h2.515a2.528 2.528 0 0 1 2.52 2.523A2.528 2.528 0 0 1 16.558 18.88h-2.515v2.523c0 1.393-1.135 2.523-2.52 2.523a2.528 2.528 0 0 1-2.52-2.523V18.88H5.042a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 15.835h6.481v-2.522H5.042z"
+                  />
                 </svg>
                 {{ sharingToSlack ? 'Sending...' : 'Send to Slack' }}
               </button>
@@ -320,7 +420,7 @@
               </p>
             </div>
           </div>
-          <div style="height: 300px;">
+          <div style="height: 300px">
             <canvas ref="pieCanvas"></canvas>
           </div>
         </div>
@@ -332,33 +432,47 @@
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead class="bg-gray-100 dark:bg-gray-800">
                 <tr>
-                  <th scope="col"
-                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                  >
                     Client Name
                   </th>
-                  <th scope="col"
-                    class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                  >
                     Revenue
                   </th>
-                  <th scope="col"
-                    class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                  >
                     Approx. Points
                   </th>
-                  <th scope="col"
-                    class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                  >
                     % of Total
                   </th>
                 </tr>
               </thead>
               <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                 <template v-for="client in sortedClients" :key="client.client">
-                  <tr @click="toggleClient(client.client)"
-                    class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <tr
+                    @click="toggleClient(client.client)"
+                    class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                       <div class="flex items-center">
-                        <svg class="w-4 h-4 text-gray-400 mr-2 transform transition-transform duration-200"
-                          :class="{ 'rotate-90': expandedClients.has(client.client) }" fill="none" stroke="currentColor"
-                          viewBox="0 0 24 24">
+                        <svg
+                          class="w-4 h-4 text-gray-400 mr-2 transform transition-transform duration-200"
+                          :class="{ 'rotate-90': expandedClients.has(client.client) }"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                         </svg>
                         {{ client.client }}
@@ -382,16 +496,23 @@
                         <h5 class="font-medium text-gray-900 dark:text-gray-100 text-sm mb-3">
                           Transactions for {{ client.client }}
                         </h5>
-                        <div v-if="getClientTransactions(client.client).length === 0"
-                          class="text-sm text-gray-500 dark:text-gray-400">
+                        <div
+                          v-if="getClientTransactions(client.client).length === 0"
+                          class="text-sm text-gray-500 dark:text-gray-400"
+                        >
                           No transactions found
                         </div>
                         <div v-else class="space-y-1">
-                          <div v-for="transaction in getClientTransactions(client.client)" :key="transaction.id"
-                            class="flex items-center justify-between py-2 px-3 bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 text-xs">
+                          <div
+                            v-for="transaction in getClientTransactions(client.client)"
+                            :key="transaction.id"
+                            class="flex items-center justify-between py-2 px-3 bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 text-xs"
+                          >
                             <div class="flex items-center space-x-3 flex-1">
-                              <span class="inline-flex items-center px-2 py-1 rounded-full font-medium"
-                                :class="getTypeColor(transaction.type)">
+                              <span
+                                class="inline-flex items-center px-2 py-1 rounded-full font-medium"
+                                :class="getTypeColor(transaction.type)"
+                              >
                                 {{ formatTransactionType(transaction.type) }}
                               </span>
                               <span class="font-medium text-gray-900 dark:text-gray-100">
@@ -407,22 +528,34 @@
                               </span>
                               <span class="font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap relative">
                                 {{ formatCurrency(transaction.amount) }}
-                                <button v-if="transaction.type === 'invoice' || transaction.type === 'delayedCharge'"
+                                <button
+                                  v-if="transaction.type === 'invoice' || transaction.type === 'delayedCharge'"
                                   @click.stop="createJournalEntryFromTransaction(transaction)"
                                   class="inline-flex ml-1 p-1 text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors align-middle"
-                                  title="Create Journal Entry">
+                                  title="Create Journal Entry"
+                                >
                                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M12 4v16m8-8H4" />
+                                    <path
+                                      stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                      stroke-width="2"
+                                      d="M12 4v16m8-8H4"
+                                    />
                                   </svg>
                                 </button>
-                                <button v-if="transaction.type === 'journalEntry'"
+                                <button
+                                  v-if="transaction.type === 'journalEntry'"
                                   @click.stop="editJournalEntry(transaction)"
                                   class="inline-flex ml-1 p-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors align-middle"
-                                  title="Edit Journal Entry">
+                                  title="Edit Journal Entry"
+                                >
                                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    <path
+                                      stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                      stroke-width="2"
+                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                    />
                                   </svg>
                                 </button>
                               </span>
@@ -434,18 +567,14 @@
                   </tr>
                 </template>
                 <tr class="bg-gray-50 dark:bg-gray-800 font-semibold">
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    Total
-                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">Total</td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-100">
                     {{ formatCurrency(clientTotalRevenue) }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600 dark:text-gray-300">
                     {{ formatPoints(clientTotalRevenue) }}
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">
-                    100%
-                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">100%</td>
                 </tr>
               </tbody>
             </table>
@@ -454,45 +583,64 @@
       </div>
 
       <div class="flex justify-end space-x-3 mt-6 pt-4 border-t">
-        <button @click="exportToCSV"
+        <button
+          @click="exportToCSV"
           class="hidden sm:inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800"
-          :disabled="loading">
+          :disabled="loading"
+        >
           <ArrowDownTrayIcon class="h-4 w-4 mr-1.5 text-gray-500 dark:text-gray-400" />
           Export Detail
         </button>
-        <button @click="closeModal" class="btn-secondary">
-          Close
-        </button>
+        <button @click="closeModal" class="btn-secondary">Close</button>
       </div>
     </div>
 
     <!-- Journal Entry Create Modal -->
-    <JournalEntryCreateModal v-if="showJournalEntryCreateModal" :revenueAccounts="journalEntryAccounts.revenue"
-      :unearnedAccounts="journalEntryAccounts.unearned" :prefillData="journalEntryPrefillData"
-      @close="closeJournalEntryCreateModal" @created="handleJournalEntryCreated" />
+    <JournalEntryCreateModal
+      v-if="showJournalEntryCreateModal"
+      :revenueAccounts="journalEntryAccounts.revenue"
+      :unearnedAccounts="journalEntryAccounts.unearned"
+      :prefillData="journalEntryPrefillData"
+      @close="closeJournalEntryCreateModal"
+      @created="handleJournalEntryCreated"
+    />
 
     <!-- Journal Entry Detail/Edit Modal -->
-    <JournalEntryDetailModal v-if="selectedJournalEntry" :entry="selectedJournalEntry"
-      @close="selectedJournalEntry = null" @updated="handleJournalEntryUpdated" @delete="handleJournalEntryDeleted" />
+    <JournalEntryDetailModal
+      v-if="selectedJournalEntry"
+      :entry="selectedJournalEntry"
+      @close="selectedJournalEntry = null"
+      @updated="handleJournalEntryUpdated"
+      @delete="handleJournalEntryDeleted"
+    />
 
     <!-- Journal Entry Bulk Edit Modal -->
-    <JournalEntryBulkEditModal v-if="showBulkEditModal" :initialEntryId="bulkEditEntryId"
-      @close="showBulkEditModal = false" @updated="handleJournalEntryUpdated" />
+    <JournalEntryBulkEditModal
+      v-if="showBulkEditModal"
+      :initialEntryId="bulkEditEntryId"
+      @close="showBulkEditModal = false"
+      @updated="handleJournalEntryUpdated"
+    />
 
     <!-- Slack share status -->
-    <StatusModal :show="showShareModal" :state="shareModalState" loading-title="Sharing to Slack..."
+    <StatusModal
+      :show="showShareModal"
+      :state="shareModalState"
+      loading-title="Sharing to Slack..."
       loading-message="Posting the client breakdown and attaching the chart."
-      success-title="Shared to Slack" :success-message="shareSuccessMessage" error-title="Share Failed"
-      :error-message="shareModalError" :error-details="shareModalErrorDetails" @close="closeShareModal"
-      @retry="shareClientsToSlack" />
+      success-title="Shared to Slack"
+      :success-message="shareSuccessMessage"
+      error-title="Share Failed"
+      :error-message="shareModalError"
+      :error-details="shareModalErrorDetails"
+      @close="closeShareModal"
+      @retry="shareClientsToSlack"
+    />
   </div>
 </template>
 
 <script setup>
-import {
-  ArrowDownTrayIcon,
-  XMarkIcon
-} from '@heroicons/vue/24/outline'
+import { ArrowDownTrayIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import { Chart, registerables } from 'chart.js'
 import { addMonths, format as formatDate, isBefore, parseISO, startOfMonth } from 'date-fns'
 import { computed, onUnmounted, ref, watch } from 'vue'
@@ -506,7 +654,6 @@ import JournalEntryCreateModal from './JournalEntryCreateModal.vue'
 import JournalEntryDetailModal from './JournalEntryDetailModal.vue'
 import StatusModal from './StatusModal.vue'
 
-
 Chart.register(...registerables)
 
 const revenueStore = useRevenueStore()
@@ -516,42 +663,40 @@ const route = useRoute()
 const props = defineProps({
   isOpen: {
     type: Boolean,
-    default: false
+    default: false,
   },
   month: {
     type: String,
-    default: ''
+    default: '',
   },
   asOf: {
     type: String,
-    default: ''
+    default: '',
   },
   title: {
     type: String,
-    default: ''
+    default: '',
   },
   startDate: {
     type: String,
-    default: ''
+    default: '',
   },
   endDate: {
     type: String,
-    default: ''
+    default: '',
   },
   autoExport: {
     type: Boolean,
-    default: false
+    default: false,
   },
   // Clients below this are rolled up into a single line when sharing to Slack
   shareThreshold: {
     type: Number,
-    default: 3000
-  }
+    default: 3000,
+  },
 })
 
 const emit = defineEmits(['close'])
-
-
 
 const authStore = useAuthStore()
 
@@ -587,7 +732,7 @@ const cacheMetadata = ref({
   transactionsCachedAt: null,
   transactionsFromCache: false,
   clientsCachedAt: null,
-  clientsFromCache: false
+  clientsFromCache: false,
 })
 const refreshing = ref(false)
 const expandedTransactions = ref(new Set())
@@ -603,7 +748,7 @@ const shareModalErrorDetails = ref('')
 const shareSuccessMessage = ref('')
 
 const sharedClientCount = computed(
-  () => sortedClients.value.filter(c => (c.total || 0) >= props.shareThreshold).length
+  () => sortedClients.value.filter((c) => (c.total || 0) >= props.shareThreshold).length,
 )
 
 // Journal Entry Modal State
@@ -614,16 +759,16 @@ const showBulkEditModal = ref(false)
 const bulkEditEntryId = ref(null)
 const journalEntryAccounts = ref({
   revenue: [],
-  unearned: []
+  unearned: [],
 })
 
 // Sorting state for Transactions tab
-const sortBy = ref('amount')  // 'amount' | 'date'
-const sortDirection = ref('desc')  // 'asc' | 'desc'
+const sortBy = ref('amount') // 'amount' | 'date'
+const sortDirection = ref('desc') // 'asc' | 'desc'
 
 // Sorting state for Clients tab
-const clientSortBy = ref('amount')  // 'amount' | 'client'
-const clientSortDirection = ref('desc')  // 'asc' | 'desc'
+const clientSortBy = ref('amount') // 'amount' | 'client'
+const clientSortDirection = ref('desc') // 'asc' | 'desc'
 
 // Transaction type filters
 const transactionTypes = [
@@ -632,7 +777,7 @@ const transactionTypes = [
   { value: 'delayedCharge', label: 'Delayed Charges' },
   { value: 'monthlyRecurring', label: 'Monthly Recurring' },
   { value: 'wonUnscheduled', label: 'Won Unscheduled' },
-  { value: 'weightedSales', label: 'Weighted Sales' }
+  { value: 'weightedSales', label: 'Weighted Sales' },
 ]
 
 const enabledTypes = ref({
@@ -641,7 +786,7 @@ const enabledTypes = ref({
   delayedCharge: true,
   monthlyRecurring: true,
   wonUnscheduled: true,
-  weightedSales: revenueStore.includeWeightedSales  // Respect dashboard toggle
+  weightedSales: revenueStore.includeWeightedSales, // Respect dashboard toggle
 })
 
 // Separate filter state for Clients tab
@@ -651,21 +796,21 @@ const clientEnabledTypes = ref({
   delayedCharge: true,
   monthlyRecurring: true,
   wonUnscheduled: true,
-  weightedSales: revenueStore.includeWeightedSales  // Respect dashboard toggle
+  weightedSales: revenueStore.includeWeightedSales, // Respect dashboard toggle
 })
 
 const allFiltersEnabled = computed(() => {
-  return Object.values(enabledTypes.value).every(v => v)
+  return Object.values(enabledTypes.value).every((v) => v)
 })
 
 const allClientFiltersEnabled = computed(() => {
-  return Object.values(clientEnabledTypes.value).every(v => v)
+  return Object.values(clientEnabledTypes.value).every((v) => v)
 })
 
 const filteredTransactions = computed(() => {
   if (!allTransactions.value) return []
 
-  let filtered = allTransactions.value.filter(t => enabledTypes.value[t.type])
+  let filtered = allTransactions.value.filter((t) => enabledTypes.value[t.type])
 
   // Apply sorting
   filtered.sort((a, b) => {
@@ -695,16 +840,15 @@ const sortedClients = computed(() => {
   const clientTotals = {}
 
   allTransactions.value
-    .filter(t => clientEnabledTypes.value[t.type])
-    .forEach(t => {
+    .filter((t) => clientEnabledTypes.value[t.type])
+    .forEach((t) => {
       if (!clientTotals[t.customer]) {
         clientTotals[t.customer] = 0
       }
       clientTotals[t.customer] += t.amount || 0
     })
 
-  const clients = Object.entries(clientTotals)
-    .map(([client, total]) => ({ client, total }))
+  const clients = Object.entries(clientTotals).map(([client, total]) => ({ client, total }))
 
   // Apply sorting
   clients.sort((a, b) => {
@@ -730,7 +874,7 @@ function getClientTransactions(clientName) {
 
   // Filter transactions by client name and enabled types
   const transactions = allTransactions.value
-    .filter(t => t.customer === clientName && clientEnabledTypes.value[t.type])
+    .filter((t) => t.customer === clientName && clientEnabledTypes.value[t.type])
     .sort((a, b) => new Date(b.date) - new Date(a.date))
 
   return transactions
@@ -738,19 +882,19 @@ function getClientTransactions(clientName) {
 
 function getTypeCount(type) {
   if (!allTransactions.value) return 0
-  return allTransactions.value.filter(t => t.type === type).length
+  return allTransactions.value.filter((t) => t.type === type).length
 }
 
 function toggleAllFilters() {
   const newValue = !allFiltersEnabled.value
-  Object.keys(enabledTypes.value).forEach(key => {
+  Object.keys(enabledTypes.value).forEach((key) => {
     enabledTypes.value[key] = newValue
   })
 }
 
 function toggleAllClientFilters() {
   const newValue = !allClientFiltersEnabled.value
-  Object.keys(clientEnabledTypes.value).forEach(key => {
+  Object.keys(clientEnabledTypes.value).forEach((key) => {
     clientEnabledTypes.value[key] = newValue
   })
 }
@@ -777,43 +921,50 @@ function toggleClientSort(field) {
   }
 }
 
-watch(() => props.isOpen, (isOpen) => {
-  if (isOpen && (props.month || (props.startDate && props.endDate))) {
-    loadAllData()
-  } else {
-    // Reset state when modal closes (but preserve activeTab for next open)
-    allTransactions.value = []
-    clientData.value = null
-    error.value = null
-    expandedTransactions.value.clear()
-    expandedClients.value.clear()
+watch(
+  () => props.isOpen,
+  (isOpen) => {
+    if (isOpen && (props.month || (props.startDate && props.endDate))) {
+      loadAllData()
+    } else {
+      // Reset state when modal closes (but preserve activeTab for next open)
+      allTransactions.value = []
+      clientData.value = null
+      error.value = null
+      expandedTransactions.value.clear()
+      expandedClients.value.clear()
 
-    // Reset transaction filters and sorting
-    sortBy.value = 'amount'
-    sortDirection.value = 'desc'
+      // Reset transaction filters and sorting
+      sortBy.value = 'amount'
+      sortDirection.value = 'desc'
 
-    // Reset client filters and sorting
-    clientSortBy.value = 'amount'
-    clientSortDirection.value = 'desc'
+      // Reset client filters and sorting
+      clientSortBy.value = 'amount'
+      clientSortDirection.value = 'desc'
 
-    // Cleanup pie chart
-    if (pieChartInstance) {
-      pieChartInstance.destroy()
-      pieChartInstance = null
+      // Cleanup pie chart
+      if (pieChartInstance) {
+        pieChartInstance.destroy()
+        pieChartInstance = null
+      }
     }
-  }
-}, { immediate: true })
+  },
+  { immediate: true },
+)
 
 // Sync weighted sales filter with dashboard toggle and reload data
-watch(() => revenueStore.includeWeightedSales, (newValue) => {
-  enabledTypes.value.weightedSales = newValue
-  clientEnabledTypes.value.weightedSales = newValue
+watch(
+  () => revenueStore.includeWeightedSales,
+  (newValue) => {
+    enabledTypes.value.weightedSales = newValue
+    clientEnabledTypes.value.weightedSales = newValue
 
-  // Reload data if modal is open to fetch/exclude weighted sales transactions
-  if (props.isOpen && (props.month || (props.startDate && props.endDate))) {
-    loadAllData()
-  }
-})
+    // Reload data if modal is open to fetch/exclude weighted sales transactions
+    if (props.isOpen && (props.month || (props.startDate && props.endDate))) {
+      loadAllData()
+    }
+  },
+)
 
 async function loadAllData(forceRefresh = false) {
   loading.value = true
@@ -843,7 +994,6 @@ async function loadAllData(forceRefresh = false) {
       loadingProgress.value = Math.round((completedSteps / totalSteps) * 100)
       loadingStatus.value = `Loading ${stepName}... (${completedSteps}/${totalSteps})`
     }
-
 
     // Build common params
     const startMonth = monthsToFetch[0]
@@ -875,14 +1025,14 @@ async function loadAllData(forceRefresh = false) {
     // But to be safe with QBO concurrency, we can still stagger them slightly or just await sequentially
     for (const component of components) {
       // Small delay between components
-      await new Promise(r => setTimeout(r, 100))
+      await new Promise((r) => setTimeout(r, 100))
 
       const componentParams = new URLSearchParams(params)
       componentParams.append('component', component)
 
       try {
         const response = await fetch(`/.netlify/functions/transaction-details?${componentParams.toString()}`, {
-          headers: { 'Authorization': `Bearer ${authStore.token}` }
+          headers: { Authorization: `Bearer ${authStore.token}` },
         })
 
         if (!response.ok) {
@@ -896,7 +1046,7 @@ async function loadAllData(forceRefresh = false) {
         transactionResults.push({
           transactions: data.transactions || [],
           fromCache: data.fromCache || false,
-          cachedAt: data.cachedAt || null
+          cachedAt: data.cachedAt || null,
         })
         updateProgress(component)
       } catch (e) {
@@ -908,7 +1058,7 @@ async function loadAllData(forceRefresh = false) {
 
     // Fetch client data
     const clientParams = new URLSearchParams({
-      includeWeightedSales: revenueStore.includeWeightedSales.toString()
+      includeWeightedSales: revenueStore.includeWeightedSales.toString(),
     })
 
     if (isRangeRequest) {
@@ -925,7 +1075,7 @@ async function loadAllData(forceRefresh = false) {
     let clientResult = { clients: null, fromCache: false, cachedAt: null }
     try {
       const response = await fetch(`/.netlify/functions/revenue-by-client?${clientParams.toString()}`, {
-        headers: { 'Authorization': `Bearer ${authStore.token}` }
+        headers: { Authorization: `Bearer ${authStore.token}` },
       })
 
       if (response.ok) {
@@ -935,7 +1085,7 @@ async function loadAllData(forceRefresh = false) {
           clients: data.clients || [],
           month: data.month,
           fromCache: data.fromCache || false,
-          cachedAt: data.cachedAt || null
+          cachedAt: data.cachedAt || null,
         }
       }
       updateProgress('Client Data')
@@ -945,12 +1095,12 @@ async function loadAllData(forceRefresh = false) {
     }
 
     // Since we now have single results covering the whole range, we put them in a list of 1 to match aggregation logic or just assign directly
-    const allResults = [{
-      transactionResults,
-      clientResult
-    }]
-
-
+    const allResults = [
+      {
+        transactionResults,
+        clientResult,
+      },
+    ]
 
     // Aggregate results
     let aggregatedTransactions = []
@@ -962,13 +1112,17 @@ async function loadAllData(forceRefresh = false) {
 
     for (const result of allResults) {
       // Aggregate transactions
-      const txns = result.transactionResults.flatMap(r => r.transactions)
+      const txns = result.transactionResults.flatMap((r) => r.transactions)
       aggregatedTransactions.push(...txns)
 
       // Check cache metadata for transactions
-      const transactionsWithCache = result.transactionResults.filter(r => r.fromCache)
+      const transactionsWithCache = result.transactionResults.filter((r) => r.fromCache)
       if (transactionsWithCache.length > 0) hasCache = true
-      const date = transactionsWithCache.map(r => r.cachedAt).filter(Boolean).sort().reverse()[0]
+      const date = transactionsWithCache
+        .map((r) => r.cachedAt)
+        .filter(Boolean)
+        .sort()
+        .reverse()[0]
       if (date && (!latestCacheDate || new Date(date) > new Date(latestCacheDate))) {
         latestCacheDate = date
       }
@@ -976,14 +1130,17 @@ async function loadAllData(forceRefresh = false) {
       // Aggregate clients
       if (result.clientResult.clients) {
         if (result.clientResult.fromCache) clientHasCache = true
-        if (result.clientResult.cachedAt && (!latestClientCacheDate || new Date(result.clientResult.cachedAt) > new Date(latestClientCacheDate))) {
+        if (
+          result.clientResult.cachedAt &&
+          (!latestClientCacheDate || new Date(result.clientResult.cachedAt) > new Date(latestClientCacheDate))
+        ) {
           latestClientCacheDate = result.clientResult.cachedAt
         }
 
         for (const client of result.clientResult.clients) {
           if (!aggregatedClients[client.client]) {
             aggregatedClients[client.client] = { ...client, total: 0 }
-            // Note: We might want to aggregate breakdown fields too (invoiced, recurring, etc.) 
+            // Note: We might want to aggregate breakdown fields too (invoiced, recurring, etc.)
             // but 'total' is the most critical for the pie chart.
             // Currently revenue-by-client returns breakdown. Detailed aggregation might be needed if detail view relies on it.
             // For now, let's assume 'total' is primary.
@@ -1000,21 +1157,23 @@ async function loadAllData(forceRefresh = false) {
       transactionsFromCache: hasCache,
       transactionsCachedAt: latestCacheDate,
       clientsFromCache: clientHasCache,
-      clientsCachedAt: latestClientCacheDate
+      clientsCachedAt: latestClientCacheDate,
     }
 
     // Set client data
     const aggregatedClientList = Object.values(aggregatedClients)
-    clientData.value = aggregatedClientList.length > 0 ? {
-      clients: aggregatedClientList,
-      month: props.month || 'Multiple Months'
-    } : null
+    clientData.value =
+      aggregatedClientList.length > 0
+        ? {
+            clients: aggregatedClientList,
+            month: props.month || 'Multiple Months',
+          }
+        : null
 
     // If we're on the clients tab, create the pie chart
     if (activeTab.value === 'clients' && clientData.value?.clients) {
       setTimeout(() => createPieChart(), 100)
     }
-
   } catch (err) {
     error.value = err.message
   } finally {
@@ -1111,7 +1270,6 @@ function formatTransactionDate(dateStr) {
   }
 }
 
-
 function formatRelativeTime(dateStr) {
   if (!dateStr) return ''
   try {
@@ -1141,7 +1299,7 @@ function formatTransactionType(type) {
     delayedCharge: 'Delayed Charge',
     monthlyRecurring: 'Monthly Recurring',
     wonUnscheduled: 'Won Unscheduled',
-    weightedSales: 'Weighted Sales'
+    weightedSales: 'Weighted Sales',
   }
   return typeMap[type] || type
 }
@@ -1153,7 +1311,7 @@ function formatType(type) {
     delayedCharge: 'Delayed Charge',
     monthlyRecurring: 'Monthly Recurring',
     wonUnscheduled: 'Won Unscheduled',
-    weightedSales: 'Weighted Sales'
+    weightedSales: 'Weighted Sales',
   }
   return types[type] || type
 }
@@ -1165,7 +1323,7 @@ function exportToCSV() {
   const headers = ['Type', 'Doc #', 'Date', 'Client (Raw)', 'Client (Normalized)', 'Description', 'Amount']
 
   // Format rows
-  const rows = allTransactions.value.map(txn => {
+  const rows = allTransactions.value.map((txn) => {
     return [
       formatType(txn.type),
       txn.docNumber || '',
@@ -1173,7 +1331,7 @@ function exportToCSV() {
       `"${(txn.clientRaw || txn.customer || '').replace(/"/g, '""')}"`, // Quote and escape quotes
       `"${(txn.clientNormalized || txn.customer || '').replace(/"/g, '""')}"`,
       `"${(txn.description || '').replace(/"/g, '""')}"`,
-      txn.amount || 0
+      txn.amount || 0,
     ].join(',')
   })
 
@@ -1185,7 +1343,10 @@ function exportToCSV() {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.setAttribute('href', url)
-  link.setAttribute('download', `transaction_details_${props.startDate || props.month}${props.endDate ? '_to_' + props.endDate : ''}.csv`)
+  link.setAttribute(
+    'download',
+    `transaction_details_${props.startDate || props.month}${props.endDate ? '_to_' + props.endDate : ''}.csv`,
+  )
   link.style.visibility = 'hidden'
   document.body.appendChild(link)
   link.click()
@@ -1199,7 +1360,7 @@ function getTypeColor(type) {
     delayedCharge: 'bg-yellow-100 text-yellow-800',
     monthlyRecurring: 'bg-purple-100 text-purple-800',
     wonUnscheduled: 'bg-pink-100 text-pink-800',
-    weightedSales: 'bg-gray-100 text-gray-800'
+    weightedSales: 'bg-gray-100 text-gray-800',
   }
   return colors[type] || 'bg-gray-100 text-gray-800'
 }
@@ -1235,9 +1396,7 @@ async function shareClientsToSlack() {
   try {
     // Capture the pie chart straight off the Chart.js canvas - no html2canvas
     // needed, since we only want the chart and not the surrounding table
-    const imageData = pieChartInstance
-      ? pieChartInstance.toBase64Image('image/png', 1.0)
-      : null
+    const imageData = pieChartInstance ? pieChartInstance.toBase64Image('image/png', 1.0) : null
 
     // Deep link back to this exact view, using the modal params the Dashboard
     // restores on mount (modalMonth/modalTab for a single month, modalStart/
@@ -1258,7 +1417,7 @@ async function shareClientsToSlack() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authStore.token}`
+        Authorization: `Bearer ${authStore.token}`,
       },
       body: JSON.stringify({
         // sortedClients reflects the active type filters, so Slack gets exactly
@@ -1271,8 +1430,8 @@ async function shareClientsToSlack() {
         includeWeightedSales: revenueStore.includeWeightedSales,
         threshold: props.shareThreshold,
         appUrl,
-        imageData
-      })
+        imageData,
+      }),
     })
 
     const responseData = await response.json()
@@ -1282,7 +1441,9 @@ async function shareClientsToSlack() {
     }
 
     const data = responseData.data || responseData
-    const parts = [`Shared ${data.namedCount} ${data.namedCount === 1 ? 'client' : 'clients'} at or above ${formatCurrency(props.shareThreshold)}`]
+    const parts = [
+      `Shared ${data.namedCount} ${data.namedCount === 1 ? 'client' : 'clients'} at or above ${formatCurrency(props.shareThreshold)}`,
+    ]
     if (data.rolledUpCount > 0) {
       parts.push(`${data.rolledUpCount} smaller ${data.rolledUpCount === 1 ? 'client' : 'clients'} rolled up`)
     }
@@ -1303,9 +1464,24 @@ async function shareClientsToSlack() {
 
 function getClientColors() {
   const colors = [
-    '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b',
-    '#06b6d4', '#84cc16', '#f97316', '#a855f7', '#14b8a6', '#6366f1',
-    '#ef4444', '#22c55e', '#eab308', '#d946ef', '#0ea5e9', '#f43f5e'
+    '#3b82f6',
+    '#10b981',
+    '#f59e0b',
+    '#8b5cf6',
+    '#ec4899',
+    '#64748b',
+    '#06b6d4',
+    '#84cc16',
+    '#f97316',
+    '#a855f7',
+    '#14b8a6',
+    '#6366f1',
+    '#ef4444',
+    '#22c55e',
+    '#eab308',
+    '#d946ef',
+    '#0ea5e9',
+    '#f43f5e',
   ]
   return colors
 }
@@ -1331,18 +1507,20 @@ function createPieChart() {
     const otherTotal = otherClients.reduce((sum, c) => sum + c.total, 0)
     mainClients.push({
       client: `Other Clients (${otherClients.length})`,
-      total: otherTotal
+      total: otherTotal,
     })
   }
 
   pieChartInstance = new Chart(ctx, {
     type: 'pie',
     data: {
-      labels: mainClients.map(c => c.client),
-      datasets: [{
-        data: mainClients.map(c => c.total),
-        backgroundColor: mainClients.map((_, i) => colors[i % colors.length])
-      }]
+      labels: mainClients.map((c) => c.client),
+      datasets: [
+        {
+          data: mainClients.map((c) => c.total),
+          backgroundColor: mainClients.map((_, i) => colors[i % colors.length]),
+        },
+      ],
     },
     options: {
       responsive: true,
@@ -1354,9 +1532,9 @@ function createPieChart() {
             color: isDarkModeGlobal.value ? '#ffffff' : '#374151',
             padding: 10,
             font: {
-              size: 11
-            }
-          }
+              size: 11,
+            },
+          },
         },
         tooltip: {
           callbacks: {
@@ -1365,11 +1543,11 @@ function createPieChart() {
               const value = formatCurrency(context.parsed)
               const percent = formatPercent(context.parsed, total)
               return `${label}: ${value} (${percent})`
-            }
-          }
-        }
-      }
-    }
+            },
+          },
+        },
+      },
+    },
   })
 }
 
@@ -1396,8 +1574,8 @@ async function loadJournalEntryAccounts() {
     const response = await fetch('/.netlify/functions/journal-entry-accounts', {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${authStore.token}`
-      }
+        Authorization: `Bearer ${authStore.token}`,
+      },
     })
 
     if (!response.ok) {
@@ -1407,7 +1585,7 @@ async function loadJournalEntryAccounts() {
     const data = await response.json()
     journalEntryAccounts.value = {
       revenue: data.data.revenueAccounts || [],
-      unearned: data.data.unearnedRevenueAccounts || []
+      unearned: data.data.unearnedRevenueAccounts || [],
     }
   } catch (err) {
     console.error('Error loading journal entry accounts:', err)
@@ -1431,7 +1609,7 @@ async function createJournalEntryFromTransaction(transaction) {
     clientName: transaction.customer || '',
     invoiceNumber: invoiceNumber,
     amount: transaction.amount || null,
-    invoiceDate: transaction.date || ''
+    invoiceDate: transaction.date || '',
   }
 
   // Show modal
@@ -1452,8 +1630,8 @@ async function editJournalEntry(transaction) {
     const response = await fetch(`/.netlify/functions/journal-entries-list?view=all`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${authStore.token}`
-      }
+        Authorization: `Bearer ${authStore.token}`,
+      },
     })
 
     if (!response.ok) {
@@ -1463,9 +1641,9 @@ async function editJournalEntry(transaction) {
     const data = await response.json()
 
     // Find the journal entry by matching transaction data
-    const entry = data.data.unpaired.find(e =>
-      e.TxnDate === transaction.date &&
-      Math.abs(parseFloat(e.Line?.[0]?.Amount || 0) - transaction.amount) < 0.01
+    const entry = data.data.unpaired.find(
+      (e) =>
+        e.TxnDate === transaction.date && Math.abs(parseFloat(e.Line?.[0]?.Amount || 0) - transaction.amount) < 0.01,
     )
 
     if (entry) {
@@ -1512,11 +1690,15 @@ watch(isDarkModeGlobal, () => {
 })
 
 // Watch for client filter changes to update chart
-watch(clientEnabledTypes, () => {
-  if (pieChartInstance && activeTab.value === 'clients') {
-    createPieChart()
-  }
-}, { deep: true })
+watch(
+  clientEnabledTypes,
+  () => {
+    if (pieChartInstance && activeTab.value === 'clients') {
+      createPieChart()
+    }
+  },
+  { deep: true },
+)
 
 // Cleanup on unmount
 onUnmounted(() => {

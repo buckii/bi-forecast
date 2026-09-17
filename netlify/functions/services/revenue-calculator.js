@@ -12,7 +12,7 @@ class RevenueCalculator {
     this.clientAliasesMap = null
     this.clientNamesMap = null
     this.isUsingArchive = false
-    this.isUsingFallback = false  // True when archive exists but has no QB/Pipedrive data
+    this.isUsingFallback = false // True when archive exists but has no QB/Pipedrive data
     this.archivedData = null
     this.archiveDate = null
   }
@@ -36,15 +36,13 @@ class RevenueCalculator {
     this.archiveDate = asOfDate
 
     // Check if this is an old format archive (no QB/Pipedrive data)
-    const hasQBData = (
+    const hasQBData =
       (archive.quickbooks?.invoices?.all?.length || 0) > 0 ||
       (archive.quickbooks?.journalEntries?.all?.length || 0) > 0 ||
       (archive.quickbooks?.delayedCharges?.active?.length || 0) > 0
-    )
-    const hasPipedriveData = (
+    const hasPipedriveData =
       (archive.pipedrive?.wonUnscheduled?.deals?.length || 0) > 0 ||
       (archive.pipedrive?.openDeals?.deals?.length || 0) > 0
-    )
 
     if (!hasQBData && !hasPipedriveData) {
       this.isUsingFallback = true
@@ -66,18 +64,16 @@ class RevenueCalculator {
 
     try {
       const clientAliasesCollection = await getCollection('client_aliases')
-      const aliases = await clientAliasesCollection
-        .find({ companyId: this.companyId })
-        .toArray()
+      const aliases = await clientAliasesCollection.find({ companyId: this.companyId }).toArray()
 
       // Build a map from alias to primary name for quick lookup
       const aliasMap = {}
-      aliases.forEach(client => {
+      aliases.forEach((client) => {
         const primaryName = client.primaryName
         // Add the primary name as a mapping to itself
         aliasMap[primaryName.toLowerCase()] = primaryName
         // Add all aliases
-        client.aliases.forEach(alias => {
+        client.aliases.forEach((alias) => {
           aliasMap[alias.toLowerCase()] = primaryName
         })
       })
@@ -131,7 +127,7 @@ class RevenueCalculator {
 
     try {
       const customers = await this.qbo.getCustomers()
-      customers.forEach(customer => {
+      customers.forEach((customer) => {
         this.registerClientName(customer.DisplayName)
         this.registerClientName(customer.CompanyName)
       })
@@ -164,12 +160,12 @@ class RevenueCalculator {
    */
   registerClientNamesFromData(qboData, pipedriveData) {
     if (qboData) {
-      ;(qboData.invoices || []).forEach(invoice => this.registerClientName(invoice.CustomerRef?.name))
-      ;(qboData.delayedCharges || []).forEach(charge => this.registerClientName(charge.CustomerRef?.name))
+      ;(qboData.invoices || []).forEach((invoice) => this.registerClientName(invoice.CustomerRef?.name))
+      ;(qboData.delayedCharges || []).forEach((charge) => this.registerClientName(charge.CustomerRef?.name))
     }
     if (pipedriveData) {
-      ;(pipedriveData.wonUnscheduledDeals || []).forEach(deal => this.registerClientName(deal.orgName))
-      ;(pipedriveData.openDeals || []).forEach(deal => this.registerClientName(deal.orgName))
+      ;(pipedriveData.wonUnscheduledDeals || []).forEach((deal) => this.registerClientName(deal.orgName))
+      ;(pipedriveData.openDeals || []).forEach((deal) => this.registerClientName(deal.orgName))
     }
   }
 
@@ -186,7 +182,7 @@ class RevenueCalculator {
 
     const candidates = [
       ...Object.entries(this.clientAliasesMap || {}),
-      ...Object.entries(this.clientNamesMap || {})
+      ...Object.entries(this.clientNamesMap || {}),
     ].sort((a, b) => b[0].length - a[0].length)
 
     for (const [candidate, primaryName] of candidates) {
@@ -209,13 +205,12 @@ class RevenueCalculator {
     // Fetch all data in parallel
     const [qboData, pipedriveData] = await Promise.all([
       this.fetchAllQBOData(startMonth, endMonth),
-      this.fetchAllPipedriveData()
+      this.fetchAllPipedriveData(),
     ])
 
     // Cache the data for use by transaction details and getBalances()
     this.cachedQBOData = qboData
     this.cachedPipedriveData = pipedriveData
-
 
     // Calculate baseline monthly recurring from current month (with fallback to previous)
     const baselineResult = await this.calculateBaselineMonthlyRecurring(qboData)
@@ -232,19 +227,19 @@ class RevenueCalculator {
         monthDate,
         qboData,
         pipedriveData,
-        baselineMonthlyRecurring
+        baselineMonthlyRecurring,
       )
 
       result.push({
         month: monthStr,
         components,
-        transactions: []
+        transactions: [],
       })
     }
 
     return {
       months: result,
-      dataSourceErrors: this.getDataSourceErrors()
+      dataSourceErrors: this.getDataSourceErrors(),
     }
   }
 
@@ -252,11 +247,11 @@ class RevenueCalculator {
     const allErrors = []
 
     if (this.qboDataSourceErrors && this.qboDataSourceErrors.length > 0) {
-      allErrors.push(...this.qboDataSourceErrors.map(err => ({ ...err, provider: 'QuickBooks' })))
+      allErrors.push(...this.qboDataSourceErrors.map((err) => ({ ...err, provider: 'QuickBooks' })))
     }
 
     if (this.pipedriveDataSourceErrors && this.pipedriveDataSourceErrors.length > 0) {
-      allErrors.push(...this.pipedriveDataSourceErrors.map(err => ({ ...err, provider: 'Pipedrive' })))
+      allErrors.push(...this.pipedriveDataSourceErrors.map((err) => ({ ...err, provider: 'Pipedrive' })))
     }
 
     return allErrors
@@ -265,23 +260,26 @@ class RevenueCalculator {
   async fetchAllQBOData(startDate, endDate) {
     // If using archive, check if it has QuickBooks data
     if (this.isUsingArchive && this.archivedData?.quickbooks) {
-      const hasQBData = (
+      const hasQBData =
         (this.archivedData.quickbooks.invoices?.all?.length || 0) > 0 ||
         (this.archivedData.quickbooks.journalEntries?.all?.length || 0) > 0 ||
         (this.archivedData.quickbooks.delayedCharges?.active?.length || 0) > 0
-      )
 
       if (hasQBData) {
         console.log('[RevenueCalculator] Using archived QuickBooks data')
         console.log(`[RevenueCalculator]   - ${this.archivedData.quickbooks.invoices?.all?.length || 0} invoices`)
-        console.log(`[RevenueCalculator]   - ${this.archivedData.quickbooks.journalEntries?.all?.length || 0} journal entries`)
-        console.log(`[RevenueCalculator]   - ${this.archivedData.quickbooks.delayedCharges?.active?.length || 0} delayed charges`)
+        console.log(
+          `[RevenueCalculator]   - ${this.archivedData.quickbooks.journalEntries?.all?.length || 0} journal entries`,
+        )
+        console.log(
+          `[RevenueCalculator]   - ${this.archivedData.quickbooks.delayedCharges?.active?.length || 0} delayed charges`,
+        )
         return {
           invoices: this.archivedData.quickbooks.invoices?.all || [],
           journalEntries: this.archivedData.quickbooks.journalEntries?.all || [],
           delayedCharges: this.archivedData.quickbooks.delayedCharges?.active || [],
           hasErrors: false,
-          errors: []
+          errors: [],
         }
       } else {
         console.log('[RevenueCalculator] Archive has no QB data (old format), using fallback with CreateTime filtering')
@@ -299,7 +297,7 @@ class RevenueCalculator {
     try {
       // Fetch all QBO data with 100ms spacing to avoid API burst
       // This helps stay under QuickBooks' rate limit
-      const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+      const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
       const invoicesPromise = this.qbo.getInvoices(startStr, endStr)
       await delay(100)
@@ -307,11 +305,7 @@ class RevenueCalculator {
       await delay(100)
       const delayedChargesPromise = this.qbo.getDelayedCharges(startStr, endStr)
 
-      const results = await Promise.allSettled([
-        invoicesPromise,
-        journalEntriesPromise,
-        delayedChargesPromise
-      ])
+      const results = await Promise.allSettled([invoicesPromise, journalEntriesPromise, delayedChargesPromise])
 
       const [invoicesResult, journalEntriesResult, delayedChargesResult] = results
 
@@ -327,7 +321,6 @@ class RevenueCalculator {
         console.error('Error fetching journal entries:', journalEntriesResult.reason.message)
         this.qboDataSourceErrors.push({ source: 'journal entries', error: journalEntriesResult.reason.message })
       }
-
 
       const delayedCharges = delayedChargesResult.status === 'fulfilled' ? delayedChargesResult.value : []
       if (delayedChargesResult.status === 'rejected') {
@@ -345,7 +338,7 @@ class RevenueCalculator {
 
         // Filter invoices by CreateTime
         const originalInvoiceCount = filteredInvoices.length
-        filteredInvoices = filteredInvoices.filter(invoice => {
+        filteredInvoices = filteredInvoices.filter((invoice) => {
           if (invoice.MetaData && invoice.MetaData.CreateTime) {
             const createTime = new Date(invoice.MetaData.CreateTime)
             return createTime <= asOfDate
@@ -355,7 +348,7 @@ class RevenueCalculator {
 
         // Filter journal entries by CreateTime
         const originalJECount = filteredJournalEntries.length
-        filteredJournalEntries = filteredJournalEntries.filter(entry => {
+        filteredJournalEntries = filteredJournalEntries.filter((entry) => {
           if (entry.MetaData && entry.MetaData.CreateTime) {
             const createTime = new Date(entry.MetaData.CreateTime)
             return createTime <= asOfDate
@@ -364,23 +357,21 @@ class RevenueCalculator {
         })
 
         // Filter delayed charges by CreateTime
-        filteredDelayedCharges = filteredDelayedCharges.filter(charge => {
+        filteredDelayedCharges = filteredDelayedCharges.filter((charge) => {
           if (charge.MetaData && charge.MetaData.CreateTime) {
             const createTime = new Date(charge.MetaData.CreateTime)
             return createTime <= asOfDate
           }
           return true
         })
-
       }
-
 
       return {
         invoices: filteredInvoices,
         journalEntries: filteredJournalEntries,
         delayedCharges: filteredDelayedCharges,
         hasErrors: this.qboDataSourceErrors.length > 0,
-        errors: this.qboDataSourceErrors
+        errors: this.qboDataSourceErrors,
       }
     } catch (error) {
       console.error('Error fetching QBO data:', error)
@@ -390,7 +381,7 @@ class RevenueCalculator {
         journalEntries: [],
         delayedCharges: [],
         hasErrors: true,
-        errors: this.qboDataSourceErrors
+        errors: this.qboDataSourceErrors,
       }
     }
   }
@@ -398,24 +389,27 @@ class RevenueCalculator {
   async fetchAllPipedriveData() {
     // If using archive, check if it has Pipedrive data
     if (this.isUsingArchive && this.archivedData?.pipedrive) {
-      const hasPipedriveData = (
+      const hasPipedriveData =
         (this.archivedData.pipedrive.wonUnscheduled?.deals?.length || 0) > 0 ||
         (this.archivedData.pipedrive.openDeals?.deals?.length || 0) > 0
-      )
 
       if (hasPipedriveData) {
         console.log('[RevenueCalculator] Using archived Pipedrive data')
-        console.log(`[RevenueCalculator]   - ${this.archivedData.pipedrive.wonUnscheduled?.deals?.length || 0} won unscheduled deals`)
+        console.log(
+          `[RevenueCalculator]   - ${this.archivedData.pipedrive.wonUnscheduled?.deals?.length || 0} won unscheduled deals`,
+        )
         console.log(`[RevenueCalculator]   - ${this.archivedData.pipedrive.openDeals?.deals?.length || 0} open deals`)
         return {
           wonUnscheduledDeals: this.archivedData.pipedrive.wonUnscheduled?.deals || [],
           openDeals: this.archivedData.pipedrive.openDeals?.deals || [],
           hasErrors: false,
-          errors: []
+          errors: [],
         }
       } else {
         console.log('[RevenueCalculator] Archive has no Pipedrive data (old format), using current Pipedrive data')
-        console.warn('[RevenueCalculator] ⚠️ WARNING: Pipedrive historical data not available - using current data instead')
+        console.warn(
+          '[RevenueCalculator] ⚠️ WARNING: Pipedrive historical data not available - using current data instead',
+        )
         // Fall through to fetch current data (note: this won't be historically accurate for Pipedrive)
       }
     }
@@ -425,10 +419,7 @@ class RevenueCalculator {
 
     try {
       // Fetch all Pipedrive data in parallel with individual error tracking
-      const results = await Promise.allSettled([
-        this.pipedrive.getWonUnscheduledDeals(),
-        this.pipedrive.getOpenDeals()
-      ])
+      const results = await Promise.allSettled([this.pipedrive.getWonUnscheduledDeals(), this.pipedrive.getOpenDeals()])
 
       const [wonUnscheduledResult, openDealsResult] = results
 
@@ -436,7 +427,10 @@ class RevenueCalculator {
       const wonUnscheduledDeals = wonUnscheduledResult.status === 'fulfilled' ? wonUnscheduledResult.value : []
       if (wonUnscheduledResult.status === 'rejected') {
         console.error('Error fetching won unscheduled deals:', wonUnscheduledResult.reason.message)
-        this.pipedriveDataSourceErrors.push({ source: 'won unscheduled deals', error: wonUnscheduledResult.reason.message })
+        this.pipedriveDataSourceErrors.push({
+          source: 'won unscheduled deals',
+          error: wonUnscheduledResult.reason.message,
+        })
       }
 
       const openDeals = openDealsResult.status === 'fulfilled' ? openDealsResult.value : []
@@ -449,7 +443,7 @@ class RevenueCalculator {
         wonUnscheduledDeals,
         openDeals,
         hasErrors: this.pipedriveDataSourceErrors.length > 0,
-        errors: this.pipedriveDataSourceErrors
+        errors: this.pipedriveDataSourceErrors,
       }
     } catch (error) {
       console.error('Error fetching Pipedrive data:', error)
@@ -458,7 +452,7 @@ class RevenueCalculator {
         wonUnscheduledDeals: [],
         openDeals: [],
         hasErrors: true,
-        errors: this.pipedriveDataSourceErrors
+        errors: this.pipedriveDataSourceErrors,
       }
     }
   }
@@ -475,7 +469,7 @@ class RevenueCalculator {
 
       // Check current month invoices
       if (qboData && qboData.invoices) {
-        const currentInvoices = qboData.invoices.filter(invoice => {
+        const currentInvoices = qboData.invoices.filter((invoice) => {
           const txnDate = new Date(invoice.TxnDate)
           return txnDate >= currentMonthStart && txnDate <= currentMonthEnd
         })
@@ -491,7 +485,7 @@ class RevenueCalculator {
               line.Description?.toLowerCase().includes('monthly')
 
             if (hasMonthly) {
-              currentTotal += (line.Amount || 0)
+              currentTotal += line.Amount || 0
             }
           }
         }
@@ -499,7 +493,7 @@ class RevenueCalculator {
 
       // Check current month journal entries
       if (qboData && qboData.journalEntries) {
-        const currentEntries = qboData.journalEntries.filter(entry => {
+        const currentEntries = qboData.journalEntries.filter((entry) => {
           const txnDate = new Date(entry.TxnDate)
           return txnDate >= currentMonthStart && txnDate <= currentMonthEnd
         })
@@ -508,10 +502,12 @@ class RevenueCalculator {
           const lines = entry.Line || []
           for (const line of lines) {
             const accountRef = line.JournalEntryLineDetail?.AccountRef
-            if (accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
+            if (
+              accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
               accountRef?.name?.toLowerCase().includes('monthly') &&
-              !accountRef?.name?.toLowerCase().includes('unearned')) {
-              currentTotal += (line.Amount || 0)
+              !accountRef?.name?.toLowerCase().includes('unearned')
+            ) {
+              currentTotal += line.Amount || 0
             }
           }
         }
@@ -533,7 +529,7 @@ class RevenueCalculator {
 
       // Check previous month invoices
       if (qboData && qboData.invoices) {
-        const previousMonthInvoices = qboData.invoices.filter(invoice => {
+        const previousMonthInvoices = qboData.invoices.filter((invoice) => {
           const txnDate = new Date(invoice.TxnDate)
           return txnDate >= previousMonthStart && txnDate <= previousMonthEnd
         })
@@ -549,7 +545,7 @@ class RevenueCalculator {
               line.Description?.toLowerCase().includes('monthly')
 
             if (hasMonthly) {
-              prevTotal += (line.Amount || 0)
+              prevTotal += line.Amount || 0
             }
           }
         }
@@ -557,7 +553,7 @@ class RevenueCalculator {
 
       // Check previous month journal entries
       if (qboData && qboData.journalEntries) {
-        const previousMonthEntries = qboData.journalEntries.filter(entry => {
+        const previousMonthEntries = qboData.journalEntries.filter((entry) => {
           const txnDate = new Date(entry.TxnDate)
           return txnDate >= previousMonthStart && txnDate <= previousMonthEnd
         })
@@ -566,18 +562,21 @@ class RevenueCalculator {
           const lines = entry.Line || []
           for (const line of lines) {
             const accountRef = line.JournalEntryLineDetail?.AccountRef
-            if (accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
+            if (
+              accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
               accountRef?.name?.toLowerCase().includes('monthly') &&
-              !accountRef?.name?.toLowerCase().includes('unearned')) {
-              prevTotal += (line.Amount || 0)
+              !accountRef?.name?.toLowerCase().includes('unearned')
+            ) {
+              prevTotal += line.Amount || 0
             }
           }
         }
       }
 
-      console.log(`[RevenueCalculator] Current month MRR was zero. Falling back to previous month (${previousMonthName}) for MRR baseline: $${prevTotal}`)
+      console.log(
+        `[RevenueCalculator] Current month MRR was zero. Falling back to previous month (${previousMonthName}) for MRR baseline: $${prevTotal}`,
+      )
       return { amount: prevTotal, monthName: previousMonthName }
-
     } catch (error) {
       console.error('Error calculating baseline monthly recurring amount:', error)
       return { amount: 0, monthName: 'Error' }
@@ -597,29 +596,28 @@ class RevenueCalculator {
       delayedCharges: 0,
       monthlyRecurring: 0,
       wonUnscheduled: 0,
-      weightedSales: 0
+      weightedSales: 0,
     }
 
     // Process QBO data
     if (qboData) {
       // Filter and sum invoices for this month
-      const monthInvoices = (qboData.invoices || []).filter(invoice => {
+      const monthInvoices = (qboData.invoices || []).filter((invoice) => {
         const txnDateStr = invoice.TxnDate // Keep as string for comparison
         return txnDateStr >= format(startDate, 'yyyy-MM-dd') && txnDateStr <= format(endDate, 'yyyy-MM-dd')
       })
       components.invoiced = this.sumInvoices(monthInvoices)
 
       // Filter and sum journal entries for this month
-      const monthJournalEntries = (qboData.journalEntries || []).filter(entry => {
+      const monthJournalEntries = (qboData.journalEntries || []).filter((entry) => {
         const txnDateStr = entry.TxnDate // Keep as string for comparison
         return txnDateStr >= format(startDate, 'yyyy-MM-dd') && txnDateStr <= format(endDate, 'yyyy-MM-dd')
       })
 
-
       components.journalEntries = this.sumRevenueJournalEntries(monthJournalEntries)
 
       // Filter and sum delayed charges for this month
-      const monthDelayedCharges = (qboData.delayedCharges || []).filter(charge => {
+      const monthDelayedCharges = (qboData.delayedCharges || []).filter((charge) => {
         const txnDateStr = charge.TxnDate // Keep as string for comparison
         return txnDateStr >= format(startDate, 'yyyy-MM-dd') && txnDateStr <= format(endDate, 'yyyy-MM-dd')
       })
@@ -629,7 +627,7 @@ class RevenueCalculator {
       if (format(monthDate, 'yyyy-MM') === '2025-12' && monthDelayedCharges.length > 0) {
         const startDateStr = format(startDate, 'yyyy-MM-dd')
         const endDateStr = format(endDate, 'yyyy-MM-dd')
-        monthDelayedCharges.forEach(charge => {
+        monthDelayedCharges.forEach((charge) => {
           const included = charge.TxnDate >= startDateStr && charge.TxnDate <= endDateStr
         })
       }
@@ -644,13 +642,13 @@ class RevenueCalculator {
         const additionalMonthlyRecurring = this.calculateMonthlyRecurring(monthInvoices)
         components.monthlyRecurring += additionalMonthlyRecurring
 
-        // We REMOVED the redundant QBO P&L check here because the baseline already 
+        // We REMOVED the redundant QBO P&L check here because the baseline already
         // prioritizes the current month, which contains the latest P&L/Invoice totals.
       }
 
       // Debug logging for key months
       const isCurrentMonth = format(monthDate, 'yyyy-MM') === format(new Date(), 'yyyy-MM')
-      const isRecentMonth = Math.abs(new Date().getTime() - monthDate.getTime()) < (90 * 24 * 60 * 60 * 1000) // 90 days
+      const isRecentMonth = Math.abs(new Date().getTime() - monthDate.getTime()) < 90 * 24 * 60 * 60 * 1000 // 90 days
 
       if (isCurrentMonth || (isRecentMonth && (components.invoiced > 0 || components.journalEntries > 0))) {
         // Month has significant activity - log for debugging
@@ -662,7 +660,7 @@ class RevenueCalculator {
           baseline: baselineMonthlyRecurring,
           baselineMonth: this.baselineMRRMonth,
           additional: components.monthlyRecurring - baselineMonthlyRecurring,
-          total: components.monthlyRecurring
+          total: components.monthlyRecurring,
         }
       } else {
         components.monthlyRecurringBreakdown = 'N/A (past/current month)'
@@ -672,17 +670,10 @@ class RevenueCalculator {
     // Process Pipedrive data
     if (pipedriveData) {
       // Calculate won unscheduled for this month
-      components.wonUnscheduled = this.calculateWonUnscheduledForMonth(
-        monthDate,
-        pipedriveData.wonUnscheduledDeals
-      )
+      components.wonUnscheduled = this.calculateWonUnscheduledForMonth(monthDate, pipedriveData.wonUnscheduledDeals)
 
       // Calculate weighted sales for this month
-      components.weightedSales = this.calculateWeightedSalesForMonth(
-        monthDate,
-        pipedriveData.openDeals
-      )
-
+      components.weightedSales = this.calculateWeightedSalesForMonth(monthDate, pipedriveData.openDeals)
     }
 
     return components
@@ -700,13 +691,12 @@ class RevenueCalculator {
     }
 
     // Filter to only include entries with unearned revenue accounts (same as journal-entries-list endpoint)
-    const entriesWithUnearned = entries.filter(entry => {
-      return entry.Line?.some(line => {
+    const entriesWithUnearned = entries.filter((entry) => {
+      return entry.Line?.some((line) => {
         const accountName = line.JournalEntryLineDetail?.AccountRef?.name?.toLowerCase() || ''
         return accountName.includes('unearned') || accountName.includes('deferred')
       })
     })
-
 
     let total = 0
     for (const entry of entriesWithUnearned) {
@@ -720,8 +710,10 @@ class RevenueCalculator {
         const accountName = accountRef?.name?.toLowerCase() || ''
 
         // Look for revenue accounts - match account number (^4\d{3}) or name contains revenue/income
-        const isRevenueAccount = accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
-          !accountName.includes('unearned') && !accountName.includes('deferred')
+        const isRevenueAccount =
+          accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
+          !accountName.includes('unearned') &&
+          !accountName.includes('deferred')
 
         if (isRevenueAccount) {
           // IMPORTANT: In journal entries, Credits to revenue accounts increase revenue (positive)
@@ -743,11 +735,10 @@ class RevenueCalculator {
           revenueLines.push({
             account: accountRef.name,
             posting: postingType,
-            amount: lineAmount
+            amount: lineAmount,
           })
         }
       }
-
     }
 
     return total
@@ -824,7 +815,6 @@ class RevenueCalculator {
     for (const deal of openDeals) {
       if (!deal.expectedCloseDate) continue
 
-
       // Check if this deal should contribute to the current month
       // For multi-month deals, distribute across all months starting from close month forward
       const expectedCloseDate = new Date(deal.expectedCloseDate + 'T00:00:00')
@@ -841,7 +831,6 @@ class RevenueCalculator {
         projectMonth.setMonth(projectMonth.getMonth() + i)
         const projectMonthStr = format(projectMonth, 'yyyy-MM')
 
-
         if (projectMonthStr === monthStr) {
           shouldIncludeDeal = true
           break
@@ -851,36 +840,33 @@ class RevenueCalculator {
       if (!shouldIncludeDeal) continue
 
       // Calculate weighted value: total amount * probability / duration
-      const baseWeightedValue = deal.weightedValue || (deal.value * (deal.probability || 0) / 100)
+      const baseWeightedValue = deal.weightedValue || (deal.value * (deal.probability || 0)) / 100
       const monthlyWeightedValue = baseWeightedValue / duration
 
       total += monthlyWeightedValue
-
     }
 
     return Math.round(total)
   }
 
   async getExceptions() {
-
     const exceptions = {
       overdueDeals: [],
       pastDelayedCharges: [],
-      wonUnscheduled: []
+      wonUnscheduled: [],
     }
 
     try {
       // Get overdue deals from Pipedrive
       const overdueDeals = await this.pipedrive.getOverdueDeals()
-      exceptions.overdueDeals = overdueDeals.map(deal => ({
+      exceptions.overdueDeals = overdueDeals.map((deal) => ({
         id: deal.id,
         title: deal.title,
         org_name: deal.orgName,
         expected_close_date: deal.expectedCloseDate,
         days_overdue: deal.daysOverdue,
-        value: deal.value
+        value: deal.value,
       }))
-
     } catch (error) {
       console.error('Error getting overdue deals:', error)
     }
@@ -888,14 +874,13 @@ class RevenueCalculator {
     try {
       // Get won unscheduled deals from Pipedrive
       const wonUnscheduledDeals = await this.pipedrive.getWonUnscheduledDeals()
-      exceptions.wonUnscheduled = wonUnscheduledDeals.map(deal => ({
+      exceptions.wonUnscheduled = wonUnscheduledDeals.map((deal) => ({
         id: deal.id,
         title: deal.title,
         org_name: deal.orgName,
         won_time: deal.wonTime,
-        value: deal.value
+        value: deal.value,
       }))
-
     } catch (error) {
       console.error('Error getting won unscheduled deals:', error)
     }
@@ -909,25 +894,24 @@ class RevenueCalculator {
 
       const delayedCharges = await this.qbo.getDelayedCharges(
         pastDate.toISOString().split('T')[0],
-        endDate.toISOString().split('T')[0]
+        endDate.toISOString().split('T')[0],
       )
 
       // Filter for charges that are still unbilled and past due
       exceptions.pastDelayedCharges = delayedCharges
-        .filter(charge => {
+        .filter((charge) => {
           const chargeDate = new Date(charge.TxnDate)
           const daysDiff = Math.floor((today - chargeDate) / (1000 * 60 * 60 * 24))
           return daysDiff > 30 // Consider past due if older than 30 days
         })
-        .map(charge => ({
+        .map((charge) => ({
           id: charge.Id,
           customer_name: charge.CustomerRef?.name || 'Unknown Customer',
           description: charge.DocNumber || 'Unknown',
           date: charge.TxnDate,
           days_past: Math.floor((today - new Date(charge.TxnDate)) / (1000 * 60 * 60 * 24)),
-          amount: charge.TotalAmt || 0
+          amount: charge.TotalAmt || 0,
         }))
-
     } catch (error) {
       console.error('Error getting past delayed charges:', error)
     }
@@ -965,7 +949,7 @@ class RevenueCalculator {
 
     const [qboData, pipedriveData] = await Promise.all([
       this.fetchAllQBOData(fetchStartMonth, fetchEndMonth),
-      this.fetchAllPipedriveData()
+      this.fetchAllPipedriveData(),
     ])
 
     // Pick up any client names the customer list did not cover
@@ -976,13 +960,13 @@ class RevenueCalculator {
       monthDate,
       qboData,
       pipedriveData,
-      includeWeightedSales
+      includeWeightedSales,
     )
 
     return {
       month: monthStr,
       clients: clientBreakdown,
-      dataSourceErrors: this.getDataSourceErrors()
+      dataSourceErrors: this.getDataSourceErrors(),
     }
   }
 
@@ -997,7 +981,7 @@ class RevenueCalculator {
     // Fetch all data in parallel
     const [qboData, pipedriveData] = await Promise.all([
       this.fetchAllQBOData(startMonth, endMonth),
-      this.fetchAllPipedriveData()
+      this.fetchAllPipedriveData(),
     ])
 
     // Pick up any client names the customer list did not cover
@@ -1013,18 +997,18 @@ class RevenueCalculator {
         monthDate,
         qboData,
         pipedriveData,
-        includeWeightedSales
+        includeWeightedSales,
       )
 
       result.push({
         month: monthStr,
-        clients: clientBreakdown
+        clients: clientBreakdown,
       })
     }
 
     return {
       months: result,
-      dataSourceErrors: this.getDataSourceErrors()
+      dataSourceErrors: this.getDataSourceErrors(),
     }
   }
 
@@ -1046,12 +1030,12 @@ class RevenueCalculator {
 
     // Process QBO invoices
     if (qboData && qboData.invoices) {
-      const monthInvoices = qboData.invoices.filter(invoice => {
+      const monthInvoices = qboData.invoices.filter((invoice) => {
         const txnDateStr = invoice.TxnDate
         return txnDateStr >= format(startDate, 'yyyy-MM-dd') && txnDateStr <= format(endDate, 'yyyy-MM-dd')
       })
 
-      monthInvoices.forEach(invoice => {
+      monthInvoices.forEach((invoice) => {
         const rawClientName = invoice.CustomerRef?.name || 'Unknown Client'
         const clientName = this.resolveClientName(rawClientName)
         const amount = invoice.TotalAmt || 0
@@ -1062,33 +1046,37 @@ class RevenueCalculator {
     // Process QBO journal entries
     if (qboData && qboData.journalEntries) {
       // Filter to only include entries with unearned revenue accounts
-      const monthJournalEntries = qboData.journalEntries.filter(entry => {
+      const monthJournalEntries = qboData.journalEntries.filter((entry) => {
         const txnDateStr = entry.TxnDate
-        const hasUnearnedAccount = entry.Line?.some(line => {
+        const hasUnearnedAccount = entry.Line?.some((line) => {
           const accountName = line.JournalEntryLineDetail?.AccountRef?.name?.toLowerCase() || ''
           return accountName.includes('unearned') || accountName.includes('deferred')
         })
-        return txnDateStr >= format(startDate, 'yyyy-MM-dd') &&
+        return (
+          txnDateStr >= format(startDate, 'yyyy-MM-dd') &&
           txnDateStr <= format(endDate, 'yyyy-MM-dd') &&
           hasUnearnedAccount
+        )
       })
 
       // Process each journal entry to determine client attribution
-      monthJournalEntries.forEach(entry => {
+      monthJournalEntries.forEach((entry) => {
         const lines = entry.Line || []
         let revenueAmount = 0
         let revenueLines = []
 
         // First pass: collect all revenue lines and calculate total revenue
-        lines.forEach(line => {
+        lines.forEach((line) => {
           const accountRef = line.JournalEntryLineDetail?.AccountRef
           const postingType = line.JournalEntryLineDetail?.PostingType
           const lineEntity = line.JournalEntryLineDetail?.Entity
           const accountName = accountRef?.name?.toLowerCase() || ''
 
           // Look for revenue accounts - match account number (^4\d{3}) or name contains revenue/income
-          const isRevenueAccount = accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
-            !accountName.includes('unearned') && !accountName.includes('deferred')
+          const isRevenueAccount =
+            accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
+            !accountName.includes('unearned') &&
+            !accountName.includes('deferred')
 
           if (isRevenueAccount) {
             const amount = line.Amount || 0
@@ -1106,7 +1094,7 @@ class RevenueCalculator {
             revenueLines.push({
               entity: lineEntity?.name || '',
               description: line.Description || '',
-              amount: lineRevenueAmount
+              amount: lineRevenueAmount,
             })
           }
         })
@@ -1118,20 +1106,18 @@ class RevenueCalculator {
         let matchedClient = 'N/A'
 
         // Priority 1: Check if any revenue line has an entity (customer) reference
-        const entityNames = revenueLines
-          .map(line => line.entity)
-          .filter(entity => entity && entity !== '')
+        const entityNames = revenueLines.map((line) => line.entity).filter((entity) => entity && entity !== '')
 
         if (entityNames.length > 0) {
           // Use the first entity found and resolve it
           const rawClientName = entityNames[0]
-          const allDescriptions = revenueLines.map(l => l.description).join(' ')
+          const allDescriptions = revenueLines.map((l) => l.description).join(' ')
           matchedClient = this.resolveClientName(rawClientName, allDescriptions)
         } else {
           // Priority 2: No entity reference, try to match based on description/private note
           const revenueDescriptions = revenueLines
-            .map(line => line.description)
-            .filter(desc => desc)
+            .map((line) => line.description)
+            .filter((desc) => desc)
             .join(' ')
           const searchText = `${revenueDescriptions} ${entry.PrivateNote || ''}`
 
@@ -1151,12 +1137,12 @@ class RevenueCalculator {
 
     // Process QBO delayed charges
     if (qboData && qboData.delayedCharges) {
-      const monthDelayedCharges = qboData.delayedCharges.filter(charge => {
+      const monthDelayedCharges = qboData.delayedCharges.filter((charge) => {
         const txnDateStr = charge.TxnDate
         return txnDateStr >= format(startDate, 'yyyy-MM-dd') && txnDateStr <= format(endDate, 'yyyy-MM-dd')
       })
 
-      monthDelayedCharges.forEach(charge => {
+      monthDelayedCharges.forEach((charge) => {
         const rawClientName = charge.CustomerRef?.name || 'Unknown Client'
         const clientName = this.resolveClientName(rawClientName)
         const amount = charge.TotalAmt || 0
@@ -1173,16 +1159,16 @@ class RevenueCalculator {
 
       // Check invoices from previous month for monthly recurring revenue per client
       if (qboData.invoices) {
-        const previousMonthInvoices = qboData.invoices.filter(invoice => {
+        const previousMonthInvoices = qboData.invoices.filter((invoice) => {
           const txnDate = new Date(invoice.TxnDate)
           return txnDate >= previousMonthStart && txnDate <= previousMonthEnd
         })
 
-        previousMonthInvoices.forEach(invoice => {
+        previousMonthInvoices.forEach((invoice) => {
           const lines = invoice.Line || []
           let monthlyAmount = 0
 
-          lines.forEach(line => {
+          lines.forEach((line) => {
             const accountRef = line.SalesItemLineDetail?.AccountRef || line.AccountBasedExpenseLineDetail?.AccountRef
             const itemRef = line.SalesItemLineDetail?.ItemRef
 
@@ -1207,22 +1193,23 @@ class RevenueCalculator {
 
       // Check journal entries from previous month for monthly recurring revenue per client
       if (qboData.journalEntries) {
-        const previousMonthEntries = qboData.journalEntries.filter(entry => {
+        const previousMonthEntries = qboData.journalEntries.filter((entry) => {
           const txnDate = new Date(entry.TxnDate)
           return txnDate >= previousMonthStart && txnDate <= previousMonthEnd
         })
 
-        previousMonthEntries.forEach(entry => {
+        previousMonthEntries.forEach((entry) => {
           const lines = entry.Line || []
 
-          lines.forEach(line => {
+          lines.forEach((line) => {
             const accountRef = line.JournalEntryLineDetail?.AccountRef
 
             // Look for revenue accounts with "monthly" in the name
-            if (accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
+            if (
+              accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
               accountRef?.name?.toLowerCase().includes('monthly') &&
-              !accountRef?.name?.toLowerCase().includes('unearned')) {
-
+              !accountRef?.name?.toLowerCase().includes('unearned')
+            ) {
               const lineAmount = line.Amount || 0
               const lineEntity = line.JournalEntryLineDetail?.Entity
 
@@ -1231,7 +1218,7 @@ class RevenueCalculator {
               const description = line.Description || entry.PrivateNote || ''
               const clientName = rawClientName
                 ? this.resolveClientName(rawClientName, description)
-                : (this.matchClientFromText(description) || 'Journal Entries')
+                : this.matchClientFromText(description) || 'Journal Entries'
 
               addToClient(clientName, lineAmount)
             }
@@ -1244,7 +1231,7 @@ class RevenueCalculator {
     if (pipedriveData && pipedriveData.wonUnscheduledDeals) {
       const monthStr = format(monthDate, 'yyyy-MM')
 
-      pipedriveData.wonUnscheduledDeals.forEach(deal => {
+      pipedriveData.wonUnscheduledDeals.forEach((deal) => {
         const startDateStr = deal.projectStartDate || deal.wonTime || deal.expectedCloseDate
         if (!startDateStr) return
 
@@ -1270,7 +1257,7 @@ class RevenueCalculator {
     if (includeWeightedSales && pipedriveData && pipedriveData.openDeals) {
       const monthStr = format(monthDate, 'yyyy-MM')
 
-      pipedriveData.openDeals.forEach(deal => {
+      pipedriveData.openDeals.forEach((deal) => {
         if (!deal.expectedCloseDate) return
 
         const expectedCloseDate = new Date(deal.expectedCloseDate + 'T00:00:00')
@@ -1284,7 +1271,7 @@ class RevenueCalculator {
           const projectMonthStr = format(projectMonth, 'yyyy-MM')
 
           if (projectMonthStr === monthStr) {
-            const baseWeightedValue = deal.weightedValue || (deal.value * (deal.probability || 0) / 100)
+            const baseWeightedValue = deal.weightedValue || (deal.value * (deal.probability || 0)) / 100
             const monthlyWeightedValue = baseWeightedValue / duration
             const rawClientName = deal.orgName || 'Unknown Client'
             const clientName = this.resolveClientName(rawClientName)
@@ -1299,7 +1286,7 @@ class RevenueCalculator {
     return Object.entries(clientTotals)
       .map(([client, total]) => ({
         client,
-        total: Math.round(total)
+        total: Math.round(total),
       }))
       .sort((a, b) => b.total - a.total)
   }
@@ -1312,23 +1299,22 @@ class RevenueCalculator {
       assets: [],
       liabilities: [],
       receivables: null,
-      monthlyExpenses: 0
+      monthlyExpenses: 0,
     }
 
     try {
       // Get asset accounts (only Checking, Savings, UndepositedFunds)
       const accounts = await this.qbo.getAccounts()
 
-      balances.assets = accounts.map(account => ({
+      balances.assets = accounts.map((account) => ({
         id: account.Id,
         name: account.Name,
         type: account.AccountType,
         subType: account.AccountSubType,
         balance: account.CurrentBalance || 0,
         accountNumber: account.AcctNum || null,
-        last_updated: new Date().toISOString()
+        last_updated: new Date().toISOString(),
       }))
-
     } catch (error) {
       console.error('[Revenue Calculator] Error getting asset accounts:', error)
     }
@@ -1337,16 +1323,15 @@ class RevenueCalculator {
       // Get liability accounts
       const liabilityAccounts = await this.qbo.getLiabilityAccounts()
 
-      balances.liabilities = liabilityAccounts.map(account => ({
+      balances.liabilities = liabilityAccounts.map((account) => ({
         id: account.Id,
         name: account.Name,
         type: account.AccountType,
         subType: account.AccountSubType,
         balance: account.CurrentBalance || 0,
         accountNumber: account.AcctNum || null,
-        last_updated: new Date().toISOString()
+        last_updated: new Date().toISOString(),
       }))
-
     } catch (error) {
       console.error('[Revenue Calculator] Error getting liability accounts:', error)
     }
@@ -1378,7 +1363,7 @@ class RevenueCalculator {
         const cutoffDate = format(addDays(new Date(), 30), 'yyyy-MM-dd')
 
         // Filter delayed charges up to 30 days from now
-        const upcomingCharges = (effectiveQBOData.delayedCharges || []).filter(charge => {
+        const upcomingCharges = (effectiveQBOData.delayedCharges || []).filter((charge) => {
           return charge.TxnDate <= cutoffDate
         })
 
@@ -1391,10 +1376,7 @@ class RevenueCalculator {
         const cutoffDate = format(addDays(new Date(), 30), 'yyyy-MM-dd')
         const historicalStart = '2020-01-01'
 
-        const historicalQBOData = await this.fetchAllQBOData(
-          new Date(historicalStart),
-          new Date(cutoffDate)
-        )
+        const historicalQBOData = await this.fetchAllQBOData(new Date(historicalStart), new Date(cutoffDate))
 
         const allHistoricalCharges = historicalQBOData.delayedCharges || []
 
@@ -1402,7 +1384,6 @@ class RevenueCalculator {
           return sum + (charge.TotalAmt || 0)
         }, 0)
       }
-
     } catch (error) {
       console.error('[Revenue Calculator] Error calculating 30-days unbilled:', error)
       balances.thirtyDaysUnbilled = 0
@@ -1440,7 +1421,6 @@ class RevenueCalculator {
       }
 
       balances.yearUnbilled = oneYearTotal
-
     } catch (error) {
       console.error('[Revenue Calculator] Error calculating 1-year unbilled:', error)
       balances.yearUnbilled = 0

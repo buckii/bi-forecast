@@ -49,7 +49,7 @@
                         'px-2 py-1 text-xs font-semibold rounded',
                         line.JournalEntryLineDetail.PostingType === 'Debit'
                           ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-                          : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                          : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
                       ]"
                     >
                       {{ line.JournalEntryLineDetail.PostingType }}
@@ -114,7 +114,10 @@
         </div>
 
         <!-- Revenue Impact -->
-        <div v-if="revenueImpact" class="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+        <div
+          v-if="revenueImpact"
+          class="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800"
+        >
           <div class="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">Revenue Impact</div>
           <div class="text-sm text-blue-800 dark:text-blue-200">
             {{ revenueImpact.description }}
@@ -149,7 +152,12 @@
         >
           <span>View in QuickBooks</span>
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+            />
           </svg>
         </a>
         <div class="flex space-x-3">
@@ -159,9 +167,7 @@
           >
             Delete Entry
           </button>
-          <button @click="$emit('close')" class="btn-secondary">
-            Close
-          </button>
+          <button @click="$emit('close')" class="btn-secondary">Close</button>
         </div>
       </div>
     </div>
@@ -175,28 +181,32 @@ import { formatCurrencyCents as formatCurrency } from '../lib/format.js'
 const props = defineProps({
   entry: {
     type: Object,
-    required: true
-  }
+    required: true,
+  },
 })
 
 defineEmits(['close', 'delete'])
 
 const totalDebits = computed(() => {
-  return props.entry.Line?.reduce((sum, line) => {
-    if (line.JournalEntryLineDetail?.PostingType === 'Debit') {
-      return sum + (line.Amount || 0)
-    }
-    return sum
-  }, 0) || 0
+  return (
+    props.entry.Line?.reduce((sum, line) => {
+      if (line.JournalEntryLineDetail?.PostingType === 'Debit') {
+        return sum + (line.Amount || 0)
+      }
+      return sum
+    }, 0) || 0
+  )
 })
 
 const totalCredits = computed(() => {
-  return props.entry.Line?.reduce((sum, line) => {
-    if (line.JournalEntryLineDetail?.PostingType === 'Credit') {
-      return sum + (line.Amount || 0)
-    }
-    return sum
-  }, 0) || 0
+  return (
+    props.entry.Line?.reduce((sum, line) => {
+      if (line.JournalEntryLineDetail?.PostingType === 'Credit') {
+        return sum + (line.Amount || 0)
+      }
+      return sum
+    }, 0) || 0
+  )
 })
 
 const isBalanced = computed(() => {
@@ -205,7 +215,7 @@ const isBalanced = computed(() => {
 
 const revenueImpact = computed(() => {
   // Find unearned revenue line
-  const unearnedLine = props.entry.Line?.find(line => {
+  const unearnedLine = props.entry.Line?.find((line) => {
     const accountName = line.JournalEntryLineDetail?.AccountRef?.name?.toLowerCase() || ''
     return accountName.includes('unearned') || accountName.includes('deferred')
   })
@@ -217,10 +227,9 @@ const revenueImpact = computed(() => {
   const isDebit = unearnedLine.JournalEntryLineDetail.PostingType === 'Debit'
 
   return {
-    description: `${month}: ${isDebit ? '+' : '-'}${formatCurrency(amount)} (${isDebit ? 'Recognizes' : 'Defers'} revenue)`
+    description: `${month}: ${isDebit ? '+' : '-'}${formatCurrency(amount)} (${isDebit ? 'Recognizes' : 'Defers'} revenue)`,
   }
 })
-
 
 function formatDate(dateStr) {
   if (!dateStr) return 'N/A'
@@ -228,7 +237,7 @@ function formatDate(dateStr) {
   return new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
   }).format(date)
 }
 
@@ -240,7 +249,7 @@ function formatDateTime(dateStr) {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
-    minute: '2-digit'
+    minute: '2-digit',
   }).format(date)
 }
 </script>

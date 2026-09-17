@@ -20,17 +20,14 @@ exports.handler = createHandler(
     const revenueResult = await calculator.calculateMonthlyRevenue(FORECAST_MONTHS, FORECAST_START_OFFSET)
     const months = revenueResult.months || revenueResult
 
-    const [exceptions, balances] = await Promise.all([
-      calculator.getExceptions(),
-      calculator.getBalances(months)
-    ])
+    const [exceptions, balances] = await Promise.all([calculator.getExceptions(), calculator.getBalances(months)])
 
     await upsertTodaysArchive(company._id, { months, exceptions, balances })
 
     // Background: the response should not wait on 6 months of prefetching.
     prefetchTransactionDetails(company._id, todayDate())
-      .then(result => console.log(`[QBO Refresh] Prefetched ${result.monthsCached} months`))
-      .catch(err => console.error('[QBO Refresh] Prefetch failed:', err))
+      .then((result) => console.log(`[QBO Refresh] Prefetched ${result.monthsCached} months`))
+      .catch((err) => console.error('[QBO Refresh] Prefetch failed:', err))
 
     return {
       message: 'QuickBooks data refreshed successfully',
@@ -39,8 +36,8 @@ exports.handler = createHandler(
         totalTime: Date.now() - startTime,
         monthsCalculated: months.length,
         balanceAccounts: balances.assets?.length || 0,
-        monthlyExpenses: balances.monthlyExpenses || 0
-      }
+        monthlyExpenses: balances.monthlyExpenses || 0,
+      },
     }
-  }
+  },
 )

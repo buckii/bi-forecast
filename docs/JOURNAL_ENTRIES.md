@@ -20,6 +20,7 @@ Journal entries are one of the 6 revenue components tracked by the system:
 ### Data Flow
 
 1. **Fetching**: Journal entries are fetched from QuickBooks using the `getJournalEntries()` method in [quickbooks.js:140-147](../netlify/functions/services/quickbooks.js#L140-L147)
+
    ```javascript
    const query = `SELECT * FROM JournalEntry WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}' ORDER BY TxnDate DESC`
    ```
@@ -37,6 +38,7 @@ Journal entries are one of the 6 revenue components tracked by the system:
 Journal entries in this system are primarily used for **Unearned Revenue** management.
 
 **Key Account Numbers** (from real system data):
+
 - **Unearned Revenue**: Account #246
 - **Project Income - Points**: Account #342
 - **Recurring Income - Support**: Account #341
@@ -45,27 +47,33 @@ Journal entries in this system are primarily used for **Unearned Revenue** manag
 These are configured in Company Settings and can be changed per company.
 
 #### Pattern 1: Revenue Shifting (Single Month)
+
 When work is performed in one month but invoiced in another (or vice versa), we create a pair of journal entries:
 
 **Entry 1 (Invoice Month)** - Remove revenue:
+
 - Debit: Project Revenue - Points
 - Credit: Unearned Revenue
 
 **Entry 2 (Work Month)** - Add revenue:
+
 - Debit: Unearned Revenue
 - Credit: Project Revenue - Points
 
 This effectively moves revenue from the invoice month to the work month.
 
 #### Pattern 2: Revenue Spreading (Multiple Months)
+
 When a client prepays for a year of services, we spread the invoice amount across 12 months:
 
 **Initial Entry (Invoice Date)** - Defer revenue:
+
 - Amount: `ceil(invoice_amount / 12) * 12` (rounded up to nearest cent)
 - Debit: Project Revenue - Points
 - Credit: Unearned Revenue
 
 **Monthly Recognition Entries** (1st of each subsequent month for 11 months):
+
 - Amount: `ceil(invoice_amount / 12)` per month
 - Debit: Unearned Revenue
 - Credit: Project Revenue - Points
@@ -84,6 +92,7 @@ See [transaction-details.js:306-333](../netlify/functions/transaction-details.js
 ### Display in Transaction Details
 
 Journal entries are displayed with complete detail including:
+
 - All line items (both debit and credit)
 - Account names and numbers
 - Posting types (Debit/Credit)
@@ -204,6 +213,7 @@ Note: First entry amount may need to be adjusted to $120,000 - (11 × $10,000) t
 ### Revenue Account Patterns
 
 The system recognizes revenue accounts using these patterns:
+
 - Account names starting with "4" followed by 3 digits (e.g., "4100", "4200")
 - Account names containing "revenue" (case insensitive)
 - Account names containing "income" (case insensitive)
@@ -213,11 +223,13 @@ The system recognizes revenue accounts using these patterns:
 ### Unearned Revenue Accounts
 
 Unearned Revenue is a liability account used to track:
+
 - Prepaid amounts not yet earned
 - Revenue deferred to future periods
 - Amounts invoiced but not yet recognized
 
 Common account names:
+
 - "2100 - Unearned Revenue"
 - "Unearned Revenue - Projects"
 - "Deferred Revenue"
@@ -226,13 +238,16 @@ Common account names:
 ## Best Practices
 
 ### 1. Always Use Pairs for Shifting
+
 When shifting revenue between months, always create two journal entries:
+
 - One to remove revenue from the source month
 - One to add revenue to the target month
 
 This maintains the audit trail and ensures the entries are reversible.
 
 ### 2. Include Descriptive Notes
+
 - **Use identical descriptions for paired entries** (makes matching easy)
 - Format: "[Client Name] - invoiced [Month], completed [Month]"
 - Use the Description field on EVERY line (not just PrivateNote)
@@ -243,18 +258,23 @@ This maintains the audit trail and ensures the entries are reversible.
   - "MRCPL 24pts invoiced Sept, done Oct"
 
 ### 3. Link to Source Documents
+
 Reference the original invoice or transaction in the journal entry description:
+
 - "Per Invoice #1234"
 - "Related to delayed charge DC-2024-11-15"
 - "Annual contract - Invoice #5678"
 
 ### 4. Use Consistent Dates
+
 - **Shifting backward**: Use the last day of the target month for the recognition entry
 - **Shifting forward**: Use the first day of the target month
 - **Spreading**: Use the 1st of each month for recognition entries
 
 ### 5. Round Carefully
+
 When spreading amounts across multiple months:
+
 - Use `Math.ceil()` for monthly amounts to avoid underbilling
 - Adjust the first or last entry to ensure totals match exactly
 - Verify: Total Debits = Total Credits = Original Invoice Amount
@@ -262,10 +282,13 @@ When spreading amounts across multiple months:
 ## Viewing Journal Entries
 
 ### In Revenue Dashboard
+
 Journal entries appear as the **second component** in the stacked bar chart, contributing to the total monthly revenue.
 
 ### In Transaction Details Modal
+
 Click any month's journal entry section to see:
+
 - Individual journal entry transactions
 - Client attribution
 - Full line item details
@@ -273,7 +296,9 @@ Click any month's journal entry section to see:
 - Match source (entity reference or description match)
 
 ### In Balances Page
+
 Unearned Revenue accounts are displayed in the **Liability Accounts** section, showing:
+
 - Current balance
 - Account type and subtype
 - Last updated timestamp
@@ -281,11 +306,13 @@ Unearned Revenue accounts are displayed in the **Liability Accounts** section, s
 ## Related Files
 
 ### Backend Services
+
 - [quickbooks.js](../netlify/functions/services/quickbooks.js) - Fetches journal entries from QBO API
 - [revenue-calculator.js](../netlify/functions/services/revenue-calculator.js) - Processes journal entries for revenue calculation
 - [transaction-details.js](../netlify/functions/transaction-details.js) - Provides detailed journal entry views
 
 ### Frontend Components
+
 - [Dashboard.vue](../src/views/Dashboard.vue) - Displays journal entries in revenue chart
 - [TransactionDetailsModal.vue](../src/components/TransactionDetailsModal.vue) - Shows journal entry details
 - [Balances.vue](../src/views/Balances.vue) - Displays unearned revenue balances
@@ -293,6 +320,7 @@ Unearned Revenue accounts are displayed in the **Liability Accounts** section, s
 ## Future Enhancements
 
 See [REQUIREMENTS.md - Phase 4](../REQUIREMENTS.md) for planned journal entry creation tool features:
+
 - Create revenue deferral entries from UI
 - Automatic reversal on specified dates
 - Templates for common patterns (shifting, spreading)

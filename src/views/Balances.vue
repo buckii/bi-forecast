@@ -19,16 +19,24 @@
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
             <thead>
               <tr>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th
+                  class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                >
                   Account Name
                 </th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th
+                  class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                >
                   Type
                 </th>
-                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th
+                  class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                >
                   Balance
                 </th>
-                <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th
+                  class="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                >
                   Last Updated
                 </th>
               </tr>
@@ -41,8 +49,10 @@
                 <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   {{ account.subType }}
                 </td>
-                <td class="px-4 py-2 whitespace-nowrap text-sm text-right" 
-                    :class="account.balance >= 0 ? 'text-gray-900 dark:text-gray-100' : 'text-red-600'">
+                <td
+                  class="px-4 py-2 whitespace-nowrap text-sm text-right"
+                  :class="account.balance >= 0 ? 'text-gray-900 dark:text-gray-100' : 'text-red-600'"
+                >
                   {{ formatCurrency(account.balance) }}
                 </td>
                 <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center">
@@ -51,7 +61,7 @@
               </tr>
             </tbody>
           </table>
-          
+
           <!-- Asset Total -->
           <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
             <div class="flex justify-between items-center">
@@ -88,16 +98,24 @@
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
             <thead>
               <tr>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th
+                  class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                >
                   Account Name
                 </th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th
+                  class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                >
                   Type
                 </th>
-                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th
+                  class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                >
                   Balance
                 </th>
-                <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th
+                  class="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                >
                   Last Updated
                 </th>
               </tr>
@@ -119,7 +137,7 @@
               </tr>
             </tbody>
           </table>
-          
+
           <!-- Liability Total -->
           <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
             <div class="flex justify-between items-center">
@@ -130,9 +148,10 @@
             </div>
           </div>
         </div>
-        <p v-else class="text-gray-500 dark:text-gray-400">No NotesPayable or Unearned Revenue accounts with non-zero balance found</p>
+        <p v-else class="text-gray-500 dark:text-gray-400">
+          No NotesPayable or Unearned Revenue accounts with non-zero balance found
+        </p>
       </div>
-      
     </div>
   </AppLayout>
 </template>
@@ -151,9 +170,8 @@ const balances = computed(() => revenueStore.balances)
 
 // Use the store's selectedDate for syncing across pages
 const selectedDateStr = computed({
-  get: () => revenueStore.isHistorical && revenueStore.selectedDate
-    ? format(revenueStore.selectedDate, 'yyyy-MM-dd')
-    : '',
+  get: () =>
+    revenueStore.isHistorical && revenueStore.selectedDate ? format(revenueStore.selectedDate, 'yyyy-MM-dd') : '',
   set: (value) => {
     if (value) {
       revenueStore.selectedDate = new Date(value)
@@ -164,7 +182,7 @@ const selectedDateStr = computed({
       revenueStore.isHistorical = false
       revenueStore.loadRevenueData()
     }
-  }
+  },
 })
 
 const assetTotalExcludingAR = computed(() => {
@@ -180,23 +198,23 @@ const assetTotal = computed(() => {
 
 const filteredLiabilities = computed(() => {
   if (!balances.value?.liabilities) return []
-  
-  return balances.value.liabilities.filter(account => {
+
+  return balances.value.liabilities.filter((account) => {
     // Only show accounts with non-zero balance
     if (!account.balance || account.balance === 0) return false
-    
+
     // Show NotesPayable accounts
     if (account.subType === 'NotesPayable') return true
-    
+
     // Show Credit Card accounts
     if (account.subType === 'CreditCard') return true
-    
+
     // Show Line of Credit accounts
     if (account.subType === 'LineOfCredit') return true
-    
+
     // Show accounts with "Unearned Revenue" in the name (case insensitive)
     if (account.name && account.name.toLowerCase().includes('unearned revenue')) return true
-    
+
     return false
   })
 })
@@ -205,12 +223,10 @@ const liabilityTotal = computed(() => {
   return filteredLiabilities.value.reduce((sum, account) => sum - Math.abs(account.balance || 0), 0)
 })
 
-
 function formatDate(date) {
   if (!date) return ''
   return format(parseISO(date), 'MMM dd, yyyy')
 }
-
 
 onMounted(() => {
   if (!revenueStore.revenueData.length) {
