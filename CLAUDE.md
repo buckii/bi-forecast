@@ -190,6 +190,8 @@ Two endpoints post to the channel in `SLACK_CHANNEL_ID` using `services/slack.js
 - 50 blocks per message → at most `MAX_LISTED_CLIENTS` (100) clients are listed individually; the rest become an overflow line
 - `text` is the notification/fallback string and is **required** even when `blocks` is supplied
 
+**Deep links**: the shared message links back to the live view using the Dashboard's existing modal params — `modalMonth` + `modalTab=clients` for a single month, `modalStart`/`modalEnd` for a range, plus `date` for the as-of. `Dashboard.vue`'s `onMounted` restores them and the modal's `getInitialTab()` reads `modalTab` at setup. Do **not** use `exportStart`/`exportEnd` for this: that branch calls `handleExportDetail()`, which ignores the query values and auto-exports a CSV.
+
 Clients below `threshold` (default $3,000) collapse into one rollup line, so the listed lines plus the rollup always reconcile against the stated total. The frontend sends `sortedClients`, which already reflects the modal's active type filters, so Slack matches what is on screen rather than a re-query.
 
 `postBlocks()` and `uploadFile()` both use the existing `chat:write` / `files:write` scopes — adding Block Kit needed no re-auth. Note that `SLACK_CHANNEL_ID` is a single hardcoded channel; anything more sensitive than the current internal channel needs channel routing first.
