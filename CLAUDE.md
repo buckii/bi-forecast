@@ -32,6 +32,9 @@ npm run deploy          # Build and deploy to Netlify production
 - **State Management**: Pinia stores in `src/stores/`
 - **Routing**: Vue Router with auth guards in `src/router/`
 - **Composables**: Reusable logic in `src/composables/` (e.g., `useDataRefresh`, `useToast`)
+- **Formatters**: `src/lib/format.js` holds the only copies of `formatCurrency`,
+  `formatCurrencyCents`, `formatPercent` and the date formatters. Import them; never
+  redefine one in a component.
 
 ### Backend (Netlify Functions)
 - **Location**: `netlify/functions/`
@@ -41,6 +44,37 @@ npm run deploy          # Build and deploy to Netlify production
   - `quickbooks.js` - QB API wrapper with caching
   - `pipedrive.js` - Pipedrive API wrapper
   - `transaction-details-cache.js` - Prefetching service
+  - `archives.js` - Reads and writes `revenue_archives`, keyed by UTC midnight
+  - `journal-entries.js` - Builds shift and spread entries
+  - `journal-entry-pairs.js` - Detects revenue-shift pairs
+  - `qb-accounts.js` - Classifies QB journal entry lines as unearned or revenue
+- **Utils**: `netlify/functions/utils/`
+  - `handler.js` - `createHandler`, the wrapper every endpoint uses
+  - `dates.js` - UTC date-only helpers
+  - `format.js` - Currency and percent formatting for function output
+  - `google-token.js` - Google ID token verification
+  - `auth.js`, `database.js`, `encryption.js`, `response.js`, `env-validation.js`
+
+### Writing a function
+
+Every endpoint goes through `createHandler`, which owns the CORS preflight, the method
+check, authentication, the role check, JSON body parsing, and error mapping:
+
+```javascript
+const { createHandler, HttpError } = require('./utils/handler.js')
+
+exports.handler = createHandler(
+  { methods: 'POST', role: 'admin', errorMessage: 'Failed to add user' },
+  async ({ user, company, body, query }) => {
+    if (!body.email) throw new HttpError('Email is required', 400)
+    return { message: 'Done' }
+  }
+)
+```
+
+Return the payload to wrap in `success()`, or a full response object to pass through.
+Throw `HttpError` for a controlled status. A service can tag its own error with
+`err.statusCode` and the wrapper honors it.
 
 ### Database (MongoDB)
 Collections:
@@ -65,29 +99,28 @@ api.get(`/endpoint?date=${dateStr}`)
 api.get(`/endpoint?date=${date.toISOString()}`)
 ```
 
-Backend parsing:
+Backend parsing goes through `utils/dates.js`. Do not hand-roll it:
 ```javascript
-// Parse YYYY-MM-DD as UTC midnight to avoid timezone issues
-const [year, month, day] = dateStr.split('-').map(Number)
-const date = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0))
+const { parseDate, toDateString, monthStartString, addDays } = require('./utils/dates.js')
+
+parseDate('2026-09-16')            // UTC midnight
+toDateString(date)                 // 'YYYY-MM-DD', UTC components
+monthStartString('2026-01-31', 1)  // '2026-02-01', never rolls a short month forward
 ```
 
-**CRITICAL**: When creating journal entries or manipulating dates for QuickBooks:
+Archive and cache documents are keyed by UTC midnight (`startOfDay`, `todayDate`). Local-time
+`setHours(0, 0, 0, 0)` agrees with that only because Lambda runs in UTC, and disagrees on a
+developer's machine.
+
+**CRITICAL**: journal entry dates must land on the 1st of the month. Use `monthStartString`:
 ```javascript
-// ✅ CORRECT - Use UTC methods exclusively, always use day 1
-const [year, month, day] = recognitionStartDate.split('-').map(Number);
-const recognitionDate = new Date(Date.UTC(year, month - 1, 1)); // Start with first day
-recognitionDate.setUTCMonth(recognitionDate.getUTCMonth() + i); // Add months in UTC
+// ✅ CORRECT
+const dateStr = monthStartString(recognitionStartDate, i); // 'YYYY-MM-01'
 
-// Format as YYYY-MM-01 (always first day of month)
-const finalYear = recognitionDate.getUTCFullYear();
-const finalMonth = String(recognitionDate.getUTCMonth() + 1).padStart(2, '0');
-const dateStr = `${finalYear}-${finalMonth}-01`;
-
-// ❌ WRONG - Local timezone + setMonth() causes date shifts
-const recognitionDate = new Date(recognitionStartDate); // Local timezone
-recognitionDate.setMonth(recognitionDate.getMonth() + i); // Can cause day shifts
-const dateStr = recognitionDate.toISOString().split('T')[0]; // UTC conversion shifts dates
+// ❌ WRONG - local timezone plus setMonth() shifts the day
+const recognitionDate = new Date(recognitionStartDate);
+recognitionDate.setMonth(recognitionDate.getMonth() + i);
+const dateStr = recognitionDate.toISOString().split('T')[0];
 ```
 
 ### API Optimization (Rate Limiting)
@@ -109,7 +142,10 @@ const balances = await calculator.getBalances(
 )
 ```
 
-**QuickBooks Pagination**: The QB API returns max 100 results per query. Use pagination for journal entries:
+**QuickBooks Pagination**: The QB API returns max 100 results per query. Use
+`qbo.getJournalEntries(startDate, endDate, maxPages)` rather than querying directly; a single
+query silently truncates at 100 and hides shift pairs whose other half falls on a later page.
+It paginates like this:
 ```javascript
 const allEntries = []
 const pageSize = 100
@@ -128,6 +164,13 @@ for (let page = 0; page < maxPages; page++) {
 - **Development**: `BYPASS_AUTH_LOCALHOST=true` skips auth on localhost
 - **Production**: JWT tokens with 7-day expiry
 - **OAuth Tokens**: AES-encrypted in MongoDB using `ENCRYPTION_KEY`
+- **Google sign-in**: `utils/google-token.js` verifies the ID token against Google's published
+  signing keys before any claim is read. Decoding a token does not check its signature, so the
+  issuer, audience and expiry are attacker-controlled until `jwt.verify` has run.
+- **`JWT_SECRET`**: required, with no fallback value. A missing secret throws rather than
+  signing sessions with a known string.
+- A disconnected integration returns **424**, not 401, so the client shows the message instead
+  of logging the user out.
 
 ### Revenue Calculation Components
 6 components make up monthly revenue (in order):
@@ -157,24 +200,13 @@ Source 2 is why an unaliased client still groups correctly. `loadClientNames()` 
 
 Unmatched entries fall back to `'Journal Entries'` in the by-client totals and `'N/A'` in the transaction-details modal. Call `loadClientNames()` alongside `loadClientAliases()` in any new entry point that attributes journal entries.
 
-**Journal Entry Filtering**: Only include entries with unearned/deferred revenue accounts:
+**Journal Entry Filtering**: account classification lives in `services/qb-accounts.js` so the
+calculator and the endpoints cannot drift apart:
 ```javascript
-// Filter for entries with unearned revenue accounts
-const filteredEntries = journalEntries.filter(entry => {
-  return entry.Line?.some(line => {
-    const accountName = line.JournalEntryLineDetail?.AccountRef?.name?.toLowerCase() || ''
-    return accountName.includes('unearned') || accountName.includes('deferred')
-  })
-})
+const { hasUnearnedRevenue, isRevenueLine, revenueAmount } = require('./services/qb-accounts.js')
 
-// Calculate revenue amount (Credits positive, Debits negative)
-const isRevenueAccount = accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
-  !accountName.includes('unearned') && !accountName.includes('deferred')
-
-if (isRevenueAccount) {
-  if (postingType === 'Credit') amount += lineAmount
-  else if (postingType === 'Debit') amount -= lineAmount
-}
+const entries = allEntries.filter(hasUnearnedRevenue)
+const amount = revenueAmount(entry) // credits to revenue add, debits subtract
 ```
 
 ### Slack Sharing
@@ -210,7 +242,7 @@ Clients below `threshold` (default $3,000) collapse into one rollup line, so the
 - `qbo-*.js` - QuickBooks OAuth flow
 - `scheduled-*.js` - Cron jobs (daily archive at 3am ET)
 - `share-*.js` - Slack sharing endpoints
-- `utils/` - Shared utilities (auth, database, response helpers)
+- `utils/` - Shared utilities (handler wrapper, auth, dates, format, database, responses)
 - `services/` - Business logic (keep functions thin, logic in services)
 
 ### Frontend
@@ -250,11 +282,22 @@ Required for local development (see `.env.example`):
 
 5. **Debouncing**: Refresh operations have 20-second debounce. Date inputs have 1-second debounce before loading data.
 
-6. **Journal entry dates**: All auto-generated journal entries MUST be on the 1st of the month. Use UTC date methods exclusively when creating entries to avoid timezone shifts. See the Date Handling section for proper UTC usage.
+6. **Journal entry dates**: All auto-generated journal entries MUST be on the 1st of the month. Build them with `monthStartString` from `utils/dates.js`. See the Date Handling section.
 
 7. **Points divisor**: Use `company.settings.pricePerPoint` (default 550), never a hardcoded divisor, so point counts agree across the modals and the Slack share.
 
 8. **Fallback mode**: If revenue calculator is in fallback mode (archive exists but has no QB data), Pipedrive refresh will NOT update the archive to preserve QB data integrity. Run QB Refresh first to get fresh QuickBooks data.
+
+9. **Spread recognition must reconcile**: the recognition entries have to total the deferral
+   exactly. The final month absorbs the rounding remainder
+   (`deferralAmount - monthlyAmount * (monthsToDefer - 1)`); computing it from the invoice total
+   instead leaves cents stranded in unearned revenue on every uneven division.
+
+10. **Month parameters accept two shapes**: `revenue-by-client` and `transaction-details` take
+    either `YYYY-MM` or `YYYY-MM-DD`. The single-month path passes the caller's value straight
+    through, because the prefetch cache keys single months as `YYYY-MM-01` and normalizing to a
+    month key would miss every cached entry.
+
 
 ## Architecture Decisions
 

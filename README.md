@@ -88,7 +88,7 @@ The application calculates monthly revenue from 6 components:
    ```
    MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority
    MONGODB_DB_NAME=bi-forecast
-   JWT_SECRET=your-super-secret-jwt-key
+   JWT_SECRET=a-long-random-string-at-least-32-characters
    ENCRYPTION_KEY=your-super-secret-encryption-key
    GOOGLE_CLIENT_ID=your-google-oauth-client-id.apps.googleusercontent.com
    QBO_CLIENT_ID=your-quickbooks-client-id
@@ -96,9 +96,18 @@ The application calculates monthly revenue from 6 components:
    QBO_REDIRECT_URI=http://localhost:8888/.netlify/functions/qbo-oauth-callback
    URL=http://localhost:8888
 
+   # Optional - extra origins allowed to call the functions (comma separated).
+   # Defaults to URL alone, and to '*' when neither is set.
+   ALLOWED_ORIGINS=
+
+   # Optional - return error details in responses. Off in production by default.
+   EXPOSE_ERROR_DETAILS=false
+
    # Development only - bypass auth on localhost (NEVER use in production!)
    BYPASS_AUTH_LOCALHOST=true
    ```
+
+   `JWT_SECRET` has no fallback value. A function that needs it fails loudly when it is missing.
 
 5. **Start development server using Netlify**
    ```bash
@@ -242,7 +251,7 @@ This allows secure HTTPS access to your local development server for webhook tes
 - Enhanced transaction details with comprehensive invoice breakdowns
 
 #### Authentication & Security
-- Google SSO with domain validation
+- Google SSO with domain validation, verifying the ID token signature against Google's published keys
 - JWT token management with secure storage
 - Encrypted OAuth tokens in MongoDB
 - Company-level data isolation
@@ -342,10 +351,12 @@ This allows secure HTTPS access to your local development server for webhook tes
 
 ## Security
 
-- JWT-based authentication with 7-day expiry
+- Google ID tokens are verified against Google's published signing keys (`utils/google-token.js`)
+- JWT-based authentication with 7-day expiry; `JWT_SECRET` is required and has no fallback
 - Encrypted OAuth tokens in database using AES encryption
 - Domain-based company isolation
-- CORS protection on all endpoints
+- Responses are limited to `ALLOWED_ORIGINS`, or the site's own `URL` when that is unset
+- Error details are logged but withheld from responses in production
 - Input validation and sanitization
 - Rate limiting (handled by Netlify)
 
