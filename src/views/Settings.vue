@@ -491,6 +491,7 @@ import { useRevenueStore } from '../stores/revenue'
 import { useDarkMode } from '../composables/useDarkMode'
 import { useDataRefresh } from '../composables/useDataRefresh'
 import { useToast } from '../composables/useToast'
+import { useClientAliases } from '../composables/useClientAliases.js'
 import AppLayout from '../components/AppLayout.vue'
 import ToastContainer from '../components/ToastContainer.vue'
 
@@ -498,6 +499,17 @@ const authStore = useAuthStore()
 const revenueStore = useRevenueStore()
 const { isDarkMode, toggleDarkMode } = useDarkMode()
 const toast = useToast()
+
+const {
+  clientAliases,
+  sortedClientAliases,
+  editingClientId,
+  toggleClientEdit,
+  addNewClient,
+  deleteClient,
+  saveIndividualClient,
+  loadClientAliases,
+} = useClientAliases(toast)
 const {
   refreshingQBO,
   refreshingPipedrive,
@@ -527,11 +539,6 @@ const editableTargetNetMargin = ref(20)
 const editableMonthlyExpensesOverride = ref(null)
 const editablePricePerPoint = ref(550)
 
-const clientAliases = ref([])
-const originalClientAliases = ref([])
-const editingClientId = ref(null)
-let nextClientId = 0
-
 // Journal Entry Accounts
 const editingJournalAccounts = ref(false)
 const loadingJournalAccounts = ref(false)
@@ -552,11 +559,6 @@ const availableUnearnedAccounts = ref([])
 
 // Don't use computed - just reference clientAliases directly
 // We'll sort once on load instead of reactively
-const sortedClientAliases = computed(() => {
-  // Return unsorted list to prevent jumping while editing
-  return clientAliases.value
-})
-
 const company = computed(() => authStore.company)
 
 async function connectQBO() {
@@ -706,128 +708,6 @@ async function checkConnectionStatus() {
     }
   } catch (error) {
     // Connection status check failed - ignore silently
-  }
-}
-
-function toggleClientEdit(clientId) {
-  if (editingClientId.value === clientId) {
-    editingClientId.value = null
-  } else {
-    editingClientId.value = clientId
-  }
-}
-
-function addNewClient() {
-  const newClient = {
-    _id: nextClientId++,
-    primaryName: '',
-    aliases: '',
-  }
-  // Add to the top of the list so it appears right under the "Add Client" button
-  clientAliases.value.unshift(newClient)
-  editingClientId.value = newClient._id
-}
-
-async function deleteClient(clientId) {
-  try {
-    // Find and remove the client
-    const actualIndex = clientAliases.value.findIndex((c) => c._id === clientId)
-
-    if (actualIndex !== -1) {
-      clientAliases.value.splice(actualIndex, 1)
-    }
-
-    // Close editing panel
-    editingClientId.value = null
-
-    // Save all remaining clients
-    await saveAllClientAliases()
-    toast.success('Client deleted successfully')
-  } catch (error) {
-    console.error('Error deleting client:', error)
-    toast.error('Failed to delete client: ' + error.message)
-  }
-}
-
-async function saveIndividualClient(clientId) {
-  try {
-    const client = clientAliases.value.find((c) => c._id === clientId)
-
-    if (!client || !client.primaryName.trim()) {
-      toast.warning('Please enter a primary client name')
-      return
-    }
-
-    // Save all clients (backend replaces all at once)
-    await saveAllClientAliases()
-
-    editingClientId.value = null
-    toast.success('Client saved successfully')
-  } catch (error) {
-    console.error('Error saving client:', error)
-    toast.error('Failed to save client: ' + error.message)
-  }
-}
-
-async function saveAllClientAliases() {
-  // Transform comma-separated aliases string into array
-  const aliasesData = clientAliases.value
-    .filter((c) => c.primaryName.trim()) // Only include clients with a primary name
-    .map((c) => ({
-      primaryName: c.primaryName.trim(),
-      aliases: c.aliases
-        .split(',')
-        .map((a) => a.trim())
-        .filter((a) => a), // Split, trim, remove empties
-    }))
-
-  const response = await fetch('/.netlify/functions/settings', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${authStore.token}`,
-    },
-    body: JSON.stringify({
-      clientAliases: aliasesData,
-    }),
-  })
-
-  if (!response.ok) {
-    const errorData = await response.json()
-    throw new Error(errorData.message || 'Failed to save client aliases')
-  }
-
-  // Reload to get fresh data
-  await loadClientAliases()
-}
-
-async function loadClientAliases() {
-  try {
-    const response = await fetch('/.netlify/functions/client-aliases', {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${authStore.token}`,
-      },
-    })
-
-    if (response.ok) {
-      const data = await response.json()
-      // Transform array of aliases back to comma-separated string for display
-      // Assign unique IDs for tracking and sort alphabetically once
-      const clients = data.data.clientAliases.map((c) => ({
-        _id: nextClientId++,
-        primaryName: c.primaryName,
-        aliases: c.aliases.join(', '),
-      }))
-
-      // Sort once on load
-      clients.sort((a, b) => a.primaryName.localeCompare(b.primaryName, undefined, { sensitivity: 'base' }))
-
-      clientAliases.value = clients
-      originalClientAliases.value = JSON.parse(JSON.stringify(clientAliases.value))
-    }
-  } catch (error) {
-    console.error('Error loading client aliases:', error)
   }
 }
 
