@@ -653,6 +653,7 @@ import { useTransactionDetails } from '../composables/useTransactionDetails.js'
 import { sortClients, sortTransactions, useTypeFilter } from '../composables/useTypeFilter.js'
 import { useClientPieChart } from '../composables/useClientPieChart.js'
 import { useClientRevenueShare } from '../composables/useClientRevenueShare.js'
+import { useJournalEntryActions } from '../composables/useJournalEntryActions.js'
 import JournalEntryBulkEditModal from './JournalEntryBulkEditModal.vue'
 import JournalEntryCreateModal from './JournalEntryCreateModal.vue'
 import JournalEntryDetailModal from './JournalEntryDetailModal.vue'
@@ -748,22 +749,27 @@ const {
   closeShareModal,
 } = useClientRevenueShare({ props, clients: sortedClients, pieChartImage })
 
+const {
+  showJournalEntryCreateModal,
+  journalEntryPrefillData,
+  selectedJournalEntry,
+  showBulkEditModal,
+  bulkEditEntryId,
+  journalEntryAccounts,
+  loadJournalEntryAccounts,
+  createJournalEntryFromTransaction,
+  editJournalEntry,
+  closeJournalEntryCreateModal,
+  handleJournalEntryCreated,
+  handleJournalEntryUpdated,
+  handleJournalEntryDeleted,
+} = useJournalEntryActions(() => loadDetails())
+
 const sharedClientCount = computed(
   () => sortedClients.value.filter((c) => (c.total || 0) >= props.shareThreshold).length,
 )
 
 // Journal Entry Modal State
-const showJournalEntryCreateModal = ref(false)
-const journalEntryPrefillData = ref(null)
-const selectedJournalEntry = ref(null)
-const showBulkEditModal = ref(false)
-const bulkEditEntryId = ref(null)
-const journalEntryAccounts = ref({
-  revenue: [],
-  unearned: [],
-})
-
-// Sorting state for Transactions tab
 const {
   enabledTypes,
   sortBy,
@@ -1025,119 +1031,6 @@ watch(activeTab, (newTab) => {
 })
 
 // Load journal entry accounts
-async function loadJournalEntryAccounts() {
-  try {
-    const response = await fetch('/.netlify/functions/journal-entry-accounts', {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${authStore.token}`,
-      },
-    })
-
-    if (!response.ok) {
-      throw new Error('Failed to load journal entry accounts')
-    }
-
-    const data = await response.json()
-    journalEntryAccounts.value = {
-      revenue: data.data.revenueAccounts || [],
-      unearned: data.data.unearnedRevenueAccounts || [],
-    }
-  } catch (err) {
-    console.error('Error loading journal entry accounts:', err)
-  }
-}
-
-// Show create journal entry modal with prefilled data
-async function createJournalEntryFromTransaction(transaction) {
-  // Load accounts if not already loaded
-  if (journalEntryAccounts.value.revenue.length === 0) {
-    await loadJournalEntryAccounts()
-  }
-
-  // Extract invoice number from description if present
-  const description = transaction.description || ''
-  const invoiceMatch = description.match(/Invoice\s+(\d+)/i)
-  const invoiceNumber = invoiceMatch ? invoiceMatch[1] : ''
-
-  // Set prefill data
-  journalEntryPrefillData.value = {
-    clientName: transaction.customer || '',
-    invoiceNumber: invoiceNumber,
-    amount: transaction.amount || null,
-    invoiceDate: transaction.date || '',
-  }
-
-  // Show modal
-  showJournalEntryCreateModal.value = true
-}
-
-// Show edit journal entry modal
-async function editJournalEntry(transaction) {
-  // If we have an ID, use the bulk edit modal which also handles single entries
-  if (transaction.id) {
-    bulkEditEntryId.value = transaction.id
-    showBulkEditModal.value = true
-    return
-  }
-
-  // Fallback to searching (for legacy data or entries without ID)
-  try {
-    const response = await fetch(`/.netlify/functions/journal-entries-list?view=all`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${authStore.token}`,
-      },
-    })
-
-    if (!response.ok) {
-      throw new Error('Failed to load journal entries')
-    }
-
-    const data = await response.json()
-
-    // Find the journal entry by matching transaction data
-    const entry = data.data.unpaired.find(
-      (e) =>
-        e.TxnDate === transaction.date && Math.abs(parseFloat(e.Line?.[0]?.Amount || 0) - transaction.amount) < 0.01,
-    )
-
-    if (entry) {
-      bulkEditEntryId.value = entry.Id
-      showBulkEditModal.value = true
-    }
-  } catch (err) {
-    console.error('Error loading journal entry:', err)
-  }
-}
-
-// Close journal entry create modal
-function closeJournalEntryCreateModal() {
-  showJournalEntryCreateModal.value = false
-  journalEntryPrefillData.value = null
-}
-
-// Handle journal entry created
-function handleJournalEntryCreated() {
-  closeJournalEntryCreateModal()
-  // Reload transactions
-  loadDetails()
-}
-
-// Handle journal entry updated
-function handleJournalEntryUpdated() {
-  selectedJournalEntry.value = null
-  // Reload transactions
-  loadDetails()
-}
-
-// Handle journal entry deleted
-function handleJournalEntryDeleted() {
-  selectedJournalEntry.value = null
-  // Reload transactions
-  loadDetails()
-}
-
 // Watch for dark mode changes to update chart
 watch(isDarkModeGlobal, () => {
   if (hasPieChart.value && activeTab.value === 'clients') {
