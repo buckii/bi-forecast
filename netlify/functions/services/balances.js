@@ -3,7 +3,7 @@
 //
 // `calculator` supplies the QuickBooks client and the revenue data this needs.
 
-const { addMonths, endOfMonth, format, startOfMonth } = require('date-fns')
+const { addDays, addMonths, format, startOfMonth } = require('date-fns')
 
 async function getBalances(calculator, monthsData = null, qboData = null) {
   // Use cached QBO data if available and not explicitly provided
