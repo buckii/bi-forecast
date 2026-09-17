@@ -1,4 +1,4 @@
-const { startOfMonth, endOfMonth, addMonths, addDays, format, isWithinInterval } = require('date-fns')
+const { startOfMonth, endOfMonth, addMonths, format } = require('date-fns')
 const QuickBooksService = require('./quickbooks.js')
 const PipedriveService = require('./pipedrive.js')
 const { getCollection } = require('../utils/database.js')
@@ -211,8 +211,6 @@ class RevenueCalculator {
     const startMonth = addMonths(startOfMonth(currentDate), startOffset)
     const endMonth = addMonths(startOfMonth(currentDate), startOffset + months - 1)
 
-    const startTime = Date.now()
-
     // Fetch all data in parallel
     const [qboData, pipedriveData] = await Promise.all([
       this.fetchAllQBOData(startMonth, endMonth),
@@ -405,7 +403,6 @@ class RevenueCalculator {
   async calculateMonthComponentsFromCache(monthDate, qboData, pipedriveData, baselineMonthlyRecurring = 0) {
     const startDate = startOfMonth(monthDate)
     const endDate = endOfMonth(monthDate)
-    const monthInterval = { start: startDate, end: endDate }
     const currentMonth = startOfMonth(new Date())
     const isFutureMonth = monthDate > currentMonth
 
@@ -441,15 +438,6 @@ class RevenueCalculator {
         return txnDateStr >= format(startDate, 'yyyy-MM-dd') && txnDateStr <= format(endDate, 'yyyy-MM-dd')
       })
       components.delayedCharges = this.sumDelayedCharges(monthDelayedCharges)
-
-      // Debug logging for December delayed charges
-      if (format(monthDate, 'yyyy-MM') === '2025-12' && monthDelayedCharges.length > 0) {
-        const startDateStr = format(startDate, 'yyyy-MM-dd')
-        const endDateStr = format(endDate, 'yyyy-MM-dd')
-        monthDelayedCharges.forEach((charge) => {
-          const included = charge.TxnDate >= startDateStr && charge.TxnDate <= endDateStr
-        })
-      }
 
       // Calculate monthly recurring ONLY for future months
       if (isFutureMonth) {
@@ -606,8 +594,6 @@ class RevenueCalculator {
     const monthDate = new Date(year, month - 1, day || 1) // Default to 1st if day is missing
 
     // Calculate date range needed for this month
-    const startMonth = startOfMonth(monthDate)
-    const endMonth = endOfMonth(monthDate)
 
     // Load client aliases and known client names before processing
     await Promise.all([this.loadClientAliases(), this.loadClientNames()])

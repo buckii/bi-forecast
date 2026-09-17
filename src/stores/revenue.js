@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import revenueService from '../services/revenue'
-import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns'
+import { format, startOfMonth } from 'date-fns'
 import formulas from '../lib/metrics-formulas.js'
 
 export const useRevenueStore = defineStore('revenue', () => {

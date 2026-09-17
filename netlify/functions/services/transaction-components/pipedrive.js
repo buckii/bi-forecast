@@ -83,7 +83,6 @@ async function getWeightedSalesTransactions(calculator, monthDate, asOf = null) 
     const monthStr = format(monthDate, 'yyyy-MM')
     const transactions = []
 
-    let dealsForMonth = 0
     for (const deal of openDeals) {
       if (!deal.expectedCloseDate) {
         continue
@@ -107,7 +106,6 @@ async function getWeightedSalesTransactions(calculator, monthDate, asOf = null) 
 
         if (projectMonthStr === monthStr) {
           shouldIncludeDeal = true
-          dealsForMonth++
           break
         }
       }

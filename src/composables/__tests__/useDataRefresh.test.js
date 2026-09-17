@@ -445,7 +445,7 @@ describe('useDataRefresh', () => {
     })
 
     it('should handle timestamp updates with revenue store integration', () => {
-      const { updateRefreshTimes, qboLastRefresh, pipedriveLastRefresh } = useDataRefresh()
+      const { updateRefreshTimes, qboLastRefresh } = useDataRefresh()
 
       // Mock revenue store with various timestamp formats
       const mockRevenueStore = useRevenueStore()

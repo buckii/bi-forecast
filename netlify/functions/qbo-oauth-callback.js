@@ -1,5 +1,5 @@
 // Using built-in fetch API
-const { success, error } = require('./utils/response.js')
+const { error } = require('./utils/response.js')
 const { getCollection } = require('./utils/database.js')
 const { encrypt } = require('./utils/encryption.js')
 
@@ -9,7 +9,7 @@ exports.handler = async function (event, context) {
   }
 
   try {
-    const { code, realmId, state, error: oauthError, error_description } = event.queryStringParameters || {}
+    const { code, realmId, error: oauthError, error_description } = event.queryStringParameters || {}
 
     // Check for OAuth errors first
     if (oauthError) {

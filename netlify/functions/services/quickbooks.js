@@ -450,7 +450,6 @@ class QuickBooksService {
             const transactionType = colData[1]?.value || '' // txn_type - Transaction Type
             const docNumber = colData[2]?.value || '' // doc_num - Doc Number
             const customerName = colData[3]?.value || '' // name - Customer Name
-            const salesCust1 = colData[4]?.value || '' // sales_cust1 - Sales Customer 1
             const account = colData[5]?.value || '' // account_name - Account Name
             const category = colData[6]?.value || '' // Category/Item
             const invoiceDate = colData[7]?.value || '' // inv_date - Invoice Date
@@ -570,7 +569,7 @@ class QuickBooksService {
         arRows = reportData.report.Rows
       } else {
         // Try to find any array that might contain data
-        for (const [key, value] of Object.entries(reportData)) {
+        for (const value of Object.values(reportData)) {
           if (Array.isArray(value) && value.length > 0) {
             arRows = value
             break

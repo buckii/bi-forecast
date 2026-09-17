@@ -1,6 +1,5 @@
 import axios from 'axios'
 
-const isDevelopment = import.meta.env.DEV
 const baseURL = '/.netlify/functions'
 
 const api = axios.create({

@@ -85,7 +85,6 @@ async function fetchAllQBOData(calculator, startDate, endDate) {
       const asOfDate = new Date(calculator.archiveDate + 'T23:59:59.999Z')
 
       // Filter invoices by CreateTime
-      const originalInvoiceCount = filteredInvoices.length
       filteredInvoices = filteredInvoices.filter((invoice) => {
         if (invoice.MetaData && invoice.MetaData.CreateTime) {
           const createTime = new Date(invoice.MetaData.CreateTime)
@@ -95,7 +94,6 @@ async function fetchAllQBOData(calculator, startDate, endDate) {
       })
 
       // Filter journal entries by CreateTime
-      const originalJECount = filteredJournalEntries.length
       filteredJournalEntries = filteredJournalEntries.filter((entry) => {
         if (entry.MetaData && entry.MetaData.CreateTime) {
           const createTime = new Date(entry.MetaData.CreateTime)

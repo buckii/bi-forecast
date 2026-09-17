@@ -6,7 +6,6 @@ const { startOfMonth, endOfMonth, format, addMonths } = require('date-fns')
 async function getMonthlyRecurringTransactions(calculator, startDate, endDate, monthDate, asOf = null) {
   const currentMonth = startOfMonth(new Date())
   const isFutureMonth = monthDate > currentMonth
-  const isCurrentMonth = format(monthDate, 'yyyy-MM') === format(currentMonth, 'yyyy-MM')
 
   // For past and current months, monthly recurring should be $0
   // Monthly recurring is only projected for future months
@@ -127,21 +126,6 @@ async function getLatestSourceMonthForMRR(calculator) {
     start: format(previousMonthStart, 'yyyy-MM-dd'),
     end: format(previousMonthEnd, 'yyyy-MM-dd'),
     name: format(previousMonth, 'MMM yyyy'), // Corrected from previousMonthName
-  }
-}
-
-async function calculateBaselineMonthlyRecurringAmount(calculator) {
-  try {
-    const sourceResult = await getLatestSourceMonthForMRR(calculator)
-    const transactions = await getHistoricalMonthlyRecurringTransactions(
-      calculator,
-      sourceResult.start,
-      sourceResult.end,
-    )
-    return transactions.reduce((sum, txn) => sum + (txn.amount || 0), 0)
-  } catch (error) {
-    console.error('Error calculating baseline monthly recurring amount:', error)
-    return 0
   }
 }
 
