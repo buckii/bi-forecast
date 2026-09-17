@@ -45,10 +45,11 @@ The application calculates monthly revenue from 6 components:
 
 ### Backend
 
-- Netlify Functions (serverless)
+- Netlify Functions (serverless), all routed through one `createHandler` wrapper that owns CORS,
+  method and role checks, authentication, body parsing and error mapping
 - MongoDB Atlas for data storage
 - JWT authentication
-- Google SSO integration
+- Google SSO, verified against Google's published signing keys
 - Encrypted OAuth token storage
 
 ### APIs
@@ -376,6 +377,14 @@ This allows secure HTTPS access to your local development server for webhook tes
 - `qbo-test.js` - QuickBooks API testing
 - `qb-raw-data.js` - Raw QuickBooks data analysis
 - `test-september-data.js` - September data validation
+
+## Code Quality
+
+- **Prettier** is the source of truth for formatting: `npm run format`, `npm run format:check`
+- **ESLint** covers what a formatter cannot — a name used but never imported or defined:
+  `npm run lint`
+- **Vitest** for tests: `npm run test:run`. Every view and component has a mount test, because a
+  setup-time error is otherwise invisible to the rest of the suite.
 
 ## Security
 

@@ -4,6 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
+### Code Quality
+
+```bash
+npm run lint             # ESLint: no-undef and unused vars (style is Prettier's job)
+npm run format           # Prettier across the repo
+npm run format:check     # Verify formatting without writing
+```
+
 ### Local Development
 
 ```bash
@@ -36,16 +44,32 @@ npm run deploy          # Build and deploy to Netlify production
 - **State Management**: Pinia stores in `src/stores/`
 - **Routing**: Vue Router with auth guards in `src/router/`
 - **Composables**: Reusable logic in `src/composables/` (e.g., `useDataRefresh`, `useToast`)
-- **Formatters**: `src/lib/format.js` holds the only copies of `formatCurrency`,
-  `formatCurrencyCents`, `formatPercent` and the date formatters. Import them; never
-  redefine one in a component.
+- **Shared modules**: `src/lib/`
+  - `format.js` - the only copies of `formatCurrency`, `formatCurrencyCents`, `formatPercent`,
+    `formatShare` and the date formatters. Import them; never redefine one in a component.
+  - `metrics-formulas.js` - revenue and forecast math (see below)
+  - `transaction-types.js` - the six revenue components: values, labels, colors, filter defaults
+  - `api-fetch.js` - `requestJson`, the hand-rolled fetch path (attach token, unwrap `data`, throw
+    the server's message). Calls through `services/api.js` (axios) additionally redirect to login
+    on a 401; these do not.
+  - `csv.js` - CSV writing that quotes only the fields that need it
+- **Composables**: a view keeps its wiring; the work lives in `src/composables/`. Dashboard uses
+  `useDashboardMetrics`, `useComparison`, `useChartSharing`; the transaction modal uses
+  `useTransactionDetails`, `useTypeFilter`, `useClientPieChart`, `useClientRevenueShare`,
+  `useJournalEntryActions`; Settings uses `useClientAliases`, `useJournalAccountSettings`,
+  `useCompanySettings`.
 
 ### Backend (Netlify Functions)
 
 - **Location**: `netlify/functions/`
 - **Style**: CommonJS (not ES modules) for AWS Lambda compatibility
 - **Services**: Shared business logic in `netlify/functions/services/`
-  - `revenue-calculator.js` - Core revenue calculation engine
+  - `revenue-calculator.js` - Orchestrates a revenue calculation; the pieces below do the work
+  - `revenue-sources.js` - Fetches the raw QuickBooks and Pipedrive data
+  - `revenue-components.js` - The six revenue components as pure functions
+  - `client-breakdown.js` - One month's revenue split by client
+  - `balances.js` - Cash, receivables ageing, expenses, unbilled windows
+  - `transaction-components/` - Transaction-level detail per component, behind one dispatch map
   - `quickbooks.js` - QB API wrapper with caching
   - `pipedrive.js` - Pipedrive API wrapper
   - `transaction-details-cache.js` - Prefetching service
@@ -278,10 +302,15 @@ Clients below `threshold` (default $3,000) collapse into one rollup line, so the
 
 Tests use Vitest + Vue Test Utils. Run `npm run test:ui` for the best experience.
 
-Key test files:
+- `src/**/__tests__/*.test.js` - component, view, store and composable tests
+- `netlify/functions/**/__tests__/*.test.js` - backend tests. These are ESM (`import`), even though
+  the code under test is CommonJS; `require('vitest')` does not work under Vitest.
+- `views-mount.test.js` and `components-mount.test.js` mount every view and component. Nothing else
+  mounts most of them, so a setup-time error is otherwise invisible to the suite.
 
-- `src/**/__tests__/*.test.js` - Component/store tests
-- `netlify/functions/utils/__tests__/*.test.js` - Backend utility tests
+Verifying a backend refactor against real data: with `npm run dev` running, snapshot the read
+endpoints before and after and diff them. That is how the revenue calculator was split without
+changing a number.
 
 ## Important Environment Variables
 
