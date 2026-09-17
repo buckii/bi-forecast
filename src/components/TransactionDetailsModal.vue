@@ -644,6 +644,7 @@ import { ArrowDownTrayIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import { format as formatDate, parseISO } from 'date-fns'
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { formatCurrency, formatShare } from '../lib/format.js'
+import { downloadCsv, toCsv } from '../lib/csv.js'
 import { TRANSACTION_TYPES, transactionTypeColor, transactionTypeLabel } from '../lib/transaction-types.js'
 import { useRoute, useRouter } from 'vue-router'
 import { isDarkModeGlobal } from '../composables/useDarkMode'
@@ -972,41 +973,23 @@ function formatRelativeTime(dateStr) {
   }
 }
 
+const CSV_HEADERS = ['Type', 'Doc #', 'Date', 'Client (Raw)', 'Client (Normalized)', 'Description', 'Amount']
+
 function exportToCSV() {
   if (allTransactions.value.length === 0) return
 
-  // Define headers
-  const headers = ['Type', 'Doc #', 'Date', 'Client (Raw)', 'Client (Normalized)', 'Description', 'Amount']
+  const rows = allTransactions.value.map((txn) => [
+    transactionTypeLabel(txn.type),
+    txn.docNumber || '',
+    txn.date || '',
+    txn.clientRaw || txn.customer || '',
+    txn.clientNormalized || txn.customer || '',
+    txn.description || '',
+    txn.amount || 0,
+  ])
 
-  // Format rows
-  const rows = allTransactions.value.map((txn) => {
-    return [
-      transactionTypeLabel(txn.type),
-      txn.docNumber || '',
-      txn.date || '',
-      `"${(txn.clientRaw || txn.customer || '').replace(/"/g, '""')}"`, // Quote and escape quotes
-      `"${(txn.clientNormalized || txn.customer || '').replace(/"/g, '""')}"`,
-      `"${(txn.description || '').replace(/"/g, '""')}"`,
-      txn.amount || 0,
-    ].join(',')
-  })
-
-  // Combine headers and rows
-  const csvContent = [headers.join(','), ...rows].join('\n')
-
-  // Create blob and download link
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.setAttribute('href', url)
-  link.setAttribute(
-    'download',
-    `transaction_details_${props.startDate || props.month}${props.endDate ? '_to_' + props.endDate : ''}.csv`,
-  )
-  link.style.visibility = 'hidden'
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
+  const range = props.endDate ? `_to_${props.endDate}` : ''
+  downloadCsv(`transaction_details_${props.startDate || props.month}${range}.csv`, toCsv(CSV_HEADERS, rows))
 }
 
 function formatPoints(value) {
