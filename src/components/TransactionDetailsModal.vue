@@ -732,40 +732,6 @@ const expandedTransactions = ref(new Set())
 const expandedClients = ref(new Set())
 const pieCanvas = ref(null)
 
-const {
-  draw: createPieChart,
-  destroy: destroyPieChart,
-  toImage: pieChartImage,
-  hasChart: hasPieChart,
-} = useClientPieChart({ canvas: pieCanvas, clients: sortedClients, total: clientTotalRevenue })
-
-const {
-  sharingToSlack,
-  showShareModal,
-  shareModalState,
-  shareModalError,
-  shareModalErrorDetails,
-  shareSuccessMessage,
-  shareClientsToSlack,
-  closeShareModal,
-} = useClientRevenueShare({ props, clients: sortedClients, pieChartImage })
-
-const {
-  showJournalEntryCreateModal,
-  journalEntryPrefillData,
-  selectedJournalEntry,
-  showBulkEditModal,
-  bulkEditEntryId,
-  journalEntryAccounts,
-  loadJournalEntryAccounts,
-  createJournalEntryFromTransaction,
-  editJournalEntry,
-  closeJournalEntryCreateModal,
-  handleJournalEntryCreated,
-  handleJournalEntryUpdated,
-  handleJournalEntryDeleted,
-} = useJournalEntryActions(() => loadDetails())
-
 const sharedClientCount = computed(
   () => sortedClients.value.filter((c) => (c.total || 0) >= props.shareThreshold).length,
 )
@@ -814,6 +780,40 @@ const sortedClients = computed(() => {
 const clientTotalRevenue = computed(() => {
   return sortedClients.value.reduce((sum, c) => sum + c.total, 0)
 })
+
+const {
+  draw: createPieChart,
+  destroy: destroyPieChart,
+  toImage: pieChartImage,
+  hasChart: hasPieChart,
+} = useClientPieChart({ canvas: pieCanvas, clients: sortedClients, total: clientTotalRevenue })
+
+const {
+  sharingToSlack,
+  showShareModal,
+  shareModalState,
+  shareModalError,
+  shareModalErrorDetails,
+  shareSuccessMessage,
+  shareClientsToSlack,
+  closeShareModal,
+} = useClientRevenueShare({ props, clients: sortedClients, pieChartImage })
+
+const {
+  showJournalEntryCreateModal,
+  journalEntryPrefillData,
+  selectedJournalEntry,
+  showBulkEditModal,
+  bulkEditEntryId,
+  journalEntryAccounts,
+  loadJournalEntryAccounts,
+  createJournalEntryFromTransaction,
+  editJournalEntry,
+  closeJournalEntryCreateModal,
+  handleJournalEntryCreated,
+  handleJournalEntryUpdated,
+  handleJournalEntryDeleted,
+} = useJournalEntryActions(() => loadDetails())
 
 function getClientTransactions(clientName) {
   if (!allTransactions.value) return []
