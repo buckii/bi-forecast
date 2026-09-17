@@ -652,6 +652,7 @@ import { useRevenueStore } from '../stores/revenue'
 import { useTransactionDetails } from '../composables/useTransactionDetails.js'
 import { sortClients, sortTransactions, useTypeFilter } from '../composables/useTypeFilter.js'
 import { useClientPieChart } from '../composables/useClientPieChart.js'
+import { useClientRevenueShare } from '../composables/useClientRevenueShare.js'
 import JournalEntryBulkEditModal from './JournalEntryBulkEditModal.vue'
 import JournalEntryCreateModal from './JournalEntryCreateModal.vue'
 import JournalEntryDetailModal from './JournalEntryDetailModal.vue'
@@ -736,12 +737,16 @@ const {
   hasChart: hasPieChart,
 } = useClientPieChart({ canvas: pieCanvas, clients: sortedClients, total: clientTotalRevenue })
 
-const sharingToSlack = ref(false)
-const showShareModal = ref(false)
-const shareModalState = ref('loading')
-const shareModalError = ref('')
-const shareModalErrorDetails = ref('')
-const shareSuccessMessage = ref('')
+const {
+  sharingToSlack,
+  showShareModal,
+  shareModalState,
+  shareModalError,
+  shareModalErrorDetails,
+  shareSuccessMessage,
+  shareClientsToSlack,
+  closeShareModal,
+} = useClientRevenueShare({ props, clients: sortedClients, pieChartImage })
 
 const sharedClientCount = computed(
   () => sortedClients.value.filter((c) => (c.total || 0) >= props.shareThreshold).length,
@@ -1001,93 +1006,6 @@ function exportToCSV() {
 function formatPoints(value) {
   const points = value / pricePerPoint.value
   return points.toFixed(1)
-}
-
-function closeShareModal() {
-  showShareModal.value = false
-}
-
-/**
- * Share the client breakdown to Slack as a Block Kit message (real, selectable
- * text) with the pie chart attached as a thread reply - a rasterized table would
- * have to be zoomed to read.
- */
-async function shareClientsToSlack() {
-  if (!sortedClients.value.length) return
-
-  shareModalState.value = 'loading'
-  shareModalError.value = ''
-  shareModalErrorDetails.value = ''
-  showShareModal.value = true
-  sharingToSlack.value = true
-
-  try {
-    // Capture the pie chart straight off the Chart.js canvas - no html2canvas
-    // needed, since we only want the chart and not the surrounding table
-    const imageData = pieChartImage()
-
-    // Deep link back to this exact view, using the modal params the Dashboard
-    // restores on mount (modalMonth/modalTab for a single month, modalStart/
-    // modalEnd for a range), so the recipient lands on this client list
-    const params = new URLSearchParams()
-    if (props.asOf) params.append('date', props.asOf)
-    if (props.month) {
-      params.append('modalMonth', props.month)
-      params.append('modalTab', 'clients')
-    } else if (props.startDate && props.endDate) {
-      params.append('modalStart', props.startDate)
-      params.append('modalEnd', props.endDate)
-      params.append('modalTab', 'clients')
-    }
-    const appUrl = `${window.location.origin}/?${params.toString()}`
-
-    const response = await fetch('/.netlify/functions/share-client-revenue', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${authStore.token}`,
-      },
-      body: JSON.stringify({
-        // sortedClients reflects the active type filters, so Slack gets exactly
-        // what is on screen
-        clients: sortedClients.value,
-        month: props.month || null,
-        startDate: props.startDate || null,
-        endDate: props.endDate || null,
-        asOf: props.asOf || null,
-        includeWeightedSales: revenueStore.includeWeightedSales,
-        threshold: props.shareThreshold,
-        appUrl,
-        imageData,
-      }),
-    })
-
-    const responseData = await response.json()
-
-    if (!response.ok) {
-      throw new Error(responseData.message || `HTTP ${response.status}: ${response.statusText}`)
-    }
-
-    const data = responseData.data || responseData
-    const parts = [
-      `Shared ${data.namedCount} ${data.namedCount === 1 ? 'client' : 'clients'} at or above ${formatCurrency(props.shareThreshold)}`,
-    ]
-    if (data.rolledUpCount > 0) {
-      parts.push(`${data.rolledUpCount} smaller ${data.rolledUpCount === 1 ? 'client' : 'clients'} rolled up`)
-    }
-    if (imageData && !data.chartShared) {
-      parts.push('the chart could not be attached')
-    }
-    shareSuccessMessage.value = `${parts.join(', ')}.`
-    shareModalState.value = 'success'
-  } catch (err) {
-    console.error('Failed to share client revenue to Slack:', err)
-    shareModalState.value = 'error'
-    shareModalError.value = err.message || 'An unexpected error occurred'
-    shareModalErrorDetails.value = err.stack || ''
-  } finally {
-    sharingToSlack.value = false
-  }
 }
 
 // Watch for tab changes to create/destroy pie chart, save preference, and update URL
