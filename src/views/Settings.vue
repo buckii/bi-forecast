@@ -493,6 +493,7 @@ import { useDataRefresh } from '../composables/useDataRefresh'
 import { useToast } from '../composables/useToast'
 import { useClientAliases } from '../composables/useClientAliases.js'
 import { useJournalAccountSettings } from '../composables/useJournalAccountSettings.js'
+import { useCompanySettings } from '../composables/useCompanySettings.js'
 import AppLayout from '../components/AppLayout.vue'
 import ToastContainer from '../components/ToastContainer.vue'
 
@@ -524,6 +525,27 @@ const {
   cancelJournalAccountsEdit,
   getAccountName,
 } = useJournalAccountSettings(toast)
+
+const {
+  editingCompany,
+  editableCompanyName,
+  editingFinancials,
+  targetNetMargin,
+  monthlyExpensesOverride,
+  pricePerPoint,
+  editableTargetNetMargin,
+  editableMonthlyExpensesOverride,
+  editablePricePerPoint,
+  qboConnected,
+  pipedriveConnected,
+  showPipedriveModal,
+  pipedriveApiKey,
+  saveCompanyInfo,
+  saveFinancialSettings,
+  checkConnectionStatus,
+  connectQBO,
+  savePipedriveKey,
+} = useCompanySettings((message) => alert(message))
 const {
   refreshingQBO,
   refreshingPipedrive,
@@ -535,139 +557,13 @@ const {
   refreshPipedrive: baseRefreshPipedrive,
 } = useDataRefresh()
 
-const showPipedriveModal = ref(false)
-const pipedriveApiKey = ref('')
 const archiveRetentionDays = ref(365)
-
-const qboConnected = ref(false)
-const pipedriveConnected = ref(false)
-
-const editingCompany = ref(false)
-const editableCompanyName = ref('')
-
-const editingFinancials = ref(false)
-const targetNetMargin = ref(20)
-const monthlyExpensesOverride = ref(null)
-const pricePerPoint = ref(550)
-const editableTargetNetMargin = ref(20)
-const editableMonthlyExpensesOverride = ref(null)
-const editablePricePerPoint = ref(550)
 
 // Journal Entry Accounts
 const company = computed(() => authStore.company)
 
-async function connectQBO() {
-  try {
-    const response = await fetch('/.netlify/functions/qbo-oauth-start', {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${authStore.token}`,
-      },
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || 'Failed to start QuickBooks OAuth')
-    }
-
-    const data = await response.json()
-
-    // Redirect to QuickBooks OAuth
-    window.location.href = data.data.authUrl
-  } catch (error) {
-    console.error('Error starting QuickBooks OAuth:', error)
-    alert('Failed to connect QuickBooks: ' + error.message)
-  }
-}
-
 function disconnectQBO() {
   // This would disconnect QBO
-}
-
-async function savePipedriveKey() {
-  try {
-    const response = await fetch('/.netlify/functions/pipedrive-connect', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${authStore.token}`,
-      },
-      body: JSON.stringify({ apiKey: pipedriveApiKey.value }),
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || 'Failed to save Pipedrive key')
-    }
-
-    showPipedriveModal.value = false
-    pipedriveApiKey.value = ''
-    await checkConnectionStatus()
-  } catch (error) {
-    console.error('Error saving Pipedrive key:', error)
-    alert('Failed to save Pipedrive key: ' + error.message)
-  }
-}
-
-async function saveCompanyInfo() {
-  try {
-    const response = await fetch('/.netlify/functions/company-update', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${authStore.token}`,
-      },
-      body: JSON.stringify({
-        name: editableCompanyName.value,
-      }),
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || 'Failed to update company info')
-    }
-
-    // Update the auth store with the new company info
-    await authStore.fetchCurrentUser()
-    editingCompany.value = false
-  } catch (error) {
-    console.error('Error saving company info:', error)
-    alert('Failed to save company information: ' + error.message)
-  }
-}
-
-async function saveFinancialSettings() {
-  try {
-    const response = await fetch('/.netlify/functions/company-update', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${authStore.token}`,
-      },
-      body: JSON.stringify({
-        targetNetMargin: editableTargetNetMargin.value,
-        monthlyExpensesOverride: editableMonthlyExpensesOverride.value || null,
-        pricePerPoint: editablePricePerPoint.value,
-      }),
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || 'Failed to update financial settings')
-    }
-
-    // Update local values
-    targetNetMargin.value = editableTargetNetMargin.value
-    monthlyExpensesOverride.value = editableMonthlyExpensesOverride.value || null
-    pricePerPoint.value = editablePricePerPoint.value
-    editingFinancials.value = false
-
-    // Update the auth store with the new company info
-    await authStore.fetchCurrentUser()
-  } catch (error) {
-    console.error('Error saving financial settings:', error)
-    alert('Failed to save financial settings: ' + error.message)
-  }
 }
 
 // Wrapper functions to add Settings-specific error handling
@@ -684,25 +580,6 @@ async function refreshPipedrive() {
     await baseRefreshPipedrive()
   } catch (error) {
     alert('Failed to refresh Pipedrive data: ' + error.message)
-  }
-}
-
-async function checkConnectionStatus() {
-  try {
-    const response = await fetch('/.netlify/functions/settings-status', {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${authStore.token}`,
-      },
-    })
-
-    if (response.ok) {
-      const data = await response.json()
-      pipedriveConnected.value = data.data.pipedrive.connected
-      qboConnected.value = data.data.quickbooks.connected
-    }
-  } catch (error) {
-    // Connection status check failed - ignore silently
   }
 }
 
