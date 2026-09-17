@@ -1247,9 +1247,19 @@ async function shareClientsToSlack() {
       ? pieChartInstance.toBase64Image('image/png', 1.0)
       : null
 
-    // Deep link back to this exact month/as-of so anyone can open the live list
-    const params = new URLSearchParams({ month: props.month })
+    // Deep link back to this exact view, using the modal params the Dashboard
+    // restores on mount (modalMonth/modalTab for a single month, modalStart/
+    // modalEnd for a range), so the recipient lands on this client list
+    const params = new URLSearchParams()
     if (props.asOf) params.append('date', props.asOf)
+    if (props.month) {
+      params.append('modalMonth', props.month)
+      params.append('modalTab', 'clients')
+    } else if (props.startDate && props.endDate) {
+      params.append('modalStart', props.startDate)
+      params.append('modalEnd', props.endDate)
+      params.append('modalTab', 'clients')
+    }
     const appUrl = `${window.location.origin}/?${params.toString()}`
 
     const response = await fetch('/.netlify/functions/share-client-revenue', {
@@ -1262,7 +1272,9 @@ async function shareClientsToSlack() {
         // sortedClients reflects the active type filters, so Slack gets exactly
         // what is on screen
         clients: sortedClients.value,
-        month: props.month,
+        month: props.month || null,
+        startDate: props.startDate || null,
+        endDate: props.endDate || null,
         asOf: props.asOf || null,
         includeWeightedSales: revenueStore.includeWeightedSales,
         threshold: props.shareThreshold,

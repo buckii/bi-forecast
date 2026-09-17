@@ -34,13 +34,31 @@ function monthLabel(month) {
   }
 }
 
+function dayLabel(dateStr) {
+  try {
+    return format(parse(dateStr, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy')
+  } catch (err) {
+    return dateStr
+  }
+}
+
+/**
+ * The modal has two modes: a single month, or a date range ("Show Detail").
+ * Label whichever one produced the breakdown.
+ */
+function periodLabel({ month, startDate, endDate }) {
+  if (month) return monthLabel(month)
+  if (startDate && endDate) return `${dayLabel(startDate)} – ${dayLabel(endDate)}`
+  return 'Selected period'
+}
+
 /**
  * Build the Block Kit payload for a client revenue breakdown.
  *
  * Named clients are listed individually; everything below the threshold is rolled
  * up into a single line so the totals still reconcile without listing every client.
  */
-function buildBlocks({ clients, month, asOf, includeWeightedSales, threshold, pricePerPoint, companyName, appUrl }) {
+function buildBlocks({ clients, month, startDate, endDate, asOf, includeWeightedSales, threshold, pricePerPoint, companyName, appUrl }) {
   const sorted = [...clients].sort((a, b) => (b.total || 0) - (a.total || 0))
   const total = sorted.reduce((sum, c) => sum + (c.total || 0), 0)
 
@@ -53,7 +71,7 @@ function buildBlocks({ clients, month, asOf, includeWeightedSales, threshold, pr
   const restTotal = rest.reduce((sum, c) => sum + (c.total || 0), 0)
 
   const points = value => (value / pricePerPoint).toFixed(1)
-  const label = monthLabel(month)
+  const label = periodLabel({ month, startDate, endDate })
 
   const contextParts = [
     asOf ? `As of ${format(parse(asOf, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy')}` : 'As of today',
@@ -158,7 +176,9 @@ exports.handler = async function (event, context) {
     const body = JSON.parse(event.body || '{}')
     const {
       clients,
-      month,
+      month = null,
+      startDate = null,
+      endDate = null,
       asOf = null,
       includeWeightedSales = true,
       threshold = 3000,
@@ -170,8 +190,11 @@ exports.handler = async function (event, context) {
       return error('Client data is required', 400)
     }
 
-    if (!month || !/^\d{4}-\d{2}-\d{2}$/.test(month)) {
-      return error('Invalid month format. Use YYYY-MM-DD', 400)
+    const isDate = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+
+    // The modal shares either a single month or a date range ("Show Detail")
+    if (!isDate(month) && !(isDate(startDate) && isDate(endDate))) {
+      return error('Provide either month or startDate and endDate as YYYY-MM-DD', 400)
     }
 
     const pricePerPoint = company.settings?.pricePerPoint || 550
@@ -179,6 +202,8 @@ exports.handler = async function (event, context) {
     const { blocks, fallback, total, namedCount, rolledUpCount } = buildBlocks({
       clients,
       month,
+      startDate,
+      endDate,
       asOf,
       includeWeightedSales,
       threshold,
@@ -208,7 +233,7 @@ exports.handler = async function (event, context) {
         await slack.uploadFile(
           imageBuffer,
           filename,
-          `Client Revenue — ${monthLabel(month)}`,
+          `Client Revenue — ${periodLabel({ month, startDate, endDate })}`,
           null,
           message.ts
         )

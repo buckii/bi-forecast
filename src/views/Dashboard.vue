@@ -1565,6 +1565,15 @@ onMounted(async () => {
         component: ''
       }
       showTransactionModal.value = true
+    } else if (route.query.modalStart && route.query.modalEnd) {
+      // Shared range link - open the modal on that range without auto-exporting
+      selectedTransaction.value = {
+        month: '',
+        startDate: route.query.modalStart,
+        endDate: route.query.modalEnd,
+        component: ''
+      }
+      showTransactionModal.value = true
     } else if (route.query.exportStart && route.query.exportEnd) {
       // Auto-open for export
       handleExportDetail()

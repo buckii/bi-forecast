@@ -120,6 +120,30 @@ describe('share-client-revenue buildBlocks', () => {
     expect(fallback).toBe('Client Revenue — August 2026: $54,350 across 5 clients')
   })
 
+  it('labels a date range when no single month is given', () => {
+    const { blocks, fallback } = buildBlocks({
+      ...base,
+      month: null,
+      startDate: '2026-08-01',
+      endDate: '2026-10-31',
+      clients
+    })
+
+    expect(textOf(blocks)).toContain('Client Revenue — Aug 1, 2026 – Oct 31, 2026')
+    expect(fallback).toContain('Aug 1, 2026 – Oct 31, 2026')
+  })
+
+  it('prefers the month label when both month and range are present', () => {
+    const { blocks } = buildBlocks({
+      ...base,
+      startDate: '2026-08-01',
+      endDate: '2026-10-31',
+      clients
+    })
+
+    expect(textOf(blocks)).toContain('Client Revenue — August 2026')
+  })
+
   it('omits the deep link when no app URL is given', () => {
     const { blocks } = buildBlocks({ ...base, clients, appUrl: null })
     expect(textOf(blocks)).not.toContain('Open the full breakdown')
