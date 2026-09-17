@@ -601,6 +601,8 @@ import StatusModal from '../components/StatusModal.vue'
 import TransactionDetailsModal from '../components/TransactionDetailsModal.vue'
 import { isDarkModeGlobal } from '../composables/useDarkMode'
 import { useDataRefresh } from '../composables/useDataRefresh'
+import { formatDays, useDashboardMetrics } from '../composables/useDashboardMetrics.js'
+import { calculateChange, useComparison } from '../composables/useComparison.js'
 import revenueService from '../services/revenue'
 import { useAuthStore } from '../stores/auth'
 import { useRevenueStore } from '../stores/revenue'
@@ -637,14 +639,57 @@ const getInitialCompareDate = () => {
 const selectedDateStr = ref(getInitialDate())
 const compareAsOfDate = ref(getInitialCompareDate())
 
+const {
+  effectiveMonthlyExpenses,
+  targetNetMargin,
+  thisMonthProfit,
+  thisMonthMargin,
+  threeMonthProfit,
+  threeMonthMargin,
+  selectedMonthKey,
+  forecastStartMonthKey,
+  daysCash,
+  daysCashPlusAR,
+  elapsedDays,
+  daysOfWork,
+  twelveMonthsRecurring,
+  twelveMonthsWonUnscheduled,
+  twelveMonthsJournalEntries,
+  twelveMonthsWeightedSales,
+  yearForecast,
+} = useDashboardMetrics(selectedDateStr)
+
+const {
+  comparisonData,
+  loadingComparison,
+  loadComparisonData,
+  comparisonCurrentMonthRevenue,
+  comparisonThreeMonthRevenue,
+  comparisonYearUnbilled,
+  comparisonTwelveMonthsRecurring,
+  comparisonTwelveMonthsWonUnscheduled,
+  comparisonTwelveMonthsJournalEntries,
+  comparisonTwelveMonthsWeightedSales,
+  comparisonYearForecast,
+  comparisonThirtyDaysUnbilled,
+  comparisonTotalCashOnHand,
+  comparisonTotalReceivables,
+  comparisonDaysCash,
+  comparisonDaysCashPlusAR,
+} = useComparison({
+  compareAsOfDate,
+  selectedMonthKey,
+  forecastStartMonthKey,
+  effectiveMonthlyExpenses,
+  onLoadError: (date) => showMissingArchiveModal(date),
+})
+
 // Initialize weighted sales toggle from URL param if present (default is true)
 if (route.query.weightedSales !== undefined) {
   revenueStore.includeWeightedSales = route.query.weightedSales !== 'false'
 }
 
 // Comparison data storage
-const comparisonData = ref(null)
-const loadingComparison = ref(false)
 const loadingMainData = ref(false)
 
 // Chart refreshing is true when either main data or comparison data is loading
@@ -753,44 +798,6 @@ const comparisonChartData = computed(() => {
   return result
 })
 
-// Computed property for effective monthly expenses (override or auto)
-const effectiveMonthlyExpenses = computed(() => {
-  const settings = authStore.company?.settings
-
-  // If there's an override, use it
-  if (settings?.monthlyExpensesOverride) {
-    return settings.monthlyExpensesOverride
-  }
-
-  // Otherwise, use the previous month's expenses from balances
-  return revenueStore.balances?.monthlyExpenses || 0
-})
-
-// Computed property for target net margin
-const targetNetMargin = computed(() => {
-  const settings = authStore.company?.settings
-  return settings?.targetNetMargin || 20
-})
-
-// Computed properties for profit and margins
-const thisMonthProfit = computed(() => {
-  return revenueStore.currentMonthRevenue - effectiveMonthlyExpenses.value
-})
-
-const thisMonthMargin = computed(() => {
-  if (revenueStore.currentMonthRevenue === 0) return 0
-  return (thisMonthProfit.value / revenueStore.currentMonthRevenue) * 100
-})
-
-const threeMonthProfit = computed(() => {
-  return revenueStore.threeMonthRevenue - effectiveMonthlyExpenses.value * 3
-})
-
-const threeMonthMargin = computed(() => {
-  if (revenueStore.threeMonthRevenue === 0) return 0
-  return (threeMonthProfit.value / revenueStore.threeMonthRevenue) * 100
-})
-
 // Button handler for Export Detail on chart
 function handleExportDetail() {
   const today = new Date()
@@ -804,290 +811,6 @@ function handleExportDetail() {
     autoExport: true,
   }
   showTransactionModal.value = true
-}
-
-// Month key (YYYY-MM-01) for the currently selected as-of date
-const selectedMonthKey = computed(() =>
-  format(startOfMonth(parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())), 'yyyy-MM-dd'),
-)
-
-// The 1-Year Forecast starts on the first of the month AFTER the as-of month and
-// spans a full 12 months. The current month's recurring revenue is already billed
-// (it lands in `invoiced`, which the forecast excludes), so starting "this month"
-// would only capture 11 months of recurring.
-const forecastStartMonthKey = computed(() => formulas.monthKeyFromOffset(selectedMonthKey.value, 1))
-
-// Computed property for days cash using effective monthly expenses
-const daysCash = computed(() => formulas.daysCash(revenueStore.totalCashOnHand, effectiveMonthlyExpenses.value))
-
-// Computed property for days cash + AR using effective monthly expenses
-const daysCashPlusAR = computed(() =>
-  formulas.daysCashPlusAR(revenueStore.totalCashOnHand, revenueStore.totalReceivables, effectiveMonthlyExpenses.value),
-)
-
-// Days already elapsed in the as-of month (so Days of Work reads "from today").
-const elapsedDays = computed(() => parse(selectedDateStr.value, 'yyyy-MM-dd', new Date()).getDate() - 1)
-
-// Days of Work — horizon (in days) at which cumulative revenue can no longer
-// sustain the target margin / break-even. Four variations: target vs break-even,
-// forecasted (incl. weighted sales) vs won (committed only).
-const daysOfWork = computed(() =>
-  formulas.allDaysOfWork(
-    revenueStore.revenueData,
-    selectedMonthKey.value,
-    effectiveMonthlyExpenses.value,
-    targetNetMargin.value / 100,
-    elapsedDays.value,
-  ),
-)
-
-// Format a Days-of-Work value: day count, or em dash when not computable.
-function formatDays(v) {
-  return v === null || v === undefined ? '—' : `${v}`
-}
-
-// 12-month component breakdowns (shown beneath the 1-Year Forecast card).
-// All anchored to the first of next month — see forecastStartMonthKey.
-const twelveMonthsRecurring = computed(() =>
-  formulas.sumMonths(revenueStore.revenueData, forecastStartMonthKey.value, 12, ['monthlyRecurring']),
-)
-
-const twelveMonthsWonUnscheduled = computed(() =>
-  formulas.sumMonths(revenueStore.revenueData, forecastStartMonthKey.value, 12, ['wonUnscheduled']),
-)
-
-const twelveMonthsJournalEntries = computed(() =>
-  formulas.sumMonths(revenueStore.revenueData, forecastStartMonthKey.value, 12, ['journalEntries']),
-)
-
-const twelveMonthsWeightedSales = computed(() => {
-  if (!revenueStore.includeWeightedSales) return 0
-  return formulas.sumMonths(revenueStore.revenueData, forecastStartMonthKey.value, 12, ['weightedSales'])
-})
-
-// Computed property for 1-Year Forecast (12 months recurring + won unscheduled + weighted sales (if enabled) + journal entries + unbilled charges)
-const yearForecast = computed(() =>
-  formulas.yearForecast(
-    revenueStore.revenueData,
-    revenueStore.balances,
-    forecastStartMonthKey.value,
-    revenueStore.includeWeightedSales,
-  ),
-)
-
-// Comparison metrics computed properties
-const comparisonCurrentMonthRevenue = computed(() => {
-  if (!comparisonData.value || !compareAsOfDate.value) return null
-  // Use the currently selected date's month, not the comparison date's month
-  const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
-  const currentMonth = format(startOfMonth(selectedDate), 'yyyy-MM-dd')
-  const monthData = comparisonData.value.months.find((m) => m.month === currentMonth)
-  if (!monthData) return 0
-
-  const components = monthData.components
-  let total =
-    components.invoiced +
-    components.journalEntries +
-    components.delayedCharges +
-    components.monthlyRecurring +
-    components.wonUnscheduled
-
-  if (revenueStore.includeWeightedSales) {
-    total += components.weightedSales
-  }
-
-  return total
-})
-
-const comparisonThreeMonthRevenue = computed(() => {
-  if (!comparisonData.value || !compareAsOfDate.value) return null
-  // Use the currently selected date's month as the starting point, not the comparison date
-  const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
-  const start = startOfMonth(selectedDate)
-  let total = 0
-
-  for (let i = 0; i < 3; i++) {
-    const month = format(addMonths(start, i), 'yyyy-MM-dd')
-    const monthData = comparisonData.value.months.find((m) => m.month === month)
-    if (monthData) {
-      const components = monthData.components
-      total +=
-        components.invoiced +
-        components.journalEntries +
-        components.delayedCharges +
-        components.monthlyRecurring +
-        components.wonUnscheduled
-
-      if (revenueStore.includeWeightedSales) {
-        total += components.weightedSales
-      }
-    }
-  }
-
-  return total
-})
-
-const comparisonYearUnbilled = computed(() => {
-  if (!comparisonData.value || !compareAsOfDate.value) return null
-  return comparisonData.value.balances.yearUnbilled || 0
-})
-
-const comparisonTwelveMonthsRecurring = computed(() => {
-  if (!comparisonData.value || !compareAsOfDate.value) return null
-  const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
-  // Forecast starts the first of next month (matches forecastStartMonthKey)
-  const start = addMonths(startOfMonth(selectedDate), 1)
-  let total = 0
-
-  for (let i = 0; i < 12; i++) {
-    const month = format(addMonths(start, i), 'yyyy-MM-dd')
-    const monthData = comparisonData.value.months.find((m) => m.month === month)
-    if (monthData) {
-      total += monthData.components.monthlyRecurring
-    }
-  }
-
-  return total
-})
-
-const comparisonTwelveMonthsWonUnscheduled = computed(() => {
-  if (!comparisonData.value || !compareAsOfDate.value) return null
-  const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
-  // Forecast starts the first of next month (matches forecastStartMonthKey)
-  const start = addMonths(startOfMonth(selectedDate), 1)
-  let total = 0
-
-  for (let i = 0; i < 12; i++) {
-    const month = format(addMonths(start, i), 'yyyy-MM-dd')
-    const monthData = comparisonData.value.months.find((m) => m.month === month)
-    if (monthData) {
-      total += monthData.components.wonUnscheduled
-    }
-  }
-
-  return total
-})
-
-const comparisonTwelveMonthsJournalEntries = computed(() => {
-  if (!comparisonData.value || !compareAsOfDate.value) return null
-  const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
-  // Forecast starts the first of next month (matches forecastStartMonthKey)
-  const start = addMonths(startOfMonth(selectedDate), 1)
-  let total = 0
-
-  for (let i = 0; i < 12; i++) {
-    const month = format(addMonths(start, i), 'yyyy-MM-dd')
-    const monthData = comparisonData.value.months.find((m) => m.month === month)
-    if (monthData) {
-      total += monthData.components.journalEntries
-    }
-  }
-
-  return total
-})
-
-const comparisonTwelveMonthsWeightedSales = computed(() => {
-  if (!comparisonData.value || !compareAsOfDate.value || !revenueStore.includeWeightedSales) return 0
-  const selectedDate = parse(selectedDateStr.value, 'yyyy-MM-dd', new Date())
-  // Forecast starts the first of next month (matches forecastStartMonthKey)
-  const start = addMonths(startOfMonth(selectedDate), 1)
-  let total = 0
-
-  for (let i = 0; i < 12; i++) {
-    const month = format(addMonths(start, i), 'yyyy-MM-dd')
-    const monthData = comparisonData.value.months.find((m) => m.month === month)
-    if (monthData) {
-      total += monthData.components.weightedSales
-    }
-  }
-
-  return total
-})
-
-const comparisonYearForecast = computed(() => {
-  if (!comparisonData.value || !compareAsOfDate.value) return null
-  return (
-    comparisonTwelveMonthsRecurring.value +
-    comparisonTwelveMonthsWonUnscheduled.value +
-    comparisonTwelveMonthsWeightedSales.value +
-    comparisonTwelveMonthsJournalEntries.value +
-    comparisonYearUnbilled.value
-  )
-})
-
-const comparisonThirtyDaysUnbilled = computed(() => {
-  if (!comparisonData.value || !compareAsOfDate.value) return null
-  return comparisonData.value.balances.thirtyDaysUnbilled || 0
-})
-
-const comparisonTotalCashOnHand = computed(() => {
-  if (!comparisonData.value || !compareAsOfDate.value) return null
-  if (!comparisonData.value.balances.assets || !Array.isArray(comparisonData.value.balances.assets)) {
-    return 0
-  }
-
-  return comparisonData.value.balances.assets.reduce((total, account) => {
-    const accountType = account.subType || account.name
-    if (['Checking', 'Savings', 'UndepositedFunds'].includes(accountType)) {
-      const balance = parseFloat(account.balance) || 0
-      return total + balance
-    }
-    return total
-  }, 0)
-})
-
-const comparisonDaysCash = computed(() => {
-  if (!comparisonData.value || !compareAsOfDate.value) return null
-  const monthlyExpenses = effectiveMonthlyExpenses.value
-  const dailyExpenses = monthlyExpenses / 30
-  const cashOnHand = comparisonTotalCashOnHand.value
-
-  if (dailyExpenses === 0 || cashOnHand === 0) return 0
-  return Math.round(cashOnHand / dailyExpenses)
-})
-
-const comparisonTotalReceivables = computed(() => {
-  if (!comparisonData.value || !compareAsOfDate.value) return null
-  if (!comparisonData.value.balances.receivables) return 0
-
-  const receivables = comparisonData.value.balances.receivables
-  if (typeof receivables === 'number') {
-    return receivables
-  }
-
-  if (receivables.total !== undefined) {
-    return receivables.total
-  }
-
-  if (receivables.current !== undefined) {
-    return (
-      (receivables.current || 0) +
-      (receivables.days1to30 || 0) +
-      (receivables.days31to60 || 0) +
-      (receivables.days61to90 || 0) +
-      (receivables.over90 || 0)
-    )
-  }
-
-  return 0
-})
-
-const comparisonDaysCashPlusAR = computed(() => {
-  if (!comparisonData.value || !compareAsOfDate.value) return null
-  const monthlyExpenses = effectiveMonthlyExpenses.value
-  const dailyExpenses = monthlyExpenses / 30
-  if (dailyExpenses === 0) return 0
-  const totalLiquid = comparisonTotalCashOnHand.value + comparisonTotalReceivables.value
-  if (totalLiquid === 0) return 0
-  return Math.round(totalLiquid / dailyExpenses)
-})
-
-// Helper functions to calculate changes
-function calculateChange(current, comparison) {
-  if (comparison === null) return { dollar: 0, percent: 0 }
-  const dollar = current - comparison
-  const percent = comparison !== 0 ? (dollar / comparison) * 100 : 0
-  return { dollar, percent }
 }
 
 // Computed property to show actual data dates from API
@@ -1195,33 +918,12 @@ function handleDateChange() {
   }, 1000)
 }
 
-async function loadComparisonData(date) {
-  loadingComparison.value = true
-  try {
-    const response = await revenueService.getHistoricalData(date)
-    comparisonData.value = {
-      months: response.months,
-      balances: response.balances,
-      exceptions: response.exceptions,
-      archiveDate: response.archiveDate, // Store actual archive date from API
-      lastUpdated: response.lastUpdated,
-    }
-  } catch (err) {
-    console.error('Failed to load comparison data:', err)
-    comparisonData.value = null
-
-    // Show friendly error modal and clear the invalid date
-    const formattedDate = format(date, 'MMM d, yyyy')
-    shareModalState.value = 'error'
-    shareModalError.value = `No data available for ${formattedDate}`
-    shareModalErrorDetails.value = `There is no archived data for the selected date (${formattedDate}). This could mean:\n\n• The date is in the future\n• No data was archived on that date\n• The date is before the system started tracking data\n\nPlease select a different date.`
-    showShareModal.value = true
-
-    // Clear the invalid comparison date
-    compareAsOfDate.value = ''
-  } finally {
-    loadingComparison.value = false
-  }
+function showMissingArchiveModal(date) {
+  const formattedDate = format(date, 'MMM d, yyyy')
+  shareModalState.value = 'error'
+  shareModalError.value = `No data available for ${formattedDate}`
+  shareModalErrorDetails.value = `There is no archived data for the selected date (${formattedDate}). This could mean:\n\n• The date is in the future\n• No data was archived on that date\n• The date is before the system started tracking data\n\nPlease select a different date.`
+  showShareModal.value = true
 }
 
 function handleCompareDateChange() {
