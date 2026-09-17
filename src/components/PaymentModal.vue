@@ -91,6 +91,7 @@
 <script setup>
 import { format } from 'date-fns'
 import { computed, ref, watch } from 'vue'
+import { formatCurrencyCents as formatCurrency } from '../lib/format.js'
 
 const props = defineProps({
   isOpen: {
@@ -125,14 +126,6 @@ watch(() => props.invoice, (newInvoice) => {
   }
 })
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(value || 0)
-}
 
 function close() {
   emit('close')

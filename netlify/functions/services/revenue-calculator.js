@@ -2,6 +2,7 @@ const { startOfMonth, endOfMonth, addMonths, addDays, format, isWithinInterval }
 const QuickBooksService = require('./quickbooks.js')
 const PipedriveService = require('./pipedrive.js')
 const { getCollection } = require('../utils/database.js')
+const { findArchiveOnOrBefore } = require('./archives.js')
 
 class RevenueCalculator {
   constructor(companyId) {
@@ -23,19 +24,8 @@ class RevenueCalculator {
    */
   async loadFromArchive(asOfDate) {
     console.log(`[RevenueCalculator] Loading archive for ${asOfDate}`)
-    const archivesCollection = await getCollection('revenue_archives')
-
-    const archiveDate = new Date(asOfDate)
-    archiveDate.setHours(0, 0, 0, 0)
-
-    // Find the closest archive on or before the requested date
-    const archive = await archivesCollection.findOne(
-      {
-        companyId: this.companyId,
-        archiveDate: { $lte: archiveDate }
-      },
-      { sort: { archiveDate: -1 } }
-    )
+    // Closest archive on or before the requested date.
+    const archive = await findArchiveOnOrBefore(this.companyId, asOfDate)
 
     if (!archive) {
       throw new Error(`No archived data found for date: ${asOfDate}`)

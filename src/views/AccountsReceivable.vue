@@ -255,6 +255,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { formatCurrency } from '../lib/format.js'
 import { useRevenueStore } from '../stores/revenue'
 import { useAuthStore } from '../stores/auth'
 import AppLayout from '../components/AppLayout.vue'
@@ -291,14 +292,6 @@ const totalInvoiceBalance = computed(() => {
   return invoices.value.reduce((sum, invoice) => sum + (invoice.balance || 0), 0)
 })
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(value || 0)
-}
 
 function formatDate(date) {
   if (!date) return ''

@@ -2,6 +2,13 @@
 const { getCollection } = require('../utils/database.js')
 const { decrypt, encrypt } = require('../utils/encryption.js')
 
+// 424, not 401: a disconnected integration must surface its message, not log the user out.
+function notConnectedError() {
+  const err = new Error('QuickBooks not connected. Please connect your QuickBooks account.')
+  err.statusCode = 424
+  return err
+}
+
 class QuickBooksService {
   constructor(companyId) {
     this.companyId = companyId
@@ -19,7 +26,7 @@ class QuickBooksService {
     })
 
     if (!tokenDoc) {
-      throw new Error('QuickBooks not connected. Please connect your QuickBooks account.')
+      throw notConnectedError()
     }
 
     // Check if token is expired and refresh if needed
@@ -131,7 +138,10 @@ class QuickBooksService {
         }
       }
 
-      throw new Error(`QuickBooks API error: ${response.status} ${errorText}${intuitTid ? ` (intuit_tid=${intuitTid})` : ''}`)
+      const apiError = new Error(`QuickBooks API error: ${response.status} ${errorText}${intuitTid ? ` (intuit_tid=${intuitTid})` : ''}`)
+      // A stale SyncToken means someone else edited the record first.
+      if (/stale object/i.test(errorText)) apiError.statusCode = 409
+      throw apiError
     }
 
     return await response.json()

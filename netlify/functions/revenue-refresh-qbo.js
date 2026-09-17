@@ -1,84 +1,46 @@
-const { success, error, cors } = require('./utils/response.js')
-const { getCurrentUser } = require('./utils/auth.js')
+// Full QuickBooks refresh: recalculates from live QB data, replaces today's archive, then warms the
+// transaction-details cache in the background.
+const { createHandler } = require('./utils/handler.js')
 const RevenueCalculator = require('./services/revenue-calculator.js')
-const { getCollection } = require('./utils/database.js')
+const { upsertTodaysArchive } = require('./services/archives.js')
 const { prefetchTransactionDetails } = require('./services/transaction-details-cache.js')
+const { todayDate } = require('./utils/dates.js')
 
-exports.handler = async function(event, context) {
-  // Handle CORS preflight requests
-  if (event.httpMethod === 'OPTIONS') {
-    return cors()
-  }
+// 3 prior + current + 12 forward, so the 1-Year Forecast's final month has data.
+const FORECAST_MONTHS = 16
+const FORECAST_START_OFFSET = -3
 
-  if (event.httpMethod !== 'POST') {
-    return error('Method not allowed', 405)
-  }
-
-  try {
+exports.handler = createHandler(
+  { methods: 'POST', errorMessage: 'Failed to refresh QuickBooks data' },
+  async ({ company }) => {
     const startTime = Date.now()
-    const { company } = await getCurrentUser(event)
-    
-    
     const calculator = new RevenueCalculator(company._id)
 
-    // Calculate revenue first (this caches QBO data in calculator instance)
-    // 16 months: 3 prior + current + 12 forward (through Jun next year) so the
-    // 1-Year Forecast (first of next month → +12mo) has its final month of data.
-    const revenueResult = await calculator.calculateMonthlyRevenue(16, -3)
+    // Revenue first: it caches the QBO data on the instance so getBalances reuses it.
+    const revenueResult = await calculator.calculateMonthlyRevenue(FORECAST_MONTHS, FORECAST_START_OFFSET)
+    const months = revenueResult.months || revenueResult
 
-    // Now fetch exceptions and balances in parallel, passing months data to getBalances
-    // getBalances will use the cached QBO data from calculateMonthlyRevenue
     const [exceptions, balances] = await Promise.all([
       calculator.getExceptions(),
-      calculator.getBalances(revenueResult.months || revenueResult)
+      calculator.getBalances(months)
     ])
-    
-    
-    // Update the current archive with fresh data
-    const archivesCollection = await getCollection('revenue_archives')
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    
-    const dbStartTime = Date.now()
-    await archivesCollection.updateOne(
-      {
-        companyId: company._id,
-        archiveDate: today
-      },
-      {
-        $set: {
-          months: revenueResult.months || revenueResult,
-          exceptions,
-          balances,
-          updatedAt: new Date()
-        }
-      },
-      { upsert: true }
-    )
 
-    // Prefetch transaction details for quick loading (6 months: prev 2, current, next 3)
-    // Run in background - don't wait for it to complete
-    prefetchTransactionDetails(company._id, today)
-      .then(result => {
-        console.log(`[QBO Refresh] Transaction details prefetch completed: ${result.monthsCached} months cached`)
-      })
-      .catch(err => {
-        console.error(`[QBO Refresh] Transaction details prefetch failed:`, err)
-      })
+    await upsertTodaysArchive(company._id, { months, exceptions, balances })
 
-    return success({
+    // Background: the response should not wait on 6 months of prefetching.
+    prefetchTransactionDetails(company._id, todayDate())
+      .then(result => console.log(`[QBO Refresh] Prefetched ${result.monthsCached} months`))
+      .catch(err => console.error('[QBO Refresh] Prefetch failed:', err))
+
+    return {
       message: 'QuickBooks data refreshed successfully',
       lastUpdated: new Date().toISOString(),
       performanceStats: {
         totalTime: Date.now() - startTime,
-        monthsCalculated: (revenueResult.months || revenueResult).length,
+        monthsCalculated: months.length,
         balanceAccounts: balances.assets?.length || 0,
         monthlyExpenses: balances.monthlyExpenses || 0
       }
-    })
-    
-  } catch (err) {
-    console.error('QBO refresh error:', err)
-    return error(err.message || 'Failed to refresh QuickBooks data', 500)
+    }
   }
-}
+)

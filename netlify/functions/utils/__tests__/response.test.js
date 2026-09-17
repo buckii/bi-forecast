@@ -1,5 +1,5 @@
-const { describe, it, expect, vi, beforeEach, afterEach } = require('vitest')
-const { success, error, cors } = require('../response')
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { success, error, cors, corsHeaders } from '../response.js'
 
 describe('Response Utils', () => {
   let consoleSpy
@@ -80,8 +80,7 @@ describe('Response Utils', () => {
         },
         body: JSON.stringify({
           success: false,
-          error: message,
-          details: null
+          error: message
         })
       })
     })
@@ -93,8 +92,7 @@ describe('Response Utils', () => {
       expect(result.statusCode).toBe(404)
       expect(JSON.parse(result.body)).toEqual({
         success: false,
-        error: message,
-        details: null
+        error: message
       })
     })
 
@@ -197,5 +195,94 @@ describe('Response Utils', () => {
 
       expect(JSON.parse(result.body).data).toBeUndefined()
     })
+  })
+})
+describe('error detail redaction', () => {
+  const originalContext = process.env.CONTEXT
+  const originalNodeEnv = process.env.NODE_ENV
+  const originalExpose = process.env.EXPOSE_ERROR_DETAILS
+
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    process.env.CONTEXT = originalContext
+    process.env.NODE_ENV = originalNodeEnv
+    process.env.EXPOSE_ERROR_DETAILS = originalExpose
+    if (originalContext === undefined) delete process.env.CONTEXT
+    if (originalExpose === undefined) delete process.env.EXPOSE_ERROR_DETAILS
+    vi.restoreAllMocks()
+  })
+
+  it('omits details in production so stack traces are not leaked', () => {
+    process.env.CONTEXT = 'production'
+    delete process.env.EXPOSE_ERROR_DETAILS
+
+    const result = error('Database error', 500, 'Error: connection string ...')
+
+    expect(JSON.parse(result.body)).toEqual({ success: false, error: 'Database error' })
+  })
+
+  it('still logs details in production', () => {
+    process.env.CONTEXT = 'production'
+    const details = 'Error: connection string ...'
+
+    error('Database error', 500, details)
+
+    expect(console.error).toHaveBeenCalledWith('API Error:', 'Database error', details)
+  })
+
+  it('includes details in deploy previews and branch deploys', () => {
+    process.env.CONTEXT = 'deploy-preview'
+
+    const result = error('Database error', 500, 'stack')
+
+    expect(JSON.parse(result.body).details).toBe('stack')
+  })
+
+  it('can be forced on in production with EXPOSE_ERROR_DETAILS', () => {
+    process.env.CONTEXT = 'production'
+    process.env.EXPOSE_ERROR_DETAILS = 'true'
+
+    const result = error('Database error', 500, 'stack')
+
+    expect(JSON.parse(result.body).details).toBe('stack')
+  })
+})
+
+describe('CORS origin', () => {
+  const originalAllowed = process.env.ALLOWED_ORIGINS
+  const originalUrl = process.env.URL
+
+  afterEach(() => {
+    if (originalAllowed === undefined) delete process.env.ALLOWED_ORIGINS
+    else process.env.ALLOWED_ORIGINS = originalAllowed
+    if (originalUrl === undefined) delete process.env.URL
+    else process.env.URL = originalUrl
+  })
+
+  it('falls back to a wildcard when no origin is configured', () => {
+    delete process.env.ALLOWED_ORIGINS
+    delete process.env.URL
+
+    expect(corsHeaders()['Access-Control-Allow-Origin']).toBe('*')
+  })
+
+  it('echoes an allowlisted origin', () => {
+    process.env.ALLOWED_ORIGINS = 'https://forecast.example.com,https://staging.example.com'
+
+    const headers = corsHeaders('https://staging.example.com')
+
+    expect(headers['Access-Control-Allow-Origin']).toBe('https://staging.example.com')
+    expect(headers['Vary']).toBe('Origin')
+  })
+
+  it('refuses an origin that is not allowlisted', () => {
+    process.env.ALLOWED_ORIGINS = 'https://forecast.example.com'
+
+    const headers = corsHeaders('https://evil.example.com')
+
+    expect(headers['Access-Control-Allow-Origin']).toBe('https://forecast.example.com')
   })
 })

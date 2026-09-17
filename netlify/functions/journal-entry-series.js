@@ -1,128 +1,63 @@
-/**
- * Fetch a series of journal entries based on a single entry ID
- *
- * Given a journal entry ID, this function:
- * 1. Fetches the initial entry
- * 2. Extracts the base description
- * 3. Searches for related entries with the same base description
- *
- * Query parameters:
- * - journalEntryId: ID of the journal entry to find the series for
- */
+// Every journal entry in the same series as a given entry. Shift and spread entries share a base
+// description under a generated prefix/suffix, and QuickBooks cannot query on it, so we filter here.
+const { createHandler, HttpError } = require('./utils/handler.js')
+const QuickBooksService = require('./services/quickbooks.js')
+const { toDateString, addMonths } = require('./utils/dates.js')
 
-const { success, error, cors } = require('./utils/response.js');
-const { getCurrentUser } = require('./utils/auth.js');
-const QuickBooksService = require('./services/quickbooks.js');
+// Month-anchored, so the end carries an extra month to cover a full 18 months either way.
+const SERIES_WINDOW_MONTHS = 18
+const SERIES_MAX_PAGES = 10
+
+const GENERATED_PREFIXES = [/^Revenue shift - /, /^Revenue spreading - /]
+const GENERATED_SUFFIXES = [
+  / - Month \d+ of \d+$/,
+  / \(month \d+ of \d+\)$/,
+  / - Deferral \(\d+ months\)$/,
+  / \(deferral for \d+ months\)$/
+]
 
 function extractBaseDescription(description, note) {
-    if (!description && !note) return null;
+  const raw = description || note
+  if (!raw) return null
 
-    // Try to find the base description from common patterns
-    let base = description || note;
-
-    // Remove "Revenue shift - " or "Revenue spreading - " prefixes from notes
-    base = base.replace(/^Revenue shift - /, '');
-    base = base.replace(/^Revenue spreading - /, '');
-
-    // Remove " - Month X of Y" or " (month X of Y)" suffixes
-    base = base.replace(/ - Month \d+ of \d+$/, '');
-    base = base.replace(/ \(month \d+ of \d+\)$/, '');
-
-    // Remove " - Deferral (X months)" or " (deferral for X months)" suffixes
-    base = base.replace(/ - Deferral \(\d+ months\)$/, '');
-    base = base.replace(/ \(deferral for \d+ months\)$/, '');
-
-    return base.trim();
+  return [...GENERATED_PREFIXES, ...GENERATED_SUFFIXES]
+    .reduce((text, pattern) => text.replace(pattern, ''), raw)
+    .trim()
 }
 
-exports.handler = async function (event, context) {
-    // Handle CORS preflight requests
-    if (event.httpMethod === 'OPTIONS') {
-        return cors();
-    }
+function baseDescriptionOf(entry) {
+  return extractBaseDescription(entry.Line?.[0]?.Description || '', entry.PrivateNote || '')
+}
 
-    if (event.httpMethod !== 'GET') {
-        return error('Method not allowed', 405);
-    }
+exports.handler = createHandler({ errorMessage: 'Failed to fetch journal entry series' }, async ({ company, query }) => {
+  const { journalEntryId } = query
+  if (!journalEntryId) throw new HttpError('Missing journalEntryId parameter', 400)
 
-    try {
-        const { company } = await getCurrentUser(event);
-        const { journalEntryId } = event.queryStringParameters || {};
+  const qbo = new QuickBooksService(company._id)
+  const { accessToken, realmId } = await qbo.getAccessToken()
 
-        if (!journalEntryId) {
-            return error('Missing journalEntryId parameter', 400);
-        }
+  const entryData = await qbo.makeRequest(`journalentry/${journalEntryId}`, realmId, accessToken)
+  if (!entryData.JournalEntry) throw new HttpError('Journal entry not found', 404)
 
-        const qbo = new QuickBooksService(company._id);
-        const { accessToken, realmId } = await qbo.getAccessToken();
+  const entry = entryData.JournalEntry
+  const baseDescription = baseDescriptionOf(entry)
 
-        // 1. Fetch the initial entry
-        const entryData = await qbo.makeRequest(
-            `journalentry/${journalEntryId}`,
-            realmId,
-            accessToken
-        );
+  if (!baseDescription) {
+    return { entry, series: [entry], isSeries: false }
+  }
 
-        if (!entryData.JournalEntry) {
-            return error('Journal entry not found', 404);
-        }
+  const entries = await qbo.getJournalEntries(
+    toDateString(addMonths(entry.TxnDate, -SERIES_WINDOW_MONTHS)),
+    toDateString(addMonths(entry.TxnDate, SERIES_WINDOW_MONTHS + 1)),
+    SERIES_MAX_PAGES
+  )
 
-        const entry = entryData.JournalEntry;
-        const description = entry.Line?.[0]?.Description || '';
-        const note = entry.PrivateNote || '';
-        const baseDescription = extractBaseDescription(description, note);
+  const series = entries.filter(candidate => baseDescriptionOf(candidate) === baseDescription)
+  if (!series.some(candidate => candidate.Id === entry.Id)) series.push(entry)
 
-        if (!baseDescription) {
-            return success({ entry, series: [entry], isSeries: false });
-        }
+  series.sort((a, b) => new Date(a.TxnDate) - new Date(b.TxnDate))
 
-        // 2. Search for related entries
-        // We'll search for entries with the base description in the PrivateNote or Line Description
-        // QuickBooks query language is limited, so we'll fetch a range and filter in memory
-        // or try to use a more specific query if possible.
-        // Since we don't know the exact range, let's fetch entries from 1 year before to 1 year after the entry date.
+  return { baseDescription, entry, series, isSeries: series.length > 1 }
+})
 
-        const entryDate = new Date(entry.TxnDate);
-        const startDate = new Date(entryDate);
-        startDate.setFullYear(startDate.getFullYear());
-        startDate.setMonth(startDate.getMonth() - 18);
-        const endDate = new Date(entryDate);
-        endDate.setFullYear(endDate.getFullYear());
-        endDate.setMonth(endDate.getMonth() + 18);
-
-        const startDateStr = startDate.toISOString().split('T')[0];
-        const endDateStr = endDate.toISOString().split('T')[0];
-
-        // Use the paginated getJournalEntries method to find the series
-        // We'll search for entries with the base description in the PrivateNote or Line Description
-        // This will fetch up to 1000 entries (10 pages) in the 2-year window
-        const allEntries = await qbo.getJournalEntries(startDateStr, endDateStr, 10);
-
-        // Filter entries that belong to the same series
-        let seriesArr = allEntries.filter(e => {
-            const eDesc = e.Line?.[0]?.Description || '';
-            const eNote = e.PrivateNote || '';
-            const eBase = extractBaseDescription(eDesc, eNote);
-            return eBase === baseDescription;
-        });
-
-        // Ensure the initial entry is included in the series list
-        if (!seriesArr.some(e => e.Id === entry.Id)) {
-            seriesArr.push(entry);
-        }
-
-        // Sort by date
-        seriesArr.sort((a, b) => new Date(a.TxnDate) - new Date(b.TxnDate));
-
-        return success({
-            baseDescription,
-            entry,
-            series: seriesArr,
-            isSeries: seriesArr.length > 1
-        });
-
-    } catch (err) {
-        console.error('Error fetching journal entry series:', err);
-        return error('Failed to fetch journal entry series', 500, err.message);
-    }
-};
+module.exports.extractBaseDescription = extractBaseDescription

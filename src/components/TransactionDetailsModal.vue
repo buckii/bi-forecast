@@ -496,6 +496,7 @@ import {
 import { Chart, registerables } from 'chart.js'
 import { addMonths, format as formatDate, isBefore, parseISO, startOfMonth } from 'date-fns'
 import { computed, onUnmounted, ref, watch } from 'vue'
+import { formatCurrency } from '../lib/format.js'
 import { useRoute, useRouter } from 'vue-router'
 import { isDarkModeGlobal } from '../composables/useDarkMode'
 import { useAuthStore } from '../stores/auth'
@@ -1110,15 +1111,6 @@ function formatTransactionDate(dateStr) {
   }
 }
 
-function formatCurrency(amount) {
-  if (amount == null) return '$0.00'
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(amount)
-}
 
 function formatRelativeTime(dateStr) {
   if (!dateStr) return ''

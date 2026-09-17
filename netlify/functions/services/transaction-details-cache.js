@@ -1,6 +1,12 @@
 const { getCollection } = require('../utils/database.js')
 const RevenueCalculator = require('./revenue-calculator.js')
 const { startOfMonth, endOfMonth, format, addMonths } = require('date-fns')
+const { startOfDay, todayDate } = require('../utils/dates.js')
+
+/** The cache key's day component, as UTC midnight. */
+function cacheDay(asOfDate) {
+  return asOfDate ? startOfDay(asOfDate) : todayDate()
+}
 
 /**
  * Prefetch and cache transaction details for quick loading
@@ -11,8 +17,7 @@ const { startOfMonth, endOfMonth, format, addMonths } = require('date-fns')
  * @returns {Promise<void>}
  */
 async function prefetchTransactionDetails(companyId, asOfDate = null) {
-  const effectiveDate = asOfDate || new Date()
-  effectiveDate.setHours(0, 0, 0, 0)
+  const effectiveDate = cacheDay(asOfDate)
 
   console.log(`[Transaction Details Cache] Starting prefetch for company ${companyId}, as of ${format(effectiveDate, 'yyyy-MM-dd')}`)
   const startTime = Date.now()
@@ -130,8 +135,7 @@ async function prefetchTransactionDetails(companyId, asOfDate = null) {
  * @returns {Promise<Object|null>} - Cached data or null if not found
  */
 async function getCachedTransactionDetails(companyId, month, asOfDate = null, endMonth = null) {
-  const effectiveDate = asOfDate || new Date()
-  effectiveDate.setHours(0, 0, 0, 0)
+  const effectiveDate = cacheDay(asOfDate)
 
   // Construct key: if endMonth is provided, use composite key
   const cacheKey = endMonth ? `${month}:${endMonth}` : month
@@ -180,8 +184,7 @@ async function getCachedTransactionDetails(companyId, month, asOfDate = null, en
  * @returns {Promise<boolean>} - Success status
  */
 async function cacheTransactionDetails(companyId, month, data, asOfDate = null, endMonth = null) {
-  const effectiveDate = asOfDate || new Date()
-  effectiveDate.setHours(0, 0, 0, 0)
+  const effectiveDate = cacheDay(asOfDate)
 
   // Construct key: if endMonth is provided, use composite key
   const cacheKey = endMonth ? `${month}:${endMonth}` : month

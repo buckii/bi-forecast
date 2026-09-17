@@ -171,6 +171,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { formatCurrencyCents as formatCurrency } from '../lib/format.js'
 import { useToast } from '../composables/useToast'
 import { useAuthStore } from '../stores/auth'
 
@@ -499,13 +500,6 @@ function confirmDeleteSeries() {
   }
 }
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2
-  }).format(value)
-}
 
 function formatDate(dateString) {
   if (!dateString) return ''

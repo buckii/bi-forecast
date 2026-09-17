@@ -1,102 +1,51 @@
-const { success, error, cors } = require('./utils/response.js')
-const { getCurrentUser } = require('./utils/auth.js')
+// Pipedrive-only refresh. Reuses today's archived QuickBooks data, so it costs 2 API calls, not 8.
+
+const { createHandler } = require('./utils/handler.js')
 const RevenueCalculator = require('./services/revenue-calculator.js')
-const { getCollection } = require('./utils/database.js')
+const { findArchiveOn, upsertTodaysArchive } = require('./services/archives.js')
+const { todayString } = require('./utils/dates.js')
 
-exports.handler = async function(event, context) {
-  // Handle CORS preflight requests
-  if (event.httpMethod === 'OPTIONS') {
-    return cors()
-  }
+// 6 prior + current + 12 forward, so the 1-Year Forecast's final month has data.
+const FORECAST_MONTHS = 19
+const FORECAST_START_OFFSET = -6
 
-  if (event.httpMethod !== 'POST') {
-    return error('Method not allowed', 405)
-  }
-
-  try {
-    const { company } = await getCurrentUser(event)
-
+exports.handler = createHandler(
+  { methods: 'POST', errorMessage: 'Failed to refresh Pipedrive data' },
+  async ({ company }) => {
+    const today = todayString()
     const calculator = new RevenueCalculator(company._id)
+    const existingArchive = await findArchiveOn(company._id, today)
 
-    // Load today's archive to get existing QuickBooks data
-    // This avoids making unnecessary QB API calls when only refreshing Pipedrive
-    const archivesCollection = await getCollection('revenue_archives')
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-
-    const existingArchive = await archivesCollection.findOne({
-      companyId: company._id,
-      archiveDate: today
-    })
-
-    // If we have today's archive with QB data, load it to avoid re-fetching
-    if (existingArchive && existingArchive.quickbooks) {
-      console.log('[Pipedrive Refresh] Using existing QB data from archive, only refreshing Pipedrive')
+    if (existingArchive?.quickbooks) {
       try {
-        await calculator.loadFromArchive(today.toISOString().split('T')[0])
+        await calculator.loadFromArchive(today)
       } catch (err) {
         console.warn('[Pipedrive Refresh] Could not load archive, will fetch fresh QB data:', err.message)
       }
     }
 
-    // Recalculate revenue with fresh Pipedrive data (QB data from archive if available)
-    // 19 months: 6 prior + current + 12 forward so the 1-Year Forecast's final
-    // month (Jun next year) has data.
-    const revenueResult = await calculator.calculateMonthlyRevenue(19, -6)
+    const revenueResult = await calculator.calculateMonthlyRevenue(FORECAST_MONTHS, FORECAST_START_OFFSET)
+    const months = revenueResult.months || revenueResult
 
-    // Fetch exceptions and balances in parallel
-    // Use existing balances if available to avoid QB calls
-    let balances = existingArchive?.balances || null
     const exceptions = await calculator.getExceptions()
+    const balances = existingArchive?.balances || (await calculator.getBalances(months))
 
-    // If no existing balances, calculate them
-    if (!balances) {
-      balances = await calculator.getBalances(revenueResult.months || revenueResult)
-    }
-
-    // CRITICAL: Don't update archive if calculator is in fallback mode
-    // Fallback mode means the archive exists but has no QB data, so the calculator
-    // fetched fresh QB data and filtered it by CreateTime, which results in incomplete data
-    // Saving this would overwrite the good QB data from QB refresh
+    // In fallback mode the calculator filtered its own QB data, so writing it would destroy the
+    // complete data a QB refresh produced.
     if (calculator.isUsingFallback) {
-      console.log('[Pipedrive Refresh] ⚠️  Calculator is in fallback mode - NOT updating archive to preserve QB data')
-      console.log('[Pipedrive Refresh] Archive needs fresh QB data - run QB Refresh first')
-      return success({
+      console.log('[Pipedrive Refresh] Fallback mode - archive not updated; run QB Refresh first')
+
+      return {
         message: 'Pipedrive refresh completed but archive not updated (fallback mode - run QB Refresh first)',
         lastUpdated: new Date().toISOString(),
         warning: 'Archive has incomplete QB data. Run QB Refresh to get fresh QuickBooks data.'
-      })
+      }
     }
 
-    // Update the current archive with fresh data
-    await archivesCollection.updateOne(
-      {
-        companyId: company._id,
-        archiveDate: today
-      },
-      {
-        $set: {
-          months: revenueResult.months || revenueResult,
-          exceptions,
-          balances,
-          updatedAt: new Date()
-        }
-      },
-      { upsert: true }
-    )
+    await upsertTodaysArchive(company._id, { months, exceptions, balances })
 
-    // NOTE: We don't prefetch transaction details here because:
-    // 1. Pipedrive refresh reuses QB data from archive (doesn't fetch fresh QB data)
-    // 2. The QB refresh endpoint already prefetches transaction details
-    // 3. Running prefetch twice would make 48 QB API calls and hit rate limits
-
-    return success({
-      message: 'Pipedrive data refreshed successfully',
-      lastUpdated: new Date().toISOString()
-    })
-    
-  } catch (err) {
-    console.error('Pipedrive refresh error:', err)
-    return error(err.message || 'Failed to refresh Pipedrive data', 500)
+    // No prefetch here: this path reuses archived QB data, and the QB refresh
+    // already warms the cache. Running it twice would burn 48 QB calls.
+    return { message: 'Pipedrive data refreshed successfully', lastUpdated: new Date().toISOString() }
   }
-}
+)

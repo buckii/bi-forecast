@@ -129,6 +129,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { formatCurrencyCents as formatCurrency } from '../lib/format.js'
 
 defineProps({
   pair: {
@@ -141,13 +142,6 @@ defineEmits(['view-details', 'delete'])
 
 const expanded = ref(false)
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2
-  }).format(value)
-}
 
 function formatDate(dateStr) {
   const date = new Date(dateStr)

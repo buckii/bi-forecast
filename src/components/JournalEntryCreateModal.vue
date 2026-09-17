@@ -329,6 +329,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
+import { formatCurrencyCents as formatCurrency } from '../lib/format.js'
 import { useAuthStore } from '../stores/auth'
 import { useToast } from '../composables/useToast'
 
@@ -568,13 +569,6 @@ function formatMonth(dateString) {
   return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
 }
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2
-  }).format(value)
-}
 
 async function createEntries() {
   if (!isFormValid.value) {

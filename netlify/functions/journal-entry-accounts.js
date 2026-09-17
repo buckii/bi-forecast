@@ -1,152 +1,88 @@
+// The revenue and unearned accounts selectable for journal entries, each flagged if it is a default.
+const { createHandler } = require('./utils/handler.js')
+const QuickBooksService = require('./services/quickbooks.js')
+
+function isUnearnedName(account) {
+  const name = account.Name?.toLowerCase() || ''
+  return name.includes('unearned') || name.includes('deferred')
+}
+
+function toOption(account, extra = {}) {
+  return {
+    value: account.Id,
+    name: account.Name,
+    fullyQualifiedName: account.FullyQualifiedName || account.Name,
+    accountType: account.AccountType,
+    accountSubType: account.AccountSubType,
+    ...extra
+  }
+}
+
 /**
- * Get QuickBooks accounts for journal entry configuration
- *
- * Returns two lists:
- * - Revenue accounts (for income selection in journal entries)
- * - Unearned revenue accounts (for liability selection)
- *
- * Each account is marked if it's currently configured as a default
- * in the company's journal entry account settings.
+ * Unearned accounts are often sub-accounts whose parent is inactive, and an
+ * inactive parent is missing from the active-account query -- fetch those by id
+ * so the hierarchy is still selectable.
  */
+async function fetchMissingParents(qbo, realmId, accessToken, ids) {
+  const fetched = []
 
-const { success, error, cors } = require('./utils/response.js');
-const { getCurrentUser } = require('./utils/auth.js');
-const QuickBooksService = require('./services/quickbooks.js');
-
-exports.handler = async function(event, context) {
-  // Handle CORS preflight requests
-  if (event.httpMethod === 'OPTIONS') {
-    return cors();
-  }
-
-  if (event.httpMethod !== 'GET') {
-    return error('Method not allowed', 405);
-  }
-
-  try {
-    const { company } = await getCurrentUser(event);
-    const qbo = new QuickBooksService(company._id);
-
-    // Get access token to ensure QB is connected
-    const { accessToken, realmId } = await qbo.getAccessToken();
-
-    // Fetch all active Income accounts (for revenue dropdown)
-    const incomeQuery = "SELECT * FROM Account WHERE AccountType = 'Income' AND Active = true ORDER BY Name";
-    const incomeData = await qbo.makeRequest(
-      `query?query=${encodeURIComponent(incomeQuery)}`,
-      realmId,
-      accessToken
-    );
-
-    // Fetch all accounts with "unearned" or "deferred" in the name (for unearned revenue dropdown)
-    const allAccountsQuery = "SELECT * FROM Account WHERE Active = true ORDER BY Name";
-    const allAccountsData = await qbo.makeRequest(
-      `query?query=${encodeURIComponent(allAccountsQuery)}`,
-      realmId,
-      accessToken
-    );
-
-    // Filter for unearned/deferred accounts and their parents
-    const allAccounts = allAccountsData.QueryResponse?.Account || [];
-
-    // First, find all accounts with unearned/deferred in the name
-    const matchingAccounts = allAccounts.filter(account => {
-      const name = account.Name?.toLowerCase() || '';
-      return name.includes('unearned') || name.includes('deferred');
-    });
-
-    // Collect parent IDs from matching sub-accounts
-    const parentIds = new Set();
-    matchingAccounts.forEach(account => {
-      if (account.ParentRef?.value) {
-        parentIds.add(account.ParentRef.value);
-      }
-    });
-
-    // Find parent accounts by ID in the active accounts list
-    const parentAccounts = allAccounts.filter(account => parentIds.has(account.Id));
-
-    // If some parent accounts are missing (likely inactive), fetch them directly by ID
-    const foundParentIds = new Set(parentAccounts.map(a => a.Id));
-    const missingParentIds = Array.from(parentIds).filter(id => !foundParentIds.has(id));
-
-    if (missingParentIds.length > 0) {
-      // Fetch missing parents (even if inactive) by ID
-      for (const parentId of missingParentIds) {
-        try {
-          const parentQuery = `SELECT * FROM Account WHERE Id = '${parentId}'`;
-          const parentData = await qbo.makeRequest(
-            `query?query=${encodeURIComponent(parentQuery)}`,
-            realmId,
-            accessToken
-          );
-
-          const parentAccount = parentData.QueryResponse?.Account?.[0];
-          if (parentAccount) {
-            parentAccounts.push(parentAccount);
-          }
-        } catch (err) {
-          console.error(`[journal-entry-accounts] Failed to fetch parent ${parentId}:`, err.message);
-        }
-      }
+  for (const parentId of ids) {
+    try {
+      const query = `SELECT * FROM Account WHERE Id = '${parentId}'`
+      const data = await qbo.makeRequest(`query?query=${encodeURIComponent(query)}`, realmId, accessToken)
+      const account = data.QueryResponse?.Account?.[0]
+      if (account) fetched.push(account)
+    } catch (err) {
+      console.error(`[journal-entry-accounts] Failed to fetch parent ${parentId}:`, err.message)
     }
+  }
 
-    // Combine matching accounts and their parents (remove duplicates)
-    const accountMap = new Map();
-    [...matchingAccounts, ...parentAccounts].forEach(account => {
-      accountMap.set(account.Id, account);
-    });
-    const unearnedAccounts = Array.from(accountMap.values());
+  return fetched
+}
 
-    // Get company's current journal entry account settings
-    const settings = company.settings?.journalEntryAccounts || {};
+exports.handler = createHandler({ errorMessage: 'Failed to fetch QuickBooks accounts' }, async ({ company }) => {
+  const qbo = new QuickBooksService(company._id)
+  const { accessToken, realmId } = await qbo.getAccessToken()
 
-    // Format revenue accounts
-    const revenueAccounts = (incomeData.QueryResponse?.Account || [])
-      .filter(account => {
-        // Exclude accounts with "unearned" in the name
-        const name = account.Name?.toLowerCase() || '';
-        return !name.includes('unearned') && !name.includes('deferred');
-      })
-      .map(account => ({
-        value: account.Id,
-        name: account.Name,
-        fullyQualifiedName: account.FullyQualifiedName || account.Name,
-        accountType: account.AccountType,
-        accountSubType: account.AccountSubType,
-        isDefault: Object.values(settings).includes(account.Id)
-      }));
+  const runQuery = async query => {
+    const data = await qbo.makeRequest(`query?query=${encodeURIComponent(query)}`, realmId, accessToken)
+    return data.QueryResponse?.Account || []
+  }
 
-    // Format unearned revenue accounts
-    const unearnedRevenueAccounts = unearnedAccounts.map(account => ({
-      value: account.Id,
-      name: account.Name,
-      fullyQualifiedName: account.FullyQualifiedName || account.Name,
-      accountType: account.AccountType,
-      accountSubType: account.AccountSubType,
+  const [incomeAccounts, activeAccounts] = await Promise.all([
+    runQuery("SELECT * FROM Account WHERE AccountType = 'Income' AND Active = true ORDER BY Name"),
+    runQuery('SELECT * FROM Account WHERE Active = true ORDER BY Name')
+  ])
+
+  const unearnedAccounts = activeAccounts.filter(isUnearnedName)
+
+  const parentIds = new Set(
+    unearnedAccounts.map(account => account.ParentRef?.value).filter(Boolean)
+  )
+  const activeById = new Map(activeAccounts.map(account => [account.Id, account]))
+  const presentParents = [...parentIds].filter(id => activeById.has(id)).map(id => activeById.get(id))
+  const missingParents = await fetchMissingParents(
+    qbo, realmId, accessToken,
+    [...parentIds].filter(id => !activeById.has(id))
+  )
+
+  // Dedupe: a parent may itself be an unearned account.
+  const unearnedById = new Map(
+    [...unearnedAccounts, ...presentParents, ...missingParents].map(account => [account.Id, account])
+  )
+
+  const settings = company.settings?.journalEntryAccounts || {}
+  const defaultIds = new Set(Object.values(settings))
+
+  return {
+    revenueAccounts: incomeAccounts
+      .filter(account => !isUnearnedName(account))
+      .map(account => toOption(account, { isDefault: defaultIds.has(account.Id) })),
+    unearnedRevenueAccounts: [...unearnedById.values()].map(account => toOption(account, {
       isDefault: settings.unearnedRevenue === account.Id,
       isSubAccount: !!account.ParentRef,
       parentId: account.ParentRef?.value || null
-    }));
-
-    return success({
-      revenueAccounts,
-      unearnedRevenueAccounts,
-      currentSettings: settings
-    });
-
-  } catch (err) {
-    console.error('Error fetching journal entry accounts:', err);
-
-    // Provide helpful error messages
-    if (err.message.includes('QuickBooks not connected')) {
-      return error('QuickBooks not connected. Please connect your QuickBooks account in Settings.', 401);
-    }
-
-    if (err.message.includes('refresh')) {
-      return error('QuickBooks connection expired. Please reconnect your QuickBooks account.', 401);
-    }
-
-    return error('Failed to fetch QuickBooks accounts', 500, err.message);
+    })),
+    currentSettings: settings
   }
-};
+})

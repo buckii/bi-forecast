@@ -1,111 +1,51 @@
-const { success, error, cors } = require('./utils/response.js')
-const { getCurrentUser } = require('./utils/auth.js')
-const { getCollection } = require('./utils/database.js')
+// Current revenue: today's archive when there is one, otherwise a fresh calculation that is archived.
+const { createHandler } = require('./utils/handler.js')
+const {
+  findArchiveOn,
+  findArchiveSince,
+  upsertTodaysArchive,
+  toRevenueResponse
+} = require('./services/archives.js')
+const { todayString, addDays, toDateString } = require('./utils/dates.js')
 
-exports.handler = async function(event, context) {
-  // Handle CORS preflight requests
-  if (event.httpMethod === 'OPTIONS') {
-    return cors()
-  }
+// 3 prior + current + 12 forward, so the 1-Year Forecast's final month has data.
+const FORECAST_MONTHS = 16
+const FORECAST_START_OFFSET = -3
 
-  if (event.httpMethod !== 'GET') {
-    return error('Method not allowed', 405)
-  }
+async function cachedArchive(companyId) {
+  const today = todayString()
 
-  try {
-    const { company } = await getCurrentUser(event)
-    
-    // Check if we should bypass cache (for refresh operations)
-    const bypassCache = event.queryStringParameters?.nocache === 'true'
-    
-    // Check for cached data first (unless bypassing)
-    const archivesCollection = await getCollection('revenue_archives')
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    
-    // Look for today's cache (only if not bypassing)
-    let archive = null
-    if (!bypassCache) {
-      archive = await archivesCollection.findOne({
-        companyId: company._id,
-        archiveDate: today
-      })
-      
-      // If no cache exists for today, check for recent cache (within last 24 hours)
-      if (!archive) {
-        const yesterday = new Date(today)
-        yesterday.setDate(yesterday.getDate() - 1)
-        
-        archive = await archivesCollection.findOne(
-          {
-            companyId: company._id,
-            archiveDate: { $gte: yesterday }
-          },
-          { sort: { archiveDate: -1 } }
-        )
-      }
-    }
-    
-    // If we have cached data and not bypassing cache, return it
-    if (!bypassCache && archive && archive.months && archive.balances) {
-      return success({
-        months: archive.months,
-        exceptions: archive.exceptions || { overdueDeals: [], pastDelayedCharges: [], wonUnscheduled: [] },
-        balances: archive.balances,
-        lastUpdated: archive.updatedAt || archive.createdAt,
-        fromCache: true
-      })
-    }
-    
-    // No cache or stale cache, calculate fresh data
-    const RevenueCalculator = require('./services/revenue-calculator.js')
-    const calculator = new RevenueCalculator(company._id)
+  const todaysArchive = await findArchiveOn(companyId, today)
+  if (todaysArchive) return todaysArchive
 
-    // Calculate revenue first (this caches QBO data in calculator instance)
-    // 16 months: 3 prior + current + 12 forward (through Jun next year) so the
-    // 1-Year Forecast (first of next month → +12mo) has its final month of data.
-    const revenueResult = await calculator.calculateMonthlyRevenue(16, -3)
-    const months = revenueResult.months || revenueResult // Handle both old and new return format
-
-    // Fetch exceptions and balances in parallel, passing months data to getBalances
-    // getBalances will use the cached QBO data from calculateMonthlyRevenue
-    const [exceptions, balances] = await Promise.all([
-      calculator.getExceptions(),
-      calculator.getBalances(months)
-    ])
-    
-    // Cache the results
-    await archivesCollection.updateOne(
-      { 
-        companyId: company._id,
-        archiveDate: today
-      },
-      {
-        $set: {
-          months,
-          exceptions,
-          balances,
-          updatedAt: new Date()
-        }
-      },
-      { upsert: true }
-    )
-    
-    return success({
-      months,
-      exceptions,
-      balances,
-      lastUpdated: new Date().toISOString(),
-      fromCache: false
-    })
-    
-  } catch (err) {
-    console.error('Revenue current error:', err)
-    return error(err.message || 'Failed to get current revenue data', 500, {
-      nodeVersion: process.version,
-      platform: process.platform,
-      moduleType: typeof module !== 'undefined' ? 'CommonJS' : 'ES Module',
-      errorStack: err.stack
-    })
-  }
+  // The 3am archive job may not have run yet, so yesterday's is still usable.
+  return findArchiveSince(companyId, toDateString(addDays(today, -1)))
 }
+
+exports.handler = createHandler({ errorMessage: 'Failed to get current revenue data' }, async ({ company, query }) => {
+  const bypassCache = query.nocache === 'true'
+
+  if (!bypassCache) {
+    const archive = await cachedArchive(company._id)
+    if (archive?.months && archive?.balances) {
+      return toRevenueResponse(archive, { fromCache: true })
+    }
+  }
+
+  const RevenueCalculator = require('./services/revenue-calculator.js')
+  const calculator = new RevenueCalculator(company._id)
+
+  // Calculate revenue first; this caches the QBO data on the instance so
+  // getBalances does not refetch it.
+  const revenueResult = await calculator.calculateMonthlyRevenue(FORECAST_MONTHS, FORECAST_START_OFFSET)
+  const months = revenueResult.months || revenueResult
+
+  const [exceptions, balances] = await Promise.all([
+    calculator.getExceptions(),
+    calculator.getBalances(months)
+  ])
+
+  await upsertTodaysArchive(company._id, { months, exceptions, balances })
+
+  return { months, exceptions, balances, lastUpdated: new Date().toISOString(), fromCache: false }
+})

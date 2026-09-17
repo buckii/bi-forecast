@@ -170,6 +170,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { formatCurrencyCents as formatCurrency } from '../lib/format.js'
 
 const props = defineProps({
   entry: {
@@ -220,13 +221,6 @@ const revenueImpact = computed(() => {
   }
 })
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2
-  }).format(value)
-}
 
 function formatDate(dateStr) {
   if (!dateStr) return 'N/A'

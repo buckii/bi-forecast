@@ -500,6 +500,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { formatCurrency } from '../lib/format.js'
 import { useAuthStore } from '../stores/auth'
 import { useRevenueStore } from '../stores/revenue'
 import { useDarkMode } from '../composables/useDarkMode'
@@ -573,14 +574,6 @@ const sortedClientAliases = computed(() => {
 
 const company = computed(() => authStore.company)
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(value)
-}
 
 async function connectQBO() {
   try {

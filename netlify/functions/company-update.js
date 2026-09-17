@@ -1,75 +1,52 @@
-const { success, error, cors } = require('./utils/response.js')
-const { getCurrentUser } = require('./utils/auth.js')
+const { createHandler, HttpError } = require('./utils/handler.js')
 const { getCollection } = require('./utils/database.js')
 
-exports.handler = async function(event, context) {
-  // Handle CORS preflight requests
-  if (event.httpMethod === 'OPTIONS') {
-    return cors()
-  }
-
-  if (event.httpMethod !== 'POST') {
-    return error('Method not allowed', 405)
-  }
-
-  try {
-    const { company } = await getCurrentUser(event)
-    
-    const requestBody = JSON.parse(event.body || '{}')
-    const { name, targetNetMargin, monthlyExpensesOverride, pricePerPoint } = requestBody
-    
-    const companiesCollection = await getCollection('companies')
-    const updateData = { updatedAt: new Date() }
-    
-    // Handle company name update
-    if (name !== undefined) {
-      if (!name || typeof name !== 'string' || name.trim().length === 0) {
-        return error('Company name is required', 400)
-      }
-      updateData.name = name.trim()
+// Each setting validates itself, so adding one is a single line here.
+const SETTING_VALIDATORS = {
+  targetNetMargin: value => {
+    if (typeof value !== 'number' || value < 1 || value > 50) {
+      throw new HttpError('Target net margin must be a number between 1 and 50', 400)
     }
-    
-    // Handle financial settings updates
-    if (targetNetMargin !== undefined || monthlyExpensesOverride !== undefined || pricePerPoint !== undefined) {
-      // Initialize settings object if it doesn't exist
-      const currentSettings = company.settings || {}
-
-      if (targetNetMargin !== undefined) {
-        if (typeof targetNetMargin !== 'number' || targetNetMargin < 1 || targetNetMargin > 50) {
-          return error('Target net margin must be a number between 1 and 50', 400)
-        }
-        currentSettings.targetNetMargin = targetNetMargin
-      }
-
-      if (monthlyExpensesOverride !== undefined) {
-        if (monthlyExpensesOverride !== null && (typeof monthlyExpensesOverride !== 'number' || monthlyExpensesOverride < 0)) {
-          return error('Monthly expenses override must be a positive number or null', 400)
-        }
-        currentSettings.monthlyExpensesOverride = monthlyExpensesOverride
-      }
-
-      if (pricePerPoint !== undefined) {
-        if (typeof pricePerPoint !== 'number' || pricePerPoint <= 0) {
-          return error('Price per point must be a positive number', 400)
-        }
-        currentSettings.pricePerPoint = pricePerPoint
-      }
-
-      updateData.settings = currentSettings
+  },
+  monthlyExpensesOverride: value => {
+    if (value !== null && (typeof value !== 'number' || value < 0)) {
+      throw new HttpError('Monthly expenses override must be a positive number or null', 400)
     }
-    
-    // Update company information
-    await companiesCollection.updateOne(
-      { _id: company._id },
-      { $set: updateData }
-    )
-    
-    return success({
-      message: 'Company information updated successfully'
-    })
-    
-  } catch (err) {
-    console.error('Company update error:', err)
-    return error(err.message || 'Failed to update company information', 500)
+  },
+  pricePerPoint: value => {
+    if (typeof value !== 'number' || value <= 0) {
+      throw new HttpError('Price per point must be a positive number', 400)
+    }
   }
 }
+
+exports.handler = createHandler(
+  { methods: 'POST', errorMessage: 'Failed to update company information' },
+  async ({ company, body }) => {
+    const updateData = { updatedAt: new Date() }
+
+    if (body.name !== undefined) {
+      if (typeof body.name !== 'string' || body.name.trim().length === 0) {
+        throw new HttpError('Company name is required', 400)
+      }
+      updateData.name = body.name.trim()
+    }
+
+    const settings = { ...(company.settings || {}) }
+    let settingsChanged = false
+
+    for (const [key, validate] of Object.entries(SETTING_VALIDATORS)) {
+      if (body[key] === undefined) continue
+      validate(body[key])
+      settings[key] = body[key]
+      settingsChanged = true
+    }
+
+    if (settingsChanged) updateData.settings = settings
+
+    const companiesCollection = await getCollection('companies')
+    await companiesCollection.updateOne({ _id: company._id }, { $set: updateData })
+
+    return { message: 'Company information updated successfully' }
+  }
+)

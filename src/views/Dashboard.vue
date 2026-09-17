@@ -458,6 +458,7 @@
 import { ArrowDownTrayIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
 import { addMonths, endOfMonth, endOfYear, format, parse, startOfMonth, startOfYear, subMonths, subYears } from 'date-fns'
 import { computed, onMounted, ref, watch } from 'vue'
+import { formatCurrency } from '../lib/format.js'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '../components/AppLayout.vue'
 import RevenueChart from '../components/RevenueChart.vue'
@@ -1028,14 +1029,6 @@ function formatCompareDate() {
   }
 }
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(value)
-}
 
 function handleDateChange() {
   // Clear existing timeout

@@ -139,6 +139,7 @@
 
 <script setup>
 import { computed, onMounted } from 'vue'
+import { formatCurrency } from '../lib/format.js'
 import { useRevenueStore } from '../stores/revenue'
 import AppLayout from '../components/AppLayout.vue'
 import AsOfDateSelector from '../components/AsOfDateSelector.vue'
@@ -204,14 +205,6 @@ const liabilityTotal = computed(() => {
   return filteredLiabilities.value.reduce((sum, account) => sum - Math.abs(account.balance || 0), 0)
 })
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(value || 0)
-}
 
 function formatDate(date) {
   if (!date) return ''

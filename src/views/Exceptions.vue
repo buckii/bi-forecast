@@ -172,6 +172,7 @@
 
 <script setup>
 import { computed, onMounted } from 'vue'
+import { formatCurrency } from '../lib/format.js'
 import { useRevenueStore } from '../stores/revenue'
 import AppLayout from '../components/AppLayout.vue'
 import { format, parseISO } from 'date-fns'
@@ -180,14 +181,6 @@ const revenueStore = useRevenueStore()
 
 const exceptions = computed(() => revenueStore.exceptions)
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(value)
-}
 
 function formatDate(date) {
   if (!date) return ''

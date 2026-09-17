@@ -1,6 +1,7 @@
-const { success, error, cors } = require('./utils/response.js')
-const { getCurrentUser } = require('./utils/auth.js')
+const { createHandler, HttpError } = require('./utils/handler.js')
 const SlackService = require('./services/slack.js')
+const { isDateOnly } = require('./utils/dates.js')
+const { formatCurrency, formatPercent } = require('./utils/format.js')
 const { format, parse } = require('date-fns')
 
 // Slack caps a section block's text at 3000 characters. Chunk well under that so a
@@ -11,20 +12,6 @@ const SECTION_CHAR_LIMIT = 2800
 // individually so an unusually long month degrades into an overflow line instead
 // of a failed post.
 const MAX_LISTED_CLIENTS = 100
-
-function formatCurrency(value) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(value || 0)
-}
-
-function formatPercent(value, total) {
-  if (!total) return '0%'
-  return `${((value / total) * 100).toFixed(1)}%`
-}
 
 function monthLabel(month) {
   try {
@@ -161,19 +148,9 @@ function buildBlocks({ clients, month, startDate, endDate, asOf, includeWeighted
   return { blocks, fallback, total, namedCount: named.length, rolledUpCount: rest.length }
 }
 
-exports.handler = async function (event, context) {
-  if (event.httpMethod === 'OPTIONS') {
-    return cors()
-  }
-
-  if (event.httpMethod !== 'POST') {
-    return error('Method not allowed', 405)
-  }
-
-  try {
-    const { company } = await getCurrentUser(event)
-
-    const body = JSON.parse(event.body || '{}')
+exports.handler = createHandler(
+  { methods: 'POST', errorMessage: 'Failed to share client revenue to Slack' },
+  async ({ company, body }) => {
     const {
       clients,
       month = null,
@@ -187,14 +164,12 @@ exports.handler = async function (event, context) {
     } = body
 
     if (!Array.isArray(clients) || clients.length === 0) {
-      return error('Client data is required', 400)
+      throw new HttpError('Client data is required', 400)
     }
 
-    const isDate = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
-
     // The modal shares either a single month or a date range ("Show Detail")
-    if (!isDate(month) && !(isDate(startDate) && isDate(endDate))) {
-      return error('Provide either month or startDate and endDate as YYYY-MM-DD', 400)
+    if (!isDateOnly(month) && !(isDateOnly(startDate) && isDateOnly(endDate))) {
+      throw new HttpError('Provide either month or startDate and endDate as YYYY-MM-DD', 400)
     }
 
     const pricePerPoint = company.settings?.pricePerPoint || 550
@@ -216,7 +191,7 @@ exports.handler = async function (event, context) {
     const message = await slack.postBlocks(blocks, fallback)
 
     if (!message) {
-      return error('Slack is not configured (SLACK_BOT_TOKEN / SLACK_CHANNEL_ID)', 503)
+      throw new HttpError('Slack is not configured (SLACK_BOT_TOKEN / SLACK_CHANNEL_ID)', 503)
     }
 
     // Attach the pie chart as a thread reply so the numbers stay the readable part
@@ -243,29 +218,16 @@ exports.handler = async function (event, context) {
       }
     }
 
-    return success({
+    return {
       message: 'Client revenue shared to Slack successfully',
       total,
       namedCount,
       rolledUpCount,
       chartShared,
-      slackMessage: {
-        ts: message.ts,
-        channel: message.channel
-      }
-    })
-
-  } catch (err) {
-    console.error('Share client revenue error:', err)
-    return error(err.message || 'Failed to share client revenue to Slack', 500, {
-      errorDetails: err.stack,
-      slackConfigured: {
-        hasBotToken: !!process.env.SLACK_BOT_TOKEN,
-        hasChannelId: !!process.env.SLACK_CHANNEL_ID
-      }
-    })
+      slackMessage: { ts: message.ts, channel: message.channel }
+    }
   }
-}
+)
 
 // Exported for tests
 exports.buildBlocks = buildBlocks

@@ -1,43 +1,19 @@
-const { success, error, cors } = require('./utils/response.js')
+const { createHandler, HttpError } = require('./utils/handler.js')
 const { verifyGoogleToken, getOrCreateUser, generateToken } = require('./utils/auth.js')
 const { validateFunctionEnv } = require('./utils/env-validation.js')
 
-exports.handler = async function(event, context) {
-  // Handle CORS preflight requests
-  if (event.httpMethod === 'OPTIONS') {
-    return cors()
-  }
-
-  if (event.httpMethod !== 'POST') {
-    return error('Method not allowed', 405)
-  }
-
-  try {
-    // Validate required environment variables
+exports.handler = createHandler(
+  { methods: 'POST', auth: false, errorMessage: 'Authentication failed' },
+  async ({ body }) => {
     validateFunctionEnv(['GOOGLE_CLIENT_ID', 'JWT_SECRET', 'MONGODB_URI'])
-    
-    const { token } = JSON.parse(event.body || '{}')
-    
-    if (!token) {
-      return error('Google token is required', 400)
-    }
 
+    if (!body.token) throw new HttpError('Google token is required', 400)
 
-    // Verify Google token
-    const googleUserData = await verifyGoogleToken(token)
-    
-    // Get or create user and company
+    const googleUserData = await verifyGoogleToken(body.token)
     const { user, company } = await getOrCreateUser(googleUserData)
-    
-    // Generate JWT token
-    const jwtToken = generateToken({
-      userId: user._id,
-      email: user.email,
-      companyId: company._id
-    })
-    
-    return success({
-      token: jwtToken,
+
+    return {
+      token: generateToken({ userId: user._id, email: user.email, companyId: company._id }),
       user: {
         id: user._id,
         email: user.email,
@@ -45,14 +21,7 @@ exports.handler = async function(event, context) {
         picture: user.picture,
         role: user.role
       },
-      company: {
-        id: company._id,
-        name: company.name,
-        domain: company.domain
-      }
-    })
-    
-  } catch (err) {
-    return error(err.message || 'Authentication failed', 401)
+      company: { id: company._id, name: company.name, domain: company.domain }
+    }
   }
-}
+)

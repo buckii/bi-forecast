@@ -1,12 +1,6 @@
-const { success, cors } = require('./utils/response.js')
+const { createHandler } = require('./utils/handler.js')
 
-exports.handler = async function(event, context) {
-  // Handle CORS preflight requests
-  if (event.httpMethod === 'OPTIONS') {
-    return cors()
-  }
-
-  // Since we're using stateless JWT tokens, logout is handled client-side
-  // by removing the token from localStorage
-  return success({ message: 'Logged out successfully' })
-}
+// Tokens are stateless JWTs; logout is the client discarding its token.
+exports.handler = createHandler({ methods: ['GET', 'POST'], auth: false }, async () => ({
+  message: 'Logged out successfully'
+}))

@@ -219,6 +219,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { formatCurrencyCents as formatCurrency } from '../lib/format.js'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useToast } from '../composables/useToast'
@@ -263,13 +264,6 @@ const filteredUnpaired = computed(() => {
   return entries.value.unpaired || []
 })
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2
-  }).format(value)
-}
 
 function formatDate(dateStr) {
   const date = new Date(dateStr)

@@ -3,6 +3,7 @@ const { getCollection } = require('./utils/database.js')
 const RevenueCalculator = require('./services/revenue-calculator.js')
 const SlackService = require('./services/slack.js')
 const { startOfMonth, endOfMonth, addMonths, format } = require('date-fns')
+const { todayDate, addDays, todayString } = require('./utils/dates.js')
 
 exports.handler = async function(event, context) {
   // This function runs daily at 3am ET via Netlify scheduled functions
@@ -43,8 +44,8 @@ exports.handler = async function(event, context) {
         const pipedriveData = await archivePipedriveData(calculator)
         
         // Create today's archive
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
+        // UTC midnight: the key every archive reader looks up by.
+        const today = todayDate()
         
         const archiveDoc = {
           companyId: company._id,
@@ -84,8 +85,7 @@ exports.handler = async function(event, context) {
         
         // Clean up old archives based on retention policy
         const retentionDays = company.settings?.archiveRetentionDays || 365
-        const cutoffDate = new Date()
-        cutoffDate.setDate(cutoffDate.getDate() - retentionDays)
+        const cutoffDate = addDays(todayString(), -retentionDays)
         
         const deleteResult = await archivesCollection.deleteMany({
           companyId: company._id,
