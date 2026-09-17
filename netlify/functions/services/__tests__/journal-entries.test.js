@@ -79,6 +79,16 @@ describe('spread entries', () => {
     expect(recognized).toBeCloseTo(amountOf(deferral), 2)
   })
 
+  it('absorbs the rounding remainder in the final month', () => {
+    // 999.99 / 12 does not divide evenly into cents.
+    const entries = buildSpreadEntries({ ...params, amount: 999.99, numberOfMonths: 12 }, SETTINGS)
+    const [deferral, ...recognition] = entries
+
+    expect(recognition).toHaveLength(11)
+    const recognized = recognition.reduce((sum, entry) => sum + amountOf(entry), 0)
+    expect(recognized).toBeCloseTo(amountOf(deferral), 2)
+  })
+
   it('always dates recognition entries on the first of the month', () => {
     const entries = buildSpreadEntries(
       { ...params, numberOfMonths: 6, recognitionStartDate: '2026-01-31' },

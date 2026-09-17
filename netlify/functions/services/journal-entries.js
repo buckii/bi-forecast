@@ -106,9 +106,10 @@ function buildSpreadEntries(params, settings) {
   }
 
   for (let i = 0; i < monthsToDefer; i++) {
+    // The final month absorbs the rounding remainder, or cents stay in unearned revenue forever.
     const isLastMonth = i === monthsToDefer - 1
     const monthAmount = isLastMonth
-      ? amount - monthlyAmount * monthsToDefer
+      ? deferralAmount - monthlyAmount * (monthsToDefer - 1)
       : monthlyAmount
 
     const monthLabel = `Month ${i + 2} of ${numberOfMonths}`
