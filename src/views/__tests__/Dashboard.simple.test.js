@@ -44,6 +44,11 @@ vi.mock('../../stores/auth', () => ({
   }),
 }))
 
+vi.mock('vue-router', () => ({
+  useRoute: () => ({ query: {} }),
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+}))
+
 // Mock Chart.js
 vi.mock('chart.js', () => ({
   Chart: vi.fn(() => ({
@@ -111,10 +116,13 @@ describe('Dashboard - Simple Tests', () => {
 
       expect(wrapper.text()).toContain('This Month')
       expect(wrapper.text()).toContain('3-Month Forecast')
-      expect(wrapper.text()).toContain('1-Year Unbilled')
+      expect(wrapper.text()).toContain('1-Year Forecast')
+      // Unbilled is a separate measure that the forecast includes, shown as Charges.
+      expect(wrapper.text()).toContain('Charges:')
       expect(wrapper.text()).toContain('30-Days Unbilled')
       expect(wrapper.text()).toContain('Days Cash')
-      expect(wrapper.text()).toContain('Days Cash + AR')
+      expect(wrapper.text()).toContain('Cash + AR')
+      expect(wrapper.text()).toContain('Days of Work')
     })
 
     it('should render chart section', () => {
@@ -128,11 +136,10 @@ describe('Dashboard - Simple Tests', () => {
       const wrapper = createWrapper()
 
       expect(wrapper.text()).toContain('View as of')
+      expect(wrapper.text()).toContain('Compare as of')
       expect(wrapper.text()).toContain('Include weighted sales')
-      // Check for the button text as it actually appears in the rendered text
-      expect(wrapper.text()).toContain('Refreshing...')
-      expect(wrapper.text()).toContain('QBO: 2h ago')
-      expect(wrapper.text()).toContain('Pipedrive: 2h ago')
+      expect(wrapper.text()).toContain('Refresh All Data')
+      expect(wrapper.text()).toContain('Last refreshed: 2h ago')
     })
   })
 
@@ -189,11 +196,11 @@ describe('Dashboard - Simple Tests', () => {
       expect(() => wrapper.vm.handleEndDateChange()).not.toThrow()
     })
 
-    it('should reset date range', () => {
+    it('should reset to today', () => {
       const wrapper = createWrapper()
 
-      expect(typeof wrapper.vm.resetDateRange).toBe('function')
-      expect(() => wrapper.vm.resetDateRange()).not.toThrow()
+      expect(typeof wrapper.vm.resetToToday).toBe('function')
+      expect(() => wrapper.vm.resetToToday()).not.toThrow()
     })
   })
 

@@ -1263,7 +1263,7 @@ function clearCompareDate() {
 function resetToToday() {
   selectedDateStr.value = format(new Date(), 'yyyy-MM-dd')
   clearCompareDate()
-  resetDateRange()
+  adjustChartRange()
   handleDateChange()
 }
 
