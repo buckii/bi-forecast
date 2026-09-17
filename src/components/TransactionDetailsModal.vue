@@ -645,17 +645,13 @@ import { Chart, registerables } from 'chart.js'
 import { format as formatDate, parseISO } from 'date-fns'
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { formatCurrency, formatShare } from '../lib/format.js'
-import {
-  TRANSACTION_TYPES,
-  defaultTypeFilters,
-  transactionTypeColor,
-  transactionTypeLabel,
-} from '../lib/transaction-types.js'
+import { TRANSACTION_TYPES, transactionTypeColor, transactionTypeLabel } from '../lib/transaction-types.js'
 import { useRoute, useRouter } from 'vue-router'
 import { isDarkModeGlobal } from '../composables/useDarkMode'
 import { useAuthStore } from '../stores/auth'
 import { useRevenueStore } from '../stores/revenue'
 import { useTransactionDetails } from '../composables/useTransactionDetails.js'
+import { sortClients, sortTransactions, useTypeFilter } from '../composables/useTypeFilter.js'
 import JournalEntryBulkEditModal from './JournalEntryBulkEditModal.vue'
 import JournalEntryCreateModal from './JournalEntryCreateModal.vue'
 import JournalEntryDetailModal from './JournalEntryDetailModal.vue'
@@ -759,49 +755,27 @@ const journalEntryAccounts = ref({
 })
 
 // Sorting state for Transactions tab
-const sortBy = ref('amount') // 'amount' | 'date'
-const sortDirection = ref('desc') // 'asc' | 'desc'
+const {
+  enabledTypes,
+  sortBy,
+  sortDirection,
+  allEnabled: allFiltersEnabled,
+  toggleAll: toggleAllFilters,
+  toggleSort,
+} = useTypeFilter(revenueStore.includeWeightedSales)
 
-// Sorting state for Clients tab
-const clientSortBy = ref('amount') // 'amount' | 'client'
-const clientSortDirection = ref('desc') // 'asc' | 'desc'
-
-// Transaction type filters
-const transactionTypes = TRANSACTION_TYPES.map((type) => ({ value: type.value, label: type.filterLabel }))
-
-const enabledTypes = ref(defaultTypeFilters(revenueStore.includeWeightedSales))
-
-// The Clients tab keeps its own filter state.
-const clientEnabledTypes = ref(defaultTypeFilters(revenueStore.includeWeightedSales))
-
-const allFiltersEnabled = computed(() => {
-  return Object.values(enabledTypes.value).every((v) => v)
-})
-
-const allClientFiltersEnabled = computed(() => {
-  return Object.values(clientEnabledTypes.value).every((v) => v)
-})
+const {
+  enabledTypes: clientEnabledTypes,
+  sortBy: clientSortBy,
+  sortDirection: clientSortDirection,
+  allEnabled: allClientFiltersEnabled,
+  toggleAll: toggleAllClientFilters,
+  toggleSort: toggleClientSort,
+} = useTypeFilter(revenueStore.includeWeightedSales)
 
 const filteredTransactions = computed(() => {
-  if (!allTransactions.value) return []
-
-  let filtered = allTransactions.value.filter((t) => enabledTypes.value[t.type])
-
-  // Apply sorting
-  filtered.sort((a, b) => {
-    if (sortBy.value === 'amount') {
-      const diff = a.amount - b.amount
-      return sortDirection.value === 'desc' ? -diff : diff
-    } else {
-      // Sort by date
-      const dateA = new Date(a.date)
-      const dateB = new Date(b.date)
-      const diff = dateA - dateB
-      return sortDirection.value === 'desc' ? -diff : diff
-    }
-  })
-
-  return filtered
+  const enabled = (allTransactions.value || []).filter((t) => enabledTypes.value[t.type])
+  return sortTransactions(enabled, sortBy.value, sortDirection.value)
 })
 
 const filteredTotalAmount = computed(() => {
@@ -811,33 +785,14 @@ const filteredTotalAmount = computed(() => {
 const sortedClients = computed(() => {
   if (!clientData.value?.clients) return []
 
-  // Recalculate client totals from transactions based on enabled filters
-  const clientTotals = {}
+  // Totals are recomputed from the transactions so they honour this tab's type filters.
+  const totals = new Map()
+  for (const transaction of allTransactions.value.filter((t) => clientEnabledTypes.value[t.type])) {
+    totals.set(transaction.customer, (totals.get(transaction.customer) || 0) + (transaction.amount || 0))
+  }
 
-  allTransactions.value
-    .filter((t) => clientEnabledTypes.value[t.type])
-    .forEach((t) => {
-      if (!clientTotals[t.customer]) {
-        clientTotals[t.customer] = 0
-      }
-      clientTotals[t.customer] += t.amount || 0
-    })
-
-  const clients = Object.entries(clientTotals).map(([client, total]) => ({ client, total }))
-
-  // Apply sorting
-  clients.sort((a, b) => {
-    if (clientSortBy.value === 'amount') {
-      const diff = a.total - b.total
-      return clientSortDirection.value === 'desc' ? -diff : diff
-    } else {
-      // Sort by client name (alpha)
-      const comparison = a.client.localeCompare(b.client)
-      return clientSortDirection.value === 'desc' ? -comparison : comparison
-    }
-  })
-
-  return clients
+  const clients = [...totals].map(([client, total]) => ({ client, total }))
+  return sortClients(clients, clientSortBy.value, clientSortDirection.value)
 })
 
 const clientTotalRevenue = computed(() => {
@@ -858,42 +813,6 @@ function getClientTransactions(clientName) {
 function getTypeCount(type) {
   if (!allTransactions.value) return 0
   return allTransactions.value.filter((t) => t.type === type).length
-}
-
-function toggleAllFilters() {
-  const newValue = !allFiltersEnabled.value
-  Object.keys(enabledTypes.value).forEach((key) => {
-    enabledTypes.value[key] = newValue
-  })
-}
-
-function toggleAllClientFilters() {
-  const newValue = !allClientFiltersEnabled.value
-  Object.keys(clientEnabledTypes.value).forEach((key) => {
-    clientEnabledTypes.value[key] = newValue
-  })
-}
-
-function toggleSort(field) {
-  if (sortBy.value === field) {
-    // Toggle direction
-    sortDirection.value = sortDirection.value === 'desc' ? 'asc' : 'desc'
-  } else {
-    // Change field and set to descending
-    sortBy.value = field
-    sortDirection.value = 'desc'
-  }
-}
-
-function toggleClientSort(field) {
-  if (clientSortBy.value === field) {
-    // Toggle direction
-    clientSortDirection.value = clientSortDirection.value === 'desc' ? 'asc' : 'desc'
-  } else {
-    // Change field and set to descending
-    clientSortBy.value = field
-    clientSortDirection.value = 'desc'
-  }
 }
 
 watch(
