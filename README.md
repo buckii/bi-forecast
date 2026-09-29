@@ -341,7 +341,6 @@ This allows secure HTTPS access to your local development server for webhook tes
 
 - `revenue-current.js` - Current revenue forecast calculations with data caching
 - `revenue-historical.js` - Historical archived data retrieval
-- `revenue-by-client.js` - Client-level revenue breakdown with alias resolution and caching
 - `revenue-refresh-qbo.js` - Manual QuickBooks data refresh with optimized API calls and background transaction caching
 - `revenue-refresh-pipedrive.js` - Manual Pipedrive data refresh reusing existing QB data to minimize API calls
 - `transaction-details.js` - Drill-down transaction data with cache-first retrieval
