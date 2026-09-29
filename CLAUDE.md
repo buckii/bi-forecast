@@ -27,6 +27,8 @@ npm test                 # Run tests in watch mode
 npm run test:run         # Run tests once
 npm run test:ui          # Open Vitest UI
 npm run test:coverage    # Generate coverage report
+npm run reconcile        # With `npm run dev` up: Dashboard vs drill-down vs Show Detail, real data
+npm run reconcile -- --fresh   # Same, against today's code instead of today's saved snapshot
 ```
 
 ### Build & Deploy
@@ -45,10 +47,16 @@ npm run deploy          # Build and deploy to Netlify production
 - **Routing**: Vue Router with auth guards in `src/router/`
 - **Composables**: Reusable logic in `src/composables/` (e.g., `useDataRefresh`, `useToast`)
 - **Shared modules**: `src/lib/`
-  - `format.js` - the only copies of `formatCurrency`, `formatCurrencyCents`, `formatPercent`,
-    `formatShare` and the date formatters. Import them; never redefine one in a component.
+  - `format.js` - the only copies of `formatCurrency`, `formatCurrencyCents`, `formatWholeDollars`,
+    `formatPoints`, `formatPercent`, `formatShare` and the date formatters. Import them; never redefine one in a component.
   - `metrics-formulas.js` - revenue and forecast math (see below)
-  - `transaction-types.js` - the six revenue components: values, labels, colors, filter defaults
+  - `transaction-types.js` - the six revenue components: values, labels, badge and chart colors,
+    filter defaults. The chart, the filter pills and the badges all read their colors here.
+  - `client-totals.js` - the one client grouping (`clientNormalized`, falling back to `customer`),
+    shared by the modal's Clients tab and the Revenue by Client page so a client lands on one row
+  - `month-keys.js` - `YYYY-MM` arithmetic: `shiftMonth`, `monthSpan`, `monthsBetween`
+  - `google-sheets.js` - creates a Sheet in the user's Drive (GIS token client, `drive.file`
+    scope, token held in memory only). Needs the Sheets API enabled on the Google Cloud project.
   - `api-fetch.js` - `requestJson`, the hand-rolled fetch path (attach token, unwrap `data`, throw
     the server's message). Calls through `services/api.js` (axios) additionally redirect to login
     on a 401; these do not.
@@ -67,7 +75,6 @@ npm run deploy          # Build and deploy to Netlify production
   - `revenue-calculator.js` - Orchestrates a revenue calculation; the pieces below do the work
   - `revenue-sources.js` - Fetches the raw QuickBooks and Pipedrive data
   - `revenue-components.js` - The six revenue components as pure functions
-  - `client-breakdown.js` - One month's revenue split by client
   - `balances.js` - Cash, receivables ageing, expenses, unbilled windows
   - `transaction-components/` - Transaction-level detail per component, behind one dispatch map
   - `quickbooks.js` - QB API wrapper with caching
@@ -165,7 +172,7 @@ QuickBooks has a 500 req/min limit. The codebase uses several strategies:
 2. **Data caching** - QBO/Pipedrive data cached in calculator instance
 3. **Archive reuse** - Pipedrive refresh loads existing QB data from today's archive
 4. **Pass cached data** - `getBalances()` accepts `monthsData` and `qboData` parameters
-5. **Pagination** - Journal entries fetch up to 3 pages (300 entries max) using `STARTPOSITION` and `MAXRESULTS`
+5. **Pagination** - Invoices, journal entries and customers page through `qbo.queryAllPages()`
 6. **Fallback mode protection** - Pipedrive refresh detects incomplete QB data and prevents overwriting good archive data
 
 When modifying revenue calculations, always pass cached data to avoid N+1 queries:
@@ -178,24 +185,18 @@ const balances = await calculator.getBalances(
 )
 ```
 
-**QuickBooks Pagination**: The QB API returns max 100 results per query. Use
-`qbo.getJournalEntries(startDate, endDate, maxPages)` rather than querying directly; a single
-query silently truncates at 100 and hides shift pairs whose other half falls on a later page.
-It paginates like this:
+**QuickBooks Pagination**: the QB API returns at most 100 rows per query and says nothing when it
+stops. Query through `qbo.queryAllPages(entity, clause, maxPages)`, or the `getInvoices` /
+`getJournalEntries` / `getCustomers` wrappers on it. A single query over the Dashboard's 16-month
+window once dropped every invoice older than the newest 100, and the chart showed June at $0.
 
-```javascript
-const allEntries = []
-const pageSize = 100
-const maxPages = 3
-
-for (let page = 0; page < maxPages; page++) {
-  const startPosition = page * pageSize + 1
-  const query = `SELECT * FROM JournalEntry WHERE ... STARTPOSITION ${startPosition} MAXRESULTS ${pageSize}`
-  // ... fetch and accumulate
-  if (entries.length < pageSize) break // No more pages
-  await new Promise((resolve) => setTimeout(resolve, 100)) // Rate limit delay
-}
-```
+**One rule, one place**: the Dashboard chart (`revenue-components.js`) and the drill-down fetchers
+(`transaction-components/`) compute the same six components separately, so every rule they share
+lives in one helper both call: `qb-accounts.js` for which lines count, `wonUnscheduledShare` /
+`weightedSalesShare` for a deal's monthly share (to the cent, last month takes the remainder),
+`isInMonth` for month membership (string compare, so no timezone can move a date).
+`revenue-paths-reconcile.test.js` runs both paths over one fake QuickBooks and fails on any
+difference; add a case there when adding a rule.
 
 ### Authentication Flow
 
@@ -229,16 +230,16 @@ for (let page = 0; page < maxPages; page++) {
 
 **1-Year Forecast window**: The forecast starts on the **first of the month after** the as-of month and spans a full 12 months (e.g. as-of Jun 19 → Jul 1 – Jun 30). The current month's recurring is already billed (it shows up in `invoiced`, which the forecast excludes), so anchoring to the current month would only yield 11 months of recurring. Because the window reaches +12 months, every monthly-revenue fetch pulls 12 months forward: `calculateMonthlyRevenue(16, -3)` for live endpoints, `(19, -6)` for refresh/archive jobs. The `yearUnbilled` (Charges) window matches: first of next month through +12 months, anchored to month starts.
 
-**Journal Entry Client Attribution**: Journal entries carry no `CustomerRef`, and the entries this app creates set no line-level `Entity` either, so the client has to be found in the description/private note text. `RevenueCalculator.matchClientFromText()` is the single matcher for this — used by both `transaction-details.js` and `calculateClientBreakdownForMonth()`, so the drill-down modal and the chart totals agree.
+**Journal Entry Client Attribution**: Journal entries carry no `CustomerRef`, and the entries this app creates set no line-level `Entity` either, so the client has to be found in the description/private note text. `RevenueCalculator.matchClientFromText()` is the single matcher for this, used by the journal entry and recurring fetchers behind `transaction-details.js`.
 
 It matches against two sources, **longest candidate first** (so "Vineyard Community Center" wins over a shorter name it contains, rather than depending on `Object.entries` order):
 
 1. `clientAliasesMap` — the `client_aliases` collection (primary names + aliases)
-2. `clientNamesMap` — real client names, from `qbo.getCustomers()` via `loadClientNames()`, plus any names seen in already-fetched invoices/delayed charges/Pipedrive orgs via `registerClientNamesFromData()`
+2. `clientNamesMap` — real client names, from `qbo.getCustomers()` via `loadClientNames()`
 
-Source 2 is why an unaliased client still groups correctly. `loadClientNames()` is best-effort: if QuickBooks is unavailable (archive-only mode, expired token) it logs and falls back to aliases plus in-data names. Names shorter than 4 characters are ignored — they substring-match far too much free text. A match is passed back through `resolveClientName()`, so an exact name that is itself an alias resolves to the primary.
+Source 2 is why an unaliased client still groups correctly. `loadClientNames()` is best-effort: if QuickBooks is unavailable (archive-only mode, expired token) it logs and falls back to aliases alone. Names shorter than 4 characters are ignored — they substring-match far too much free text. A match is passed back through `resolveClientName()`, so an exact name that is itself an alias resolves to the primary.
 
-Unmatched entries fall back to `'Journal Entries'` in the by-client totals and `'N/A'` in the transaction-details modal. Call `loadClientNames()` alongside `loadClientAliases()` in any new entry point that attributes journal entries.
+Unmatched entries fall back to `'N/A'`. Call `loadClientNames()` alongside `loadClientAliases()` in any new entry point that attributes journal entries.
 
 **Journal Entry Filtering**: account classification lives in `services/qb-accounts.js` so the
 calculator and the endpoints cannot drift apart:
@@ -271,10 +272,21 @@ Clients below `threshold` (default $3,000) collapse into one rollup line, so the
 
 `postBlocks()` and `uploadFile()` both use the existing `chat:write` / `files:write` scopes — adding Block Kit needed no re-auth. Note that `SLACK_CHANNEL_ID` is a single hardcoded channel; anything more sensitive than the current internal channel needs channel routing first.
 
+### Revenue by Client (`/client-summary`)
+
+A month × client table for any period up to 24 months. It loads each month through
+`transaction-details`, one call per component, exactly as the modal does, and groups in the
+browser with `client-totals.js`, so its numbers match the Clients tab and Show Detail. A cold
+year is 72 calls and takes about three minutes; the same day it comes from the cache.
+It opens on two quarters from `twoQuarterPeriod()` (`month-keys.js`), which keeps at least a
+month and a half either side of today and moves forward on Feb 15, May 15, Aug 15 and Nov 15.
+
 ### Transaction Caching Strategy
 
 - **Prefetch Window**: 6 months (prev 2, current, next 3)
 - **Trigger**: Background job during QB/PD refresh
+- **Fetchers**: the prefetch calls the same `COMPONENT_FETCHERS` as `transaction-details`, so a
+  cached month and a live one carry the same client attribution
 - **Purpose**: Instant chart drill-down without API calls
 - **TTL**: 30 days in MongoDB
 
@@ -346,7 +358,7 @@ Required for local development (see `.env.example`):
    (`deferralAmount - monthlyAmount * (monthsToDefer - 1)`); computing it from the invoice total
    instead leaves cents stranded in unearned revenue on every uneven division.
 
-10. **Month parameters accept two shapes**: `revenue-by-client` and `transaction-details` take
+10. **Month parameters accept two shapes**: `transaction-details` takes
     either `YYYY-MM` or `YYYY-MM-DD`. The single-month path passes the caller's value straight
     through, because the prefetch cache keys single months as `YYYY-MM-01` and normalizing to a
     month key would miss every cached entry.

@@ -114,7 +114,7 @@ node scripts/seed-client-aliases.cjs
    - Log into production application
    - Navigate to Settings page
    - Verify all client aliases are present
-   - Test revenue-by-client endpoint: `GET /.netlify/functions/revenue-by-client?month=2025-10-01`
+   - Open Revenue by Client and check that aliased clients land on one row
 
 ### Requirements
 

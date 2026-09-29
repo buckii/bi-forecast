@@ -155,7 +155,7 @@ After deploying to production, migrate client alias data from development:
    - Log into production application
    - Navigate to Settings page
    - Verify all client aliases are present
-   - Test revenue-by-client endpoint to ensure proper attribution
+   - Open Revenue by Client and check that aliased clients land on one row
 
 **Note**: The seeder will auto-detect the company ID if only one company exists in the database. If you have multiple companies, specify the company ID manually in the script.
 
