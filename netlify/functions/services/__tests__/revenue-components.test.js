@@ -6,6 +6,8 @@ import {
   calculateMonthlyRecurring,
   calculateWonUnscheduledForMonth,
   calculateWeightedSalesForMonth,
+  weightedSalesShare,
+  wonUnscheduledShare,
 } from '../revenue-components.js'
 
 const line = (amount, postingType, accountName) => ({
@@ -185,5 +187,29 @@ describe('calculateWeightedSalesForMonth', () => {
 
   it('is zero for no deals', () => {
     expect(calculateWeightedSalesForMonth(september, [])).toBe(0)
+  })
+})
+
+describe('deal shares', () => {
+  const deal = { value: 1000, weightedValue: 1000, duration: 3, expectedCloseDate: '2026-10-15' }
+
+  it('splits to the cent and puts the remainder in the last month', () => {
+    expect(['2026-10', '2026-11', '2026-12'].map((month) => weightedSalesShare(deal, month))).toEqual([
+      333.33, 333.33, 333.34,
+    ])
+  })
+
+  it('counts months by key, so a start on the 31st does not skip one', () => {
+    const won = { value: 300, duration: 3, projectStartDate: '2027-01-31' }
+    expect(['2027-01', '2027-02', '2027-03', '2027-04'].map((month) => wonUnscheduledShare(won, month))).toEqual([
+      100,
+      100,
+      100,
+      null,
+    ])
+  })
+
+  it('leaves out a deal whose date cannot be read, rather than spreading it into every month', () => {
+    expect(weightedSalesShare({ ...deal, expectedCloseDate: 'soon' }, '2026-10')).toBeNull()
   })
 })

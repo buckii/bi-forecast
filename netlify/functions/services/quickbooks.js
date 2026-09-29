@@ -2,6 +2,12 @@
 const { getCollection } = require('../utils/database.js')
 const { decrypt, encrypt } = require('../utils/encryption.js')
 
+const QB_PAGE_SIZE = 100
+// Spacing between pages keeps a long pagination under QuickBooks' 500 requests a minute.
+const PAGE_DELAY_MS = 100
+// 5,000 rows: several years of invoices at the current pace, well past the 19-month archive window.
+const DEFAULT_MAX_PAGES = 50
+
 // 424, not 401: a disconnected integration must surface its message, not log the user out.
 function notConnectedError() {
   const err = new Error('QuickBooks not connected. Please connect your QuickBooks account.')
@@ -155,46 +161,43 @@ class QuickBooksService {
     return await response.json()
   }
 
-  async getInvoices(startDate, endDate) {
+  /**
+   * Every row of a query, page by page. QuickBooks returns at most 100 rows per query and says
+   * nothing when it stops, so a single query silently drops the oldest rows of a busy date range.
+   */
+  async queryAllPages(entity, clause, maxPages = DEFAULT_MAX_PAGES) {
     const { accessToken, realmId } = await this.getAccessToken()
-
-    const query = `SELECT * FROM Invoice WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}' ORDER BY TxnDate DESC`
-    const data = await this.makeRequest(`query?query=${encodeURIComponent(query)}`, realmId, accessToken)
-
-    return data.QueryResponse?.Invoice || []
-  }
-
-  async getJournalEntries(startDate, endDate, maxPages = 10) {
-    const { accessToken, realmId } = await this.getAccessToken()
-
-    // QuickBooks API returns max 100 results per query
-    // Fetch multiple pages to get a larger set of entries
-    const allEntries = []
-    const pageSize = 100
+    const rows = []
 
     for (let page = 0; page < maxPages; page++) {
-      const startPosition = page * pageSize + 1
-      const query = `SELECT * FROM JournalEntry WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}' ORDER BY TxnDate DESC STARTPOSITION ${startPosition} MAXRESULTS ${pageSize}`
+      const startPosition = page * QB_PAGE_SIZE + 1
+      const query = `SELECT * FROM ${entity} ${clause} STARTPOSITION ${startPosition} MAXRESULTS ${QB_PAGE_SIZE}`
       const data = await this.makeRequest(`query?query=${encodeURIComponent(query)}`, realmId, accessToken)
+      const pageRows = data.QueryResponse?.[entity] || []
+      rows.push(...pageRows)
 
-      const entries = data.QueryResponse?.JournalEntry || []
-      allEntries.push(...entries)
-
-      // If we got fewer than pageSize results, we've reached the end
-      if (entries.length < pageSize) {
-        break
-      }
-
-      // Add small delay between pagination requests to avoid rate limiting
-      if (page < maxPages - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 100))
-      }
+      if (pageRows.length < QB_PAGE_SIZE) return rows
+      await new Promise((resolve) => setTimeout(resolve, PAGE_DELAY_MS))
     }
 
-    console.log(
-      `[QBO] Fetched ${allEntries.length} journal entries across ${Math.ceil(allEntries.length / pageSize)} pages`,
+    console.warn(`[QBO] ${entity} stopped at ${maxPages} pages (${rows.length} rows); older rows were not fetched`)
+    return rows
+  }
+
+  async getInvoices(startDate, endDate, maxPages) {
+    return this.queryAllPages(
+      'Invoice',
+      `WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}' ORDER BY TxnDate DESC`,
+      maxPages,
     )
-    return allEntries
+  }
+
+  async getJournalEntries(startDate, endDate, maxPages) {
+    return this.queryAllPages(
+      'JournalEntry',
+      `WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}' ORDER BY TxnDate DESC`,
+      maxPages,
+    )
   }
 
   async getDelayedCharges(startDate, endDate) {
@@ -314,34 +317,8 @@ class QuickBooksService {
     }
   }
 
-  async getCustomers(maxPages = 10) {
-    const { accessToken, realmId } = await this.getAccessToken()
-
-    // QuickBooks API returns max 100 results per query - paginate to get them all
-    const allCustomers = []
-    const pageSize = 100
-
-    for (let page = 0; page < maxPages; page++) {
-      const startPosition = page * pageSize + 1
-      const query = `SELECT * FROM Customer WHERE Active = true STARTPOSITION ${startPosition} MAXRESULTS ${pageSize}`
-      const data = await this.makeRequest(`query?query=${encodeURIComponent(query)}`, realmId, accessToken)
-
-      const customers = data.QueryResponse?.Customer || []
-      allCustomers.push(...customers)
-
-      // If we got fewer than pageSize results, we've reached the end
-      if (customers.length < pageSize) {
-        break
-      }
-
-      // Add small delay between pagination requests to avoid rate limiting
-      if (page < maxPages - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 100))
-      }
-    }
-
-    console.log(`[QBO] Fetched ${allCustomers.length} customers`)
-    return allCustomers
+  async getCustomers(maxPages) {
+    return this.queryAllPages('Customer', 'WHERE Active = true', maxPages)
   }
 
   async getAccounts() {

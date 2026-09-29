@@ -37,6 +37,20 @@ export function formatShare(value, total) {
   return `${((value / total) * 100).toFixed(1)}%`
 }
 
+const wholeNumberFormatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 })
+
+/** Whole dollars with no symbol, for dense tables: "12,500". */
+export function formatWholeDollars(value) {
+  return wholeNumberFormatter.format(value || 0)
+}
+
+const pointsFormatter = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+
+/** Dollars as points at the company's price per point: "22.7". */
+export function formatPoints(value, pricePerPoint) {
+  return pointsFormatter.format((value || 0) / pricePerPoint)
+}
+
 export function formatNumber(value) {
   return new Intl.NumberFormat('en-US').format(value || 0)
 }
@@ -83,6 +97,13 @@ export function formatDateLong(value) {
   return dateFormatter({ year: 'numeric', month: 'long', day: 'numeric' }).format(date)
 }
 
+/** "Sep 29, 8:03 AM", in local time, for a full timestamp. */
+export function formatDateTime(value) {
+  const date = value instanceof Date ? value : new Date(value)
+  if (!value || Number.isNaN(date.getTime())) return ''
+  return dateFormatter({ month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(date)
+}
+
 /** "Sep 2026", from a YYYY-MM month key or a date. */
 export function formatMonth(value) {
   const date = parseDisplayDate(/^\d{4}-\d{2}$/.test(value) ? `${value}-01` : value)
@@ -95,9 +116,12 @@ export default {
   formatCurrencyCents,
   formatPercent,
   formatShare,
+  formatWholeDollars,
+  formatPoints,
   formatNumber,
   formatDate,
   formatDateLong,
+  formatDateTime,
   formatMonth,
   parseDisplayDate,
 }

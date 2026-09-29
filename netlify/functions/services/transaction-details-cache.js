@@ -1,6 +1,7 @@
 const { getCollection } = require('../utils/database.js')
 const RevenueCalculator = require('./revenue-calculator.js')
-const { startOfMonth, endOfMonth, format, addMonths } = require('date-fns')
+const { startOfMonth, format, addMonths } = require('date-fns')
+const { COMPONENT_NAMES, fetchMonthTransactions } = require('./transaction-components/index.js')
 const { startOfDay, todayDate } = require('../utils/dates.js')
 
 /** The cache key's day component, as UTC midnight. */
@@ -26,6 +27,7 @@ async function prefetchTransactionDetails(companyId, asOfDate = null) {
 
   try {
     const calculator = new RevenueCalculator(companyId)
+    await Promise.all([calculator.loadClientAliases(), calculator.loadClientNames()])
 
     // Load from archive if asOfDate is provided
     if (asOfDate) {
@@ -62,26 +64,13 @@ async function prefetchTransactionDetails(companyId, asOfDate = null) {
       const monthStr = format(monthDate, 'yyyy-MM-dd')
 
       try {
-        // Fetch all transaction components with delays between QB API calls
-        const invoiced = await fetchInvoicedTransactions(calculator, monthDate, asOfDate)
-        await new Promise((resolve) => setTimeout(resolve, 150))
+        const transactions = {}
+        const fetchedAt = new Date()
 
-        const journalEntries = await fetchJournalEntryTransactions(calculator, monthDate, asOfDate)
-        await new Promise((resolve) => setTimeout(resolve, 150))
-
-        const delayedCharges = await fetchDelayedChargeTransactions(calculator, monthDate, asOfDate)
-        await new Promise((resolve) => setTimeout(resolve, 150))
-
-        // Monthly recurring also makes a QB API call
-        const monthlyRecurring = await fetchMonthlyRecurringTransactions(calculator, monthDate, asOfDate)
-        await new Promise((resolve) => setTimeout(resolve, 150))
-
-        // Non-QB calls can run in parallel
-        const [wonUnscheduled, weightedSales, clientData] = await Promise.all([
-          fetchWonUnscheduledTransactions(calculator, monthDate, asOfDate),
-          fetchWeightedSalesTransactions(calculator, monthDate, asOfDate),
-          fetchClientData(calculator, monthDate, asOfDate),
-        ])
+        for (const component of COMPONENT_NAMES) {
+          transactions[component] = await fetchMonthTransactions(calculator, component, format(monthDate, 'yyyy-MM'))
+          await new Promise((resolve) => setTimeout(resolve, 150))
+        }
 
         // Store in cache
         await cacheCollection.updateOne(
@@ -92,16 +81,9 @@ async function prefetchTransactionDetails(companyId, asOfDate = null) {
           },
           {
             $set: {
-              transactions: {
-                invoiced,
-                journalEntries,
-                delayedCharges,
-                monthlyRecurring,
-                wonUnscheduled,
-                weightedSales,
-              },
-              clients: clientData,
-              updatedAt: new Date(),
+              transactions,
+              fetchedAt: Object.fromEntries(COMPONENT_NAMES.map((component) => [component, fetchedAt])),
+              updatedAt: fetchedAt,
             },
           },
           { upsert: true },
@@ -167,7 +149,7 @@ async function getCachedTransactionDetails(companyId, month, asOfDate = null, en
 
       return {
         transactions: cached.transactions,
-        clients: cached.clients,
+        fetchedAt: cached.fetchedAt || {},
         cachedAt: cached.updatedAt,
       }
     }
@@ -184,7 +166,7 @@ async function getCachedTransactionDetails(companyId, month, asOfDate = null, en
  *
  * @param {string|ObjectId} companyId - The company ID
  * @param {string} month - Start Month in YYYY-MM-DD or YYYY-MM format
- * @param {Object} data - Data to cache { transactions?, clients? }
+ * @param {Object} data - Data to cache { transactions? }
  * @param {Date} asOfDate - Optional: the date of the snapshot
  * @param {string} endMonth - Optional: End Month for range requests
  * @returns {Promise<boolean>} - Success status
@@ -198,29 +180,14 @@ async function cacheTransactionDetails(companyId, month, data, asOfDate = null, 
   try {
     const cacheCollection = await getCollection('transaction_details_cache')
 
-    // Get existing cache entry if it exists
-    const existing = await cacheCollection.findOne({
-      companyId: companyId,
-      month: cacheKey,
-      asOfDate: effectiveDate,
-    })
+    // Each component is written on its own path, so two requests caching different components of
+    // one month cannot overwrite each other, and each keeps the time it was actually fetched.
+    const now = new Date()
+    const updateData = { updatedAt: now }
 
-    // Merge with existing data to preserve other components
-    const updateData = {
-      updatedAt: new Date(),
-    }
-
-    if (data.transactions) {
-      if (existing && existing.transactions) {
-        // Merge transaction components
-        updateData.transactions = { ...existing.transactions, ...data.transactions }
-      } else {
-        updateData.transactions = data.transactions
-      }
-    }
-
-    if (data.clients) {
-      updateData.clients = data.clients
+    for (const [component, transactions] of Object.entries(data.transactions || {})) {
+      updateData[`transactions.${component}`] = transactions
+      updateData[`fetchedAt.${component}`] = now
     }
 
     await cacheCollection.updateOne(
@@ -237,284 +204,6 @@ async function cacheTransactionDetails(companyId, month, data, asOfDate = null, 
   } catch (err) {
     console.error(`[Transaction Details Cache] Error caching data:`, err)
     return false
-  }
-}
-
-// Helper functions to fetch each transaction type
-async function fetchInvoicedTransactions(calculator, monthDate, asOf) {
-  const startDate = format(startOfMonth(monthDate), 'yyyy-MM-dd')
-  const endDate = format(endOfMonth(monthDate), 'yyyy-MM-dd')
-
-  const invoices = await calculator.qbo.getInvoices(startDate, endDate)
-
-  let filteredInvoices = invoices
-  if (asOf) {
-    const asOfDate = new Date(asOf)
-    asOfDate.setHours(23, 59, 59, 999)
-    filteredInvoices = invoices.filter((invoice) => new Date(invoice.TxnDate) <= asOfDate)
-  }
-
-  return filteredInvoices.map((invoice) => ({
-    id: invoice.Id || `inv-${invoice.DocNumber}`,
-    type: 'invoice',
-    docNumber: invoice.DocNumber,
-    date: invoice.TxnDate,
-    amount: invoice.TotalAmt || 0,
-    customer: invoice.CustomerRef?.name || 'Unknown Customer',
-    description: invoice.Line?.[0]?.Description || '',
-    details: {
-      balance: invoice.Balance || 0,
-      dueDate: invoice.DueDate,
-      lineCount: (invoice.Line || []).length,
-    },
-  }))
-}
-
-async function fetchJournalEntryTransactions(calculator, monthDate, asOf) {
-  const startDate = format(startOfMonth(monthDate), 'yyyy-MM-dd')
-  const endDate = format(endOfMonth(monthDate), 'yyyy-MM-dd')
-
-  const journalEntries = await calculator.qbo.getJournalEntries(startDate, endDate)
-
-  // Filter for entries with unearned revenue accounts (same as journal-entries-list endpoint)
-  let filteredEntries = journalEntries.filter((entry) => {
-    return entry.Line?.some((line) => {
-      const accountName = line.JournalEntryLineDetail?.AccountRef?.name?.toLowerCase() || ''
-      return accountName.includes('unearned') || accountName.includes('deferred')
-    })
-  })
-
-  // Apply asOf date filter if provided
-  if (asOf) {
-    const asOfDate = new Date(asOf)
-    asOfDate.setHours(23, 59, 59, 999)
-    filteredEntries = filteredEntries.filter((entry) => new Date(entry.TxnDate) <= asOfDate)
-  }
-
-  return filteredEntries.map((entry) => {
-    // Calculate revenue amount from journal entry lines
-    // Journal entries have balanced debits/credits, so TotalAmt is always 0
-    // We need to sum revenue account lines (Credits = positive, Debits = negative)
-    let amount = 0
-    const lines = entry.Line || []
-
-    for (const line of lines) {
-      const accountRef = line.JournalEntryLineDetail?.AccountRef
-      const postingType = line.JournalEntryLineDetail?.PostingType
-      const accountName = accountRef?.name?.toLowerCase() || ''
-
-      // Look for revenue accounts - match account number (^4\d{3}) or name contains revenue/income
-      const isRevenueAccount =
-        accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
-        !accountName.includes('unearned') &&
-        !accountName.includes('deferred')
-
-      if (isRevenueAccount) {
-        const lineAmount = line.Amount || 0
-        if (postingType === 'Credit') {
-          amount += lineAmount
-        } else if (postingType === 'Debit') {
-          amount -= lineAmount
-        } else {
-          // If posting type not specified, assume credit for revenue accounts
-          amount += lineAmount
-        }
-      }
-    }
-
-    return {
-      id: entry.Id || `je-${entry.DocNumber}`,
-      type: 'journalEntry',
-      docNumber: entry.DocNumber,
-      date: entry.TxnDate,
-      amount: amount,
-      customer: 'Journal Entry',
-      description: entry.PrivateNote || '',
-      details: {
-        lineCount: lines.length,
-      },
-    }
-  })
-}
-
-async function fetchDelayedChargeTransactions(calculator, monthDate, asOf) {
-  const startDate = format(startOfMonth(monthDate), 'yyyy-MM-dd')
-  const endDate = format(endOfMonth(monthDate), 'yyyy-MM-dd')
-
-  const delayedCharges = await calculator.qbo.getDelayedCharges(startDate, endDate)
-
-  // Filter by service date
-  let filteredCharges = delayedCharges.filter((charge) => {
-    const lines = charge.Line || []
-    for (const line of lines) {
-      const serviceDate = line.SalesItemLineDetail?.ServiceDate || line.ServiceDate
-      if (serviceDate && serviceDate >= startDate && serviceDate <= endDate) {
-        return true
-      }
-    }
-    return false
-  })
-
-  // Filter by as_of date if provided
-  if (asOf) {
-    const asOfDate = new Date(asOf)
-    asOfDate.setHours(23, 59, 59, 999)
-    filteredCharges = filteredCharges.filter((charge) => {
-      if (charge.MetaData?.CreateTime) {
-        const createTime = new Date(charge.MetaData.CreateTime)
-        return createTime <= asOfDate
-      }
-      return true
-    })
-  }
-
-  return filteredCharges.map((charge) => ({
-    id: charge.Id || `dc-${charge.DocNumber}`,
-    type: 'delayedCharge',
-    docNumber: charge.DocNumber,
-    date: charge.TxnDate,
-    amount: charge.TotalAmt || 0,
-    customer: charge.CustomerRef?.name || 'Unknown Customer',
-    description: '',
-    details: {
-      balance: charge.Balance || 0,
-      lineCount: (charge.Line || []).length,
-    },
-  }))
-}
-
-async function fetchMonthlyRecurringTransactions(calculator, monthDate, asOf) {
-  const currentMonth = startOfMonth(new Date())
-  const isFutureMonth = monthDate > currentMonth
-
-  // Monthly recurring is only projected for future months
-  if (!isFutureMonth) {
-    return []
-  }
-
-  // For future months, get the previous month's baseline
-  const previousMonth = addMonths(startOfMonth(new Date()), -1)
-  const previousMonthStart = format(startOfMonth(previousMonth), 'yyyy-MM-dd')
-  const previousMonthEnd = format(endOfMonth(previousMonth), 'yyyy-MM-dd')
-
-  const invoices = await calculator.qbo.getInvoices(previousMonthStart, previousMonthEnd)
-
-  // Get only recurring invoices
-  const recurringInvoices = invoices.filter((invoice) => {
-    const isRecurring = invoice.RecurringInfo?.Type === 'Automated'
-    const hasPositiveBalance = (invoice.TotalAmt || 0) > 0
-    return isRecurring && hasPositiveBalance
-  })
-
-  return recurringInvoices.map((invoice) => ({
-    id: `mr-${invoice.Id}-${format(monthDate, 'yyyy-MM')}`,
-    type: 'monthlyRecurring',
-    docNumber: `Projected from ${invoice.DocNumber}`,
-    date: format(monthDate, 'yyyy-MM-dd'),
-    amount: invoice.TotalAmt || 0,
-    customer: invoice.CustomerRef?.name || 'Unknown Customer',
-    description: `Projected monthly recurring revenue from ${format(previousMonth, 'MMM yyyy')}`,
-    details: {
-      sourceInvoice: invoice.DocNumber,
-      projected: true,
-    },
-  }))
-}
-
-async function fetchWonUnscheduledTransactions(calculator, monthDate, asOf) {
-  // Get won unscheduled deals
-  const wonDeals = await calculator.pipedrive.getWonUnscheduledDeals()
-  const monthStr = format(monthDate, 'yyyy-MM')
-
-  const deals = wonDeals.filter((deal) => {
-    if (!deal.expected_close_date) return false
-    const closeMonth = format(new Date(deal.expected_close_date), 'yyyy-MM')
-    return closeMonth === monthStr
-  })
-
-  return deals.map((deal) => ({
-    id: `pd-won-${deal.id}`,
-    type: 'wonUnscheduled',
-    docNumber: `PD-${deal.id}`,
-    date: deal.expected_close_date,
-    amount: deal.weighted_value || deal.value || 0,
-    customer: deal.person_name || deal.org_name || 'Unknown',
-    description: deal.title || '',
-    details: {
-      probability: deal.probability,
-      status: deal.status,
-      stage: deal.stage_name,
-    },
-  }))
-}
-
-async function fetchWeightedSalesTransactions(calculator, monthDate, asOf) {
-  // Get all open deals
-  const openDeals = await calculator.pipedrive.getOpenDeals()
-  const monthStr = format(monthDate, 'yyyy-MM')
-
-  // Filter deals that have expected_close_date in this month or span across this month
-  const relevantDeals = openDeals.filter((deal) => {
-    if (!deal.expected_close_date) return false
-
-    // Calculate deal duration
-    const closeDate = new Date(deal.expected_close_date)
-    const addDate = deal.add_time ? new Date(deal.add_time) : closeDate
-    const duration = Math.max(1, Math.ceil((closeDate - addDate) / (1000 * 60 * 60 * 24 * 30)))
-
-    // Check if this month falls within the deal's duration
-    const closeMonth = new Date(deal.expected_close_date)
-    closeMonth.setDate(1)
-
-    for (let i = 0; i < duration; i++) {
-      const projectMonth = new Date(closeMonth)
-      projectMonth.setMonth(projectMonth.getMonth() - (duration - 1 - i))
-      const projectMonthStr = format(projectMonth, 'yyyy-MM')
-
-      if (projectMonthStr === monthStr) {
-        return true
-      }
-    }
-
-    return false
-  })
-
-  return relevantDeals.map((deal) => {
-    // Calculate weighted value per month
-    const closeDate = new Date(deal.expected_close_date)
-    const addDate = deal.add_time ? new Date(deal.add_time) : closeDate
-    const duration = Math.max(1, Math.ceil((closeDate - addDate) / (1000 * 60 * 60 * 24 * 30)))
-    const baseWeightedValue = deal.weightedValue || (deal.value * (deal.probability || 0)) / 100
-    const monthlyWeightedValue = baseWeightedValue / duration
-
-    return {
-      id: `pd-weighted-${deal.id}`,
-      type: 'weightedSales',
-      docNumber: `PD-${deal.id}`,
-      date: deal.expected_close_date || format(monthDate, 'yyyy-MM-dd'),
-      amount: monthlyWeightedValue,
-      customer: deal.person_name || deal.org_name || 'Unknown',
-      description: deal.title || '',
-      details: {
-        value: deal.value,
-        probability: deal.probability,
-        weightedValue: baseWeightedValue,
-        monthlyWeightedValue: monthlyWeightedValue,
-        status: deal.status,
-        stage: deal.stage_name,
-        duration: duration,
-      },
-    }
-  })
-}
-
-async function fetchClientData(calculator, monthDate, asOf) {
-  const monthStr = format(monthDate, 'yyyy-MM-dd')
-  const clientData = await calculator.calculateMonthRevenueByClient(monthStr, true)
-
-  return {
-    month: clientData.month,
-    clients: clientData.clients || [],
   }
 }
 

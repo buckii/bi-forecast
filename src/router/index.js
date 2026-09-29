@@ -15,6 +15,12 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/client-summary',
+    name: 'ClientSummary',
+    component: () => import('../views/ClientSummary.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/exceptions',
     name: 'Exceptions',
     component: () => import('../views/Exceptions.vue'),

@@ -62,6 +62,7 @@ import annotationPlugin from 'chartjs-plugin-annotation'
 import { format, parse } from 'date-fns'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { isDarkModeGlobal } from '../composables/useDarkMode'
+import { TRANSACTION_TYPES } from '../lib/transaction-types.js'
 
 Chart.register(...registerables, annotationPlugin)
 
@@ -120,14 +121,7 @@ const referenceLines = computed(() => {
   }
 })
 
-const chartColors = {
-  invoiced: '#3b82f6', // blue
-  journalEntries: '#10b981', // emerald
-  delayedCharges: '#f59e0b', // amber
-  monthlyRecurring: '#8b5cf6', // violet
-  wonUnscheduled: '#ec4899', // pink
-  weightedSales: '#64748b', // slate
-}
+const chartColors = Object.fromEntries(TRANSACTION_TYPES.map((type) => [type.component, type.chartColor]))
 
 // Revenue types in stack order. `label` matches each current-stack dataset's
 // label so we can map legend/dataset visibility back to a type.

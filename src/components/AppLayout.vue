@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
     <!-- Mobile menu button -->
-    <div class="lg:hidden">
+    <div class="lg:hidden print:hidden">
       <button
         @click="mobileMenuOpen = !mobileMenuOpen"
         class="fixed top-4 left-4 z-50 p-2 rounded-md bg-white dark:bg-gray-800 shadow-lg"
@@ -20,7 +20,7 @@
     <!-- Sidebar -->
     <aside
       :class="[
-        'fixed inset-y-0 left-0 z-40 bg-white dark:bg-gray-800 shadow-lg transform transition-all duration-300 lg:translate-x-0',
+        'fixed inset-y-0 left-0 z-40 bg-white dark:bg-gray-800 shadow-lg transform print:hidden transition-all duration-300 lg:translate-x-0',
         mobileMenuOpen ? 'translate-x-0' : '-translate-x-full',
         sidebarCollapsed ? 'lg:w-16 w-64' : 'w-64',
       ]"
@@ -73,6 +73,34 @@
             />
           </svg>
           <span v-if="!sidebarCollapsed" class="truncate">Dashboard</span>
+        </RouterLink>
+
+        <RouterLink
+          to="/client-summary"
+          class="flex items-center py-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-300"
+          :class="[
+            $route.name === 'ClientSummary'
+              ? 'bg-gray-100 dark:bg-gray-700 border-l-4 border-primary-600'
+              : 'border-l-4 border-transparent',
+            sidebarCollapsed ? 'justify-center px-2' : 'px-6',
+          ]"
+          :title="sidebarCollapsed ? 'Revenue by Client' : ''"
+        >
+          <svg
+            class="w-5 h-5"
+            :class="!sidebarCollapsed ? 'mr-3' : ''"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M3 10h18M3 14h18M10 4v16M5 4h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z"
+            />
+          </svg>
+          <span v-if="!sidebarCollapsed" class="truncate">Revenue by Client</span>
         </RouterLink>
 
         <RouterLink
@@ -306,8 +334,8 @@
     </aside>
 
     <!-- Main content -->
-    <main class="transition-all duration-300" :class="sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'">
-      <div class="p-4 lg:p-8">
+    <main class="transition-all duration-300 print:!ml-0" :class="sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'">
+      <div class="p-4 lg:p-8 print:p-0">
         <slot />
       </div>
     </main>

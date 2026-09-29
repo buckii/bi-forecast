@@ -62,6 +62,19 @@ function shiftMonthKey(monthKey, offset) {
   return toMonthKey(addMonths(monthKey, offset))
 }
 
+/** Whether a QuickBooks date string ('YYYY-MM-DD') falls in a 'YYYY-MM' month, compared as text. */
+function isInMonth(dateString, monthKey) {
+  return typeof dateString === 'string' && dateString.slice(0, 7) === monthKey
+}
+
+/**
+ * The first of a 'YYYY-MM' month as a local-time Date, the form the fetchers and the calculator work
+ * in. date-fns startOfMonth would roll a UTC-midnight Date back a month west of Greenwich.
+ */
+function localMonthDate(monthKey) {
+  return new Date(Number(monthKey.slice(0, 4)), Number(monthKey.slice(5, 7)) - 1, 1)
+}
+
 /** Today as 'YYYY-MM-DD' in UTC. */
 function todayString() {
   return toDateString(new Date())
@@ -88,6 +101,8 @@ module.exports = {
   addDays,
   monthStartString,
   shiftMonthKey,
+  isInMonth,
+  localMonthDate,
   todayString,
   startOfDay,
   todayDate,

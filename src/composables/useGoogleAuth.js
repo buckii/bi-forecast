@@ -1,4 +1,5 @@
 import { ref, onMounted, onUnmounted } from 'vue'
+import { loadGoogleIdentity } from '../lib/google-identity.js'
 
 export function useGoogleAuth() {
   const isLoaded = ref(false)
@@ -7,35 +8,6 @@ export function useGoogleAuth() {
 
   const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
-  // Load Google Identity Services
-  const loadGoogleScript = () => {
-    return new Promise((resolve, reject) => {
-      if (window.google && window.google.accounts) {
-        resolve(window.google)
-        return
-      }
-
-      const script = document.createElement('script')
-      script.src = 'https://accounts.google.com/gsi/client'
-      script.async = true
-      script.defer = true
-
-      script.onload = () => {
-        if (window.google && window.google.accounts) {
-          resolve(window.google)
-        } else {
-          reject(new Error('Google Identity Services failed to load'))
-        }
-      }
-
-      script.onerror = () => {
-        reject(new Error('Failed to load Google Identity Services script'))
-      }
-
-      document.head.appendChild(script)
-    })
-  }
-
   // Initialize Google Sign-In
   const initializeGoogleSignIn = async () => {
     try {
@@ -43,7 +15,7 @@ export function useGoogleAuth() {
         throw new Error('Google Client ID is not configured')
       }
 
-      const google = await loadGoogleScript()
+      const google = await loadGoogleIdentity()
 
       google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,

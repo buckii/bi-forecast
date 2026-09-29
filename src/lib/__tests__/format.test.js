@@ -2,9 +2,12 @@ import { describe, it, expect } from 'vitest'
 import {
   formatCurrency,
   formatCurrencyCents,
+  formatWholeDollars,
+  formatPoints,
   formatPercent,
   formatDate,
   formatDateLong,
+  formatDateTime,
   formatMonth,
   parseDisplayDate,
 } from '../format.js'
@@ -70,5 +73,38 @@ describe('dates', () => {
   it('passes a Date through untouched', () => {
     const date = new Date(2026, 8, 1)
     expect(parseDisplayDate(date)).toBe(date)
+  })
+})
+
+describe('formatWholeDollars', () => {
+  it('rounds to the dollar with grouping and no symbol', () => {
+    expect(formatWholeDollars(8333.34)).toBe('8,333')
+    expect(formatWholeDollars(12499.5)).toBe('12,500')
+  })
+
+  it('keeps the sign on a negative shift', () => {
+    expect(formatWholeDollars(-2000)).toBe('-2,000')
+  })
+
+  it('treats a missing value as zero', () => {
+    expect(formatWholeDollars(undefined)).toBe('0')
+  })
+})
+
+describe('formatPoints', () => {
+  it('divides by the price per point and keeps one decimal', () => {
+    expect(formatPoints(12500, 550)).toBe('22.7')
+    expect(formatPoints(1100000, 550)).toBe('2,000.0')
+  })
+})
+
+describe('formatDateTime', () => {
+  it('shows the day and local time of a timestamp', () => {
+    expect(formatDateTime(new Date(2026, 8, 29, 8, 3))).toBe('Sep 29, 8:03 AM')
+  })
+
+  it('renders nothing for a missing or unreadable time', () => {
+    expect(formatDateTime(null)).toBe('')
+    expect(formatDateTime('not a date')).toBe('')
   })
 })

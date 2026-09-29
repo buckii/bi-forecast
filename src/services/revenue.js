@@ -22,20 +22,4 @@ export default {
   async refreshPipedrive() {
     return api.post('/revenue-refresh-pipedrive')
   },
-
-  async getRevenueByClient(month = null, includeWeightedSales = true, asOf = null) {
-    const params = new URLSearchParams({
-      includeWeightedSales: includeWeightedSales.toString(),
-    })
-
-    if (month) {
-      params.append('month', month)
-    }
-
-    if (asOf) {
-      params.append('as_of', asOf)
-    }
-
-    return api.get(`/revenue-by-client?${params.toString()}`)
-  },
 }

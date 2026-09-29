@@ -1,6 +1,8 @@
 // One fetcher per revenue component, behind a single signature so the endpoint dispatches
 // on a key rather than a switch. The six keys match the components in CLAUDE.md.
 
+const { endOfMonth, format, startOfMonth } = require('date-fns')
+const { localMonthDate } = require('../../utils/dates.js')
 const {
   getInvoicedTransactions,
   getJournalEntryTransactions,
@@ -23,4 +25,17 @@ const COMPONENT_FETCHERS = {
 
 const COMPONENT_NAMES = Object.keys(COMPONENT_FETCHERS)
 
-module.exports = { COMPONENT_FETCHERS, COMPONENT_NAMES }
+/** One component's transactions for one 'YYYY-MM' month. */
+function fetchMonthTransactions(calculator, component, monthKey, asOf) {
+  const monthDate = localMonthDate(monthKey)
+
+  return COMPONENT_FETCHERS[component]({
+    calculator,
+    startDate: format(startOfMonth(monthDate), 'yyyy-MM-dd'),
+    endDate: format(endOfMonth(monthDate), 'yyyy-MM-dd'),
+    monthDate,
+    asOf,
+  })
+}
+
+module.exports = { COMPONENT_FETCHERS, COMPONENT_NAMES, fetchMonthTransactions }

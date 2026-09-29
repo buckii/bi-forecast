@@ -1,4 +1,4 @@
-// Which QuickBooks journal entry lines count as unearned revenue and which count as revenue.
+// Which QuickBooks lines count as unearned revenue, revenue, and monthly recurring revenue.
 
 function accountName(line) {
   return line?.JournalEntryLineDetail?.AccountRef?.name?.toLowerCase() || ''
@@ -35,6 +35,39 @@ function revenueAmount(entry) {
   }, 0)
 }
 
+const MONTHLY = 'monthly'
+const REVENUE_ACCOUNT_NAME = /^4\d{3}|revenue|income/i
+
+/** An invoice line billed as monthly recurring: "monthly" in its account, item or description. */
+function isMonthlyInvoiceLine(line) {
+  const account = line?.SalesItemLineDetail?.AccountRef || line?.AccountBasedExpenseLineDetail?.AccountRef
+  return [account?.name, line?.SalesItemLineDetail?.ItemRef?.name, line?.Description].some((text) =>
+    text?.toLowerCase().includes(MONTHLY),
+  )
+}
+
+function monthlyInvoiceAmount(invoice) {
+  return (invoice.Line || []).filter(isMonthlyInvoiceLine).reduce((total, line) => total + (line.Amount || 0), 0)
+}
+
+/** A journal line on a revenue account whose name says monthly, excluding the unearned side. */
+function isMonthlyRevenueJournalLine(line) {
+  const name = line?.JournalEntryLineDetail?.AccountRef?.name || ''
+  return REVENUE_ACCOUNT_NAME.test(name) && name.toLowerCase().includes(MONTHLY) && !isUnearnedRevenueLine(line)
+}
+
+/** Signed, like revenueAmount: a credit adds monthly revenue, a debit takes it away. */
+function monthlyJournalLineAmount(line) {
+  const amount = line.Amount || 0
+  return line.JournalEntryLineDetail?.PostingType === 'Credit' ? amount : -amount
+}
+
+function monthlyJournalAmount(entry) {
+  return (entry.Line || [])
+    .filter(isMonthlyRevenueJournalLine)
+    .reduce((total, line) => total + monthlyJournalLineAmount(line), 0)
+}
+
 module.exports = {
   accountName,
   accountId,
@@ -42,4 +75,9 @@ module.exports = {
   isRevenueLine,
   hasUnearnedRevenue,
   revenueAmount,
+  isMonthlyInvoiceLine,
+  monthlyInvoiceAmount,
+  isMonthlyRevenueJournalLine,
+  monthlyJournalLineAmount,
+  monthlyJournalAmount,
 }
