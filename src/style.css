@@ -21,6 +21,18 @@
     @apply bg-gray-200 text-gray-900 px-4 py-2 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600 dark:focus:ring-offset-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
+  .chip {
+    @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 transition-colors hover:border-gray-500 dark:hover:border-gray-400;
+  }
+
+  .chip-off {
+    @apply text-gray-400 dark:text-gray-500 border-dashed;
+  }
+
+  .chip-selected {
+    @apply bg-primary-600 border-primary-600 text-white hover:border-primary-600 dark:border-primary-600 dark:text-white;
+  }
+
   .card {
     @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6 dark:bg-gray-800 dark:border-gray-700;
   }

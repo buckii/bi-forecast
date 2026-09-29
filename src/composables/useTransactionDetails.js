@@ -3,7 +3,7 @@ import { addMonths, format, isBefore, parseISO, startOfMonth } from 'date-fns'
 import { useAuthStore } from '../stores/auth'
 import { useRevenueStore } from '../stores/revenue'
 
-const BASE_COMPONENTS = ['invoiced', 'journalEntries', 'delayedCharges', 'monthlyRecurring', 'wonUnscheduled']
+export const BASE_COMPONENTS = ['invoiced', 'journalEntries', 'delayedCharges', 'monthlyRecurring', 'wonUnscheduled']
 
 // QuickBooks rate-limits bursts, so components are fetched one at a time with spacing.
 const COMPONENT_DELAY_MS = 100
@@ -37,22 +37,9 @@ function latestDate(dates) {
     .reduce((latest, date) => (!latest || new Date(date) > new Date(latest) ? date : latest), null)
 }
 
-/** Sum each client's total, so a name appearing twice collapses into one row. */
-function mergeClients(clients) {
-  const merged = new Map()
-
-  for (const client of clients) {
-    const running = merged.get(client.client) || { ...client, total: 0 }
-    running.total += client.total || 0
-    merged.set(client.client, running)
-  }
-
-  return [...merged.values()]
-}
-
 /**
- * Loads the transaction drill-down: every component's transactions plus the client breakdown,
- * for one month or a month range.
+ * Loads the transaction drill-down: every component's transactions, for one month or a month range.
+ * The Clients tab groups these same transactions, so both tabs come from one fetch.
  */
 export function useTransactionDetails(props) {
   const authStore = useAuthStore()
@@ -63,12 +50,9 @@ export function useTransactionDetails(props) {
   const loadingStatus = ref('')
   const error = ref(null)
   const allTransactions = ref([])
-  const clientData = ref(null)
   const cacheMetadata = ref({
     transactionsFromCache: false,
     transactionsCachedAt: null,
-    clientsFromCache: false,
-    clientsCachedAt: null,
   })
 
   function authorizedFetch(endpoint, params) {
@@ -118,30 +102,6 @@ export function useTransactionDetails(props) {
     }
   }
 
-  async function fetchClients(params) {
-    const clientParams = new URLSearchParams(params)
-    clientParams.delete('_refresh')
-    clientParams.append('includeWeightedSales', revenueStore.includeWeightedSales.toString())
-
-    try {
-      const response = await authorizedFetch('revenue-by-client', clientParams)
-      if (!response.ok) return { clients: null, fromCache: false, cachedAt: null }
-
-      const result = await response.json()
-      const data = result.data || result
-
-      return {
-        clients: data.clients || [],
-        month: data.month,
-        fromCache: data.fromCache || false,
-        cachedAt: data.cachedAt || null,
-      }
-    } catch (err) {
-      console.error('Error fetching client data:', err)
-      return { clients: null, fromCache: false, cachedAt: null }
-    }
-  }
-
   async function loadAllData(forceRefresh = false) {
     loading.value = true
     loadingStatus.value = 'Preparing to load data...'
@@ -151,7 +111,7 @@ export function useTransactionDetails(props) {
     try {
       const components = revenueStore.includeWeightedSales ? [...BASE_COMPONENTS, 'weightedSales'] : BASE_COMPONENTS
 
-      const totalSteps = components.length + 1 // the client breakdown is the last step
+      const totalSteps = components.length
       let completedSteps = 0
       const advance = (stepName) => {
         completedSteps++
@@ -168,20 +128,12 @@ export function useTransactionDetails(props) {
         advance(component)
       }
 
-      const clientResult = await fetchClients(params)
-      advance('Client Data')
-
       allTransactions.value = results.flatMap((result) => result.transactions)
 
       cacheMetadata.value = {
         transactionsFromCache: results.some((result) => result.fromCache),
         transactionsCachedAt: latestDate(results.filter((r) => r.fromCache).map((r) => r.cachedAt)),
-        clientsFromCache: Boolean(clientResult.clients && clientResult.fromCache),
-        clientsCachedAt: clientResult.clients ? clientResult.cachedAt : null,
       }
-
-      const clients = clientResult.clients ? mergeClients(clientResult.clients) : []
-      clientData.value = clients.length > 0 ? { clients, month: props.month || 'Multiple Months' } : null
     } catch (err) {
       error.value = err.message
     } finally {
@@ -195,7 +147,6 @@ export function useTransactionDetails(props) {
     loadingStatus,
     error,
     allTransactions,
-    clientData,
     cacheMetadata,
     loadAllData,
   }

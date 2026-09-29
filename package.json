@@ -19,7 +19,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "reconcile": "node scripts/reconcile-revenue.js"
   },
   "dependencies": {
     "@google-cloud/local-auth": "^3.0.1",

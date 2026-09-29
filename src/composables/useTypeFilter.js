@@ -38,6 +38,10 @@ export function useTypeFilter(includeWeightedSales) {
     }
   }
 
+  function toggleType(type) {
+    enabledTypes.value[type] = !enabledTypes.value[type]
+  }
+
   /** Re-sorting by the active field flips direction; a new field starts descending. */
   function toggleSort(field) {
     if (sortBy.value === field) {
@@ -49,5 +53,5 @@ export function useTypeFilter(includeWeightedSales) {
     sortDirection.value = 'desc'
   }
 
-  return { enabledTypes, sortBy, sortDirection, allEnabled, toggleAll, toggleSort }
+  return { enabledTypes, sortBy, sortDirection, allEnabled, toggleAll, toggleType, toggleSort }
 }

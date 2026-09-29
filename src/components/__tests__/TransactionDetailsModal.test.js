@@ -80,4 +80,18 @@ describe('TransactionDetailsModal', () => {
     expect(wrapper.vm.allFiltersEnabled).toBe(false)
     expect(wrapper.vm.allClientFiltersEnabled).toBe(true)
   })
+
+  it.each(['transactions', 'clients'])('renders a filter pill per revenue type on the %s tab', async (tab) => {
+    localStorage.setItem('transactionModal_lastTab', tab)
+    const invoice = { id: '1', type: 'invoice', customer: 'Acme', amount: 100, date: '2026-09-01' }
+    global.fetch = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ data: { transactions: [invoice], clients: [{ client: 'Acme', total: 100 }] } }),
+    }))
+
+    const wrapper = mountModal({ isOpen: true, month: '2026-09-01' })
+
+    await vi.waitFor(() => expect(wrapper.findAll('button[aria-pressed]')).toHaveLength(6), { timeout: 3000 })
+    expect(wrapper.text()).toContain('Weighted Sales')
+  })
 })

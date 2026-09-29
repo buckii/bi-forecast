@@ -6,43 +6,13 @@
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ modalTitle }}</h3>
           <!-- Cache/Fetch Info with Refresh Button -->
           <div
-            v-if="activeTab === 'transactions' && cacheMetadata.transactionsCachedAt"
+            v-if="cacheMetadata.transactionsCachedAt"
             class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1"
           >
             <span v-if="cacheMetadata.transactionsFromCache">
               Cached {{ formatRelativeTime(cacheMetadata.transactionsCachedAt) }}
             </span>
             <span v-else> Fetched {{ formatRelativeTime(cacheMetadata.transactionsCachedAt) }} </span>
-            <button
-              @click="refreshData"
-              :disabled="refreshing || loading"
-              class="p-0.5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Refresh data"
-            >
-              <svg
-                class="w-3.5 h-3.5"
-                :class="{ 'animate-spin': refreshing }"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-            </button>
-          </div>
-          <div
-            v-if="activeTab === 'clients' && cacheMetadata.clientsCachedAt"
-            class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1"
-          >
-            <span v-if="cacheMetadata.clientsFromCache">
-              Cached {{ formatRelativeTime(cacheMetadata.clientsCachedAt) }}
-            </span>
-            <span v-else> Fetched {{ formatRelativeTime(cacheMetadata.clientsCachedAt) }} </span>
             <button
               @click="refreshData"
               :disabled="refreshing || loading"
@@ -156,28 +126,13 @@
 
         <!-- Filter Toggles -->
         <div class="space-y-3">
-          <div class="flex flex-wrap gap-3 items-center">
-            <button
-              @click="toggleAllFilters"
-              class="text-sm text-primary-600 dark:text-primary-400 hover:underline font-medium w-20 text-left"
-            >
-              {{ allFiltersEnabled ? 'Hide All' : 'Show All' }}
-            </button>
-            <div class="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
-            <label
-              v-for="type in transactionTypes"
-              :key="type.value"
-              class="flex items-center space-x-2 cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                v-model="enabledTypes[type.value]"
-                class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-              />
-              <span class="text-sm text-gray-700 dark:text-gray-300">{{ type.label }}</span>
-              <span class="text-xs text-gray-500 dark:text-gray-400">({{ getTypeCount(type.value) }})</span>
-            </label>
-          </div>
+          <TypeFilterPills
+            :enabled-types="enabledTypes"
+            :all-enabled="allFiltersEnabled"
+            :counts="typeCounts"
+            @toggle="toggleType"
+            @toggle-all="toggleAllFilters"
+          />
 
           <!-- Sort Options -->
           <div class="flex items-center space-x-4 text-sm">
@@ -318,7 +273,7 @@
       </div>
 
       <!-- Clients Tab -->
-      <div v-else-if="activeTab === 'clients' && clientData" class="space-y-6">
+      <div v-else-if="activeTab === 'clients'" class="space-y-6">
         <!-- Summary -->
         <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -336,27 +291,12 @@
         <!-- Filter Toggles and Sorting -->
         <div class="space-y-3">
           <!-- Transaction Type Filters -->
-          <div class="flex flex-wrap gap-3 items-center">
-            <button
-              @click="toggleAllClientFilters"
-              class="text-sm text-primary-600 dark:text-primary-400 hover:underline font-medium w-20 text-left"
-            >
-              {{ allClientFiltersEnabled ? 'Hide All' : 'Show All' }}
-            </button>
-            <div class="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
-            <label
-              v-for="type in transactionTypes"
-              :key="type.value"
-              class="flex items-center space-x-2 cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                v-model="clientEnabledTypes[type.value]"
-                class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-              />
-              <span class="text-sm text-gray-700 dark:text-gray-300">{{ type.label }}</span>
-            </label>
-          </div>
+          <TypeFilterPills
+            :enabled-types="clientEnabledTypes"
+            :all-enabled="allClientFiltersEnabled"
+            @toggle="toggleClientType"
+            @toggle-all="toggleAllClientFilters"
+          />
 
           <!-- Sort Options -->
           <div class="flex items-center space-x-4 text-sm">
@@ -503,64 +443,44 @@
                           No transactions found
                         </div>
                         <div v-else class="space-y-1">
-                          <div
+                          <ClientTransactionRow
                             v-for="transaction in getClientTransactions(client.client)"
                             :key="transaction.id"
-                            class="flex items-center justify-between py-2 px-3 bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 text-xs"
+                            :transaction="transaction"
                           >
-                            <div class="flex items-center space-x-3 flex-1">
-                              <span
-                                class="inline-flex items-center px-2 py-1 rounded-full font-medium"
-                                :class="transactionTypeColor(transaction.type)"
+                            <template #actions>
+                              <button
+                                v-if="transaction.type === 'invoice' || transaction.type === 'delayedCharge'"
+                                @click.stop="createJournalEntryFromTransaction(transaction)"
+                                class="inline-flex ml-1 p-1 text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors align-middle"
+                                title="Create Journal Entry"
                               >
-                                {{ transactionTypeLabel(transaction.type) }}
-                              </span>
-                              <span class="font-medium text-gray-900 dark:text-gray-100">
-                                {{ transaction.docNumber }}
-                              </span>
-                              <span class="text-gray-500 dark:text-gray-400">
-                                {{ formatTransactionDate(transaction.date) }}
-                              </span>
-                            </div>
-                            <div class="flex items-center space-x-3">
-                              <span class="text-gray-700 dark:text-gray-300 truncate max-w-xs">
-                                {{ transaction.description }}
-                              </span>
-                              <span class="font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap relative">
-                                {{ formatCurrency(transaction.amount) }}
-                                <button
-                                  v-if="transaction.type === 'invoice' || transaction.type === 'delayedCharge'"
-                                  @click.stop="createJournalEntryFromTransaction(transaction)"
-                                  class="inline-flex ml-1 p-1 text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors align-middle"
-                                  title="Create Journal Entry"
-                                >
-                                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                      stroke-linecap="round"
-                                      stroke-linejoin="round"
-                                      stroke-width="2"
-                                      d="M12 4v16m8-8H4"
-                                    />
-                                  </svg>
-                                </button>
-                                <button
-                                  v-if="transaction.type === 'journalEntry'"
-                                  @click.stop="editJournalEntry(transaction)"
-                                  class="inline-flex ml-1 p-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors align-middle"
-                                  title="Edit Journal Entry"
-                                >
-                                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                      stroke-linecap="round"
-                                      stroke-linejoin="round"
-                                      stroke-width="2"
-                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                    />
-                                  </svg>
-                                </button>
-                              </span>
-                            </div>
-                          </div>
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M12 4v16m8-8H4"
+                                  />
+                                </svg>
+                              </button>
+                              <button
+                                v-if="transaction.type === 'journalEntry'"
+                                @click.stop="editJournalEntry(transaction)"
+                                class="inline-flex ml-1 p-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors align-middle"
+                                title="Edit Journal Entry"
+                              >
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                  />
+                                </svg>
+                              </button>
+                            </template>
+                          </ClientTransactionRow>
                         </div>
                       </div>
                     </td>
@@ -644,8 +564,9 @@ import { ArrowDownTrayIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import { format as formatDate, parseISO } from 'date-fns'
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { formatCurrency, formatShare } from '../lib/format.js'
+import { clientName, totalsByClient } from '../lib/client-totals.js'
 import { downloadCsv, toCsv } from '../lib/csv.js'
-import { TRANSACTION_TYPES, transactionTypeColor, transactionTypeLabel } from '../lib/transaction-types.js'
+import { transactionTypeColor, transactionTypeLabel } from '../lib/transaction-types.js'
 import { useRoute, useRouter } from 'vue-router'
 import { isDarkModeGlobal } from '../composables/useDarkMode'
 import { useAuthStore } from '../stores/auth'
@@ -655,10 +576,12 @@ import { sortClients, sortTransactions, useTypeFilter } from '../composables/use
 import { useClientPieChart } from '../composables/useClientPieChart.js'
 import { useClientRevenueShare } from '../composables/useClientRevenueShare.js'
 import { useJournalEntryActions } from '../composables/useJournalEntryActions.js'
+import ClientTransactionRow from './ClientTransactionRow.vue'
 import JournalEntryBulkEditModal from './JournalEntryBulkEditModal.vue'
 import JournalEntryCreateModal from './JournalEntryCreateModal.vue'
 import JournalEntryDetailModal from './JournalEntryDetailModal.vue'
 import StatusModal from './StatusModal.vue'
+import TypeFilterPills from './TypeFilterPills.vue'
 
 const revenueStore = useRevenueStore()
 const router = useRouter()
@@ -704,7 +627,7 @@ const emit = defineEmits(['close'])
 
 const authStore = useAuthStore()
 
-const { loading, loadingProgress, loadingStatus, error, allTransactions, clientData, cacheMetadata, loadAllData } =
+const { loading, loadingProgress, loadingStatus, error, allTransactions, cacheMetadata, loadAllData } =
   useTransactionDetails(props)
 
 // Get price per point from company settings
@@ -743,6 +666,7 @@ const {
   sortDirection,
   allEnabled: allFiltersEnabled,
   toggleAll: toggleAllFilters,
+  toggleType,
   toggleSort,
 } = useTypeFilter(revenueStore.includeWeightedSales)
 
@@ -752,6 +676,7 @@ const {
   sortDirection: clientSortDirection,
   allEnabled: allClientFiltersEnabled,
   toggleAll: toggleAllClientFilters,
+  toggleType: toggleClientType,
   toggleSort: toggleClientSort,
 } = useTypeFilter(revenueStore.includeWeightedSales)
 
@@ -765,15 +690,8 @@ const filteredTotalAmount = computed(() => {
 })
 
 const sortedClients = computed(() => {
-  if (!clientData.value?.clients) return []
-
   // Totals are recomputed from the transactions so they honour this tab's type filters.
-  const totals = new Map()
-  for (const transaction of allTransactions.value.filter((t) => clientEnabledTypes.value[t.type])) {
-    totals.set(transaction.customer, (totals.get(transaction.customer) || 0) + (transaction.amount || 0))
-  }
-
-  const clients = [...totals].map(([client, total]) => ({ client, total }))
+  const clients = totalsByClient(allTransactions.value, clientEnabledTypes.value)
   return sortClients(clients, clientSortBy.value, clientSortDirection.value)
 })
 
@@ -815,21 +733,24 @@ const {
   handleJournalEntryDeleted,
 } = useJournalEntryActions(() => loadDetails())
 
-function getClientTransactions(clientName) {
+function getClientTransactions(client) {
   if (!allTransactions.value) return []
 
   // Filter transactions by client name and enabled types
   const transactions = allTransactions.value
-    .filter((t) => t.customer === clientName && clientEnabledTypes.value[t.type])
+    .filter((t) => clientName(t) === client && clientEnabledTypes.value[t.type])
     .sort((a, b) => new Date(b.date) - new Date(a.date))
 
   return transactions
 }
 
-function getTypeCount(type) {
-  if (!allTransactions.value) return 0
-  return allTransactions.value.filter((t) => t.type === type).length
-}
+const typeCounts = computed(() => {
+  const counts = {}
+  for (const transaction of allTransactions.value || []) {
+    counts[transaction.type] = (counts[transaction.type] || 0) + 1
+  }
+  return counts
+})
 
 watch(
   () => props.isOpen,
@@ -839,7 +760,6 @@ watch(
     } else {
       // Reset state when modal closes (but preserve activeTab for next open)
       allTransactions.value = []
-      clientData.value = null
       error.value = null
       expandedTransactions.value.clear()
       expandedClients.value.clear()
@@ -876,7 +796,7 @@ watch(
 async function loadDetails(forceRefresh = false) {
   await loadAllData(forceRefresh)
 
-  if (activeTab.value === 'clients' && clientData.value?.clients) {
+  if (activeTab.value === 'clients' && sortedClients.value.length) {
     setTimeout(() => createPieChart(), 100)
   }
 }
@@ -1006,7 +926,7 @@ watch(activeTab, (newTab) => {
   const query = { ...route.query, modalTab: newTab }
   router.replace({ query })
 
-  if (newTab === 'clients' && clientData.value?.clients) {
+  if (newTab === 'clients' && sortedClients.value.length) {
     setTimeout(() => createPieChart(), 100)
   } else {
     destroyPieChart()

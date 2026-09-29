@@ -56,24 +56,4 @@ describe('client matching for journal entries', () => {
     expect(calculator.matchClientFromText('Year end adjustment')).toBeNull()
     expect(calculator.matchClientFromText('')).toBeNull()
   })
-
-  it('registers names from already-fetched QBO and Pipedrive data', () => {
-    calculator.registerClientNamesFromData(
-      {
-        invoices: [{ CustomerRef: { name: 'Vineyard Community Center' } }],
-        delayedCharges: [{ CustomerRef: { name: 'New Albany Community Authority' } }],
-      },
-      {
-        wonUnscheduledDeals: [{ orgName: 'Sulam Academy' }],
-        openDeals: [{ orgName: 'Buckeye Ranch' }],
-      },
-    )
-
-    expect(calculator.matchClientFromText('Sulam Academy 7.5 pts invoiced Aug 2026, done Sep 2026')).toBe(
-      'Sulam Academy',
-    )
-    expect(calculator.matchClientFromText('New Albany Community Authority monthly share')).toBe(
-      'New Albany Community Authority',
-    )
-  })
 })

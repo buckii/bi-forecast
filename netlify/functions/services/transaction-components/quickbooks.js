@@ -1,30 +1,11 @@
 // Transaction-level detail behind the QuickBooks revenue components.
 
+const { createdByAsOf, withinDates } = require('../qb-records.js')
+
 async function getInvoicedTransactions(calculator, startDate, endDate, asOf = null) {
   const invoices = await calculator.qbo.getInvoices(startDate, endDate)
 
-  // Filter invoices to only include those within the exact month
-  const startDateObj = new Date(startDate + 'T00:00:00.000Z')
-  const endDateObj = new Date(endDate + 'T23:59:59.999Z')
-
-  let filteredInvoices = invoices.filter((invoice) => {
-    const txnDate = new Date(invoice.TxnDate + 'T00:00:00.000Z')
-    return txnDate >= startDateObj && txnDate <= endDateObj
-  })
-
-  // If using fallback mode (as_of provided and archive has no data), filter by creation time
-  if (asOf && calculator.isUsingFallback) {
-    const asOfDate = new Date(asOf + 'T23:59:59.999Z')
-    filteredInvoices = filteredInvoices.filter((invoice) => {
-      if (invoice.MetaData && invoice.MetaData.CreateTime) {
-        const createTime = new Date(invoice.MetaData.CreateTime)
-        return createTime <= asOfDate
-      }
-      // If no CreateTime, keep it (conservative approach)
-      return true
-    })
-    console.log(`[Transaction Details] Fallback: Filtered invoices by CreateTime <= ${asOf}`)
-  }
+  const filteredInvoices = createdByAsOf(calculator, withinDates(invoices, startDate, endDate), asOf)
 
   return filteredInvoices.map((invoice) => ({
     id: invoice.Id,
@@ -72,28 +53,7 @@ async function getInvoicedTransactions(calculator, startDate, endDate, asOf = nu
 async function getJournalEntryTransactions(calculator, startDate, endDate, asOf = null) {
   const journalEntries = await calculator.qbo.getJournalEntries(startDate, endDate)
 
-  // Filter journal entries to only include those within the exact month
-  const startDateObj = new Date(startDate + 'T00:00:00.000Z')
-  const endDateObj = new Date(endDate + 'T23:59:59.999Z')
-
-  let filteredEntries = journalEntries.filter((entry) => {
-    const txnDate = new Date(entry.TxnDate + 'T00:00:00.000Z')
-    return txnDate >= startDateObj && txnDate <= endDateObj
-  })
-
-  // If using fallback mode (as_of provided and archive has no data), filter by creation time
-  if (asOf && calculator.isUsingFallback) {
-    const asOfDate = new Date(asOf + 'T23:59:59.999Z')
-    filteredEntries = filteredEntries.filter((entry) => {
-      if (entry.MetaData && entry.MetaData.CreateTime) {
-        const createTime = new Date(entry.MetaData.CreateTime)
-        return createTime <= asOfDate
-      }
-      // If no CreateTime, keep it (conservative approach)
-      return true
-    })
-    console.log(`[Transaction Details] Fallback: Filtered journal entries by CreateTime <= ${asOf}`)
-  }
+  const filteredEntries = createdByAsOf(calculator, withinDates(journalEntries, startDate, endDate), asOf)
 
   // Load client aliases and known client names for matching
   await Promise.all([calculator.loadClientAliases(), calculator.loadClientNames()])
@@ -212,28 +172,7 @@ async function getJournalEntryTransactions(calculator, startDate, endDate, asOf 
 async function getDelayedChargeTransactions(calculator, startDate, endDate, asOf = null) {
   const delayedCharges = await calculator.qbo.getDelayedCharges(startDate, endDate)
 
-  // Filter delayed charges to only include those within the exact month
-  const startDateObj = new Date(startDate + 'T00:00:00.000Z')
-  const endDateObj = new Date(endDate + 'T23:59:59.999Z')
-
-  let filteredCharges = delayedCharges.filter((charge) => {
-    const txnDate = new Date(charge.TxnDate + 'T00:00:00.000Z')
-    return txnDate >= startDateObj && txnDate <= endDateObj
-  })
-
-  // If using fallback mode (as_of provided and archive has no data), filter by creation time
-  if (asOf && calculator.isUsingFallback) {
-    const asOfDate = new Date(asOf + 'T23:59:59.999Z')
-    filteredCharges = filteredCharges.filter((charge) => {
-      if (charge.MetaData && charge.MetaData.CreateTime) {
-        const createTime = new Date(charge.MetaData.CreateTime)
-        return createTime <= asOfDate
-      }
-      // If no CreateTime, keep it (conservative approach)
-      return true
-    })
-    console.log(`[Transaction Details] Fallback: Filtered delayed charges by CreateTime <= ${asOf}`)
-  }
+  const filteredCharges = createdByAsOf(calculator, withinDates(delayedCharges, startDate, endDate), asOf)
   return filteredCharges.map((charge) => ({
     id: charge.Id || `dc-${charge.DocNumber}`,
     type: 'delayedCharge',

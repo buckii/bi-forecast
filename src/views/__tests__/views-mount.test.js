@@ -5,6 +5,8 @@ import { createPinia, setActivePinia } from 'pinia'
 // A setup-time error in a view is invisible to every other suite, because nothing else mounts
 // these. Each case here only asserts that the view renders at all.
 
+vi.mock('../../lib/google-sheets.js', () => ({ preloadGoogleSheets: vi.fn(), createSpreadsheet: vi.fn() }))
+
 vi.mock('vue-router', () => ({
   useRoute: () => ({ query: {}, params: {} }),
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
@@ -48,6 +50,7 @@ vi.mock('../../stores/revenue', () => ({
 
 import AccountsReceivable from '../AccountsReceivable.vue'
 import Balances from '../Balances.vue'
+import ClientSummary from '../ClientSummary.vue'
 import Exceptions from '../Exceptions.vue'
 import JournalEntries from '../JournalEntries.vue'
 import Login from '../Login.vue'
@@ -72,6 +75,7 @@ const stubs = {
 const views = [
   ['AccountsReceivable', AccountsReceivable],
   ['Balances', Balances],
+  ['ClientSummary', ClientSummary],
   ['Exceptions', Exceptions],
   ['JournalEntries', JournalEntries],
   ['Login', Login],

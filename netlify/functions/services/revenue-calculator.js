@@ -8,11 +8,12 @@ const {
   sumRevenueJournalEntries,
   sumDelayedCharges,
   calculateMonthlyRecurring,
+  monthlyRecurringBilled,
   calculateWonUnscheduledForMonth,
   calculateWeightedSalesForMonth,
 } = require('./revenue-components.js')
-const { calculateClientBreakdownForMonth } = require('./client-breakdown.js')
 const { getBalances } = require('./balances.js')
+const { withinDates } = require('./qb-records.js')
 const { fetchAllQBOData, fetchAllPipedriveData } = require('./revenue-sources.js')
 
 class RevenueCalculator {
@@ -167,20 +168,6 @@ class RevenueCalculator {
   }
 
   /**
-   * Register every client name present in already-fetched QBO/Pipedrive data.
-   */
-  registerClientNamesFromData(qboData, pipedriveData) {
-    if (qboData) {
-      ;(qboData.invoices || []).forEach((invoice) => this.registerClientName(invoice.CustomerRef?.name))
-      ;(qboData.delayedCharges || []).forEach((charge) => this.registerClientName(charge.CustomerRef?.name))
-    }
-    if (pipedriveData) {
-      ;(pipedriveData.wonUnscheduledDeals || []).forEach((deal) => this.registerClientName(deal.orgName))
-      ;(pipedriveData.openDeals || []).forEach((deal) => this.registerClientName(deal.orgName))
-    }
-  }
-
-  /**
    * Find a client mentioned anywhere in free text (journal entry descriptions and
    * private notes). Checks client aliases AND exact client names, longest candidate
    * first so "Vineyard Community Center" wins over a shorter name it contains.
@@ -274,126 +261,18 @@ class RevenueCalculator {
     return fetchAllPipedriveData(this)
   }
 
+  /** This month's billed recurring revenue, or last month's when this month has none yet. */
   async calculateBaselineMonthlyRecurring(qboData) {
     try {
-      // 1. Try Current Month first
-      const currentDate = new Date()
-      const currentMonthStart = startOfMonth(currentDate)
-      const currentMonthEnd = endOfMonth(currentDate)
+      const currentMonth = startOfMonth(new Date())
+      const currentTotal = monthlyRecurringBilled(qboData, format(currentMonth, 'yyyy-MM'))
+      if (currentTotal > 0) return { amount: currentTotal, monthName: format(currentMonth, 'MMM yyyy') }
 
-      let currentTotal = 0
-      const currentMonthName = format(currentMonthStart, 'MMM yyyy')
-
-      // Check current month invoices
-      if (qboData && qboData.invoices) {
-        const currentInvoices = qboData.invoices.filter((invoice) => {
-          const txnDate = new Date(invoice.TxnDate)
-          return txnDate >= currentMonthStart && txnDate <= currentMonthEnd
-        })
-
-        for (const invoice of currentInvoices) {
-          const lines = invoice.Line || []
-          for (const line of lines) {
-            const accountRef = line.SalesItemLineDetail?.AccountRef || line.AccountBasedExpenseLineDetail?.AccountRef
-            const itemRef = line.SalesItemLineDetail?.ItemRef
-            const hasMonthly =
-              accountRef?.name?.toLowerCase().includes('monthly') ||
-              itemRef?.name?.toLowerCase().includes('monthly') ||
-              line.Description?.toLowerCase().includes('monthly')
-
-            if (hasMonthly) {
-              currentTotal += line.Amount || 0
-            }
-          }
-        }
+      const previousMonth = addMonths(currentMonth, -1)
+      return {
+        amount: monthlyRecurringBilled(qboData, format(previousMonth, 'yyyy-MM')),
+        monthName: format(previousMonth, 'MMM yyyy'),
       }
-
-      // Check current month journal entries
-      if (qboData && qboData.journalEntries) {
-        const currentEntries = qboData.journalEntries.filter((entry) => {
-          const txnDate = new Date(entry.TxnDate)
-          return txnDate >= currentMonthStart && txnDate <= currentMonthEnd
-        })
-
-        for (const entry of currentEntries) {
-          const lines = entry.Line || []
-          for (const line of lines) {
-            const accountRef = line.JournalEntryLineDetail?.AccountRef
-            if (
-              accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
-              accountRef?.name?.toLowerCase().includes('monthly') &&
-              !accountRef?.name?.toLowerCase().includes('unearned')
-            ) {
-              currentTotal += line.Amount || 0
-            }
-          }
-        }
-      }
-
-      // 2. If current month has data, use it
-      if (currentTotal > 0) {
-        console.log(`[RevenueCalculator] Using current month (${currentMonthName}) for MRR baseline: $${currentTotal}`)
-        return { amount: currentTotal, monthName: currentMonthName }
-      }
-
-      // 3. Fallback to Previous Month
-      const previousMonth = addMonths(currentMonthStart, -1)
-      const previousMonthStart = startOfMonth(previousMonth)
-      const previousMonthEnd = endOfMonth(previousMonth)
-      const previousMonthName = format(previousMonthStart, 'MMM yyyy')
-
-      let prevTotal = 0
-
-      // Check previous month invoices
-      if (qboData && qboData.invoices) {
-        const previousMonthInvoices = qboData.invoices.filter((invoice) => {
-          const txnDate = new Date(invoice.TxnDate)
-          return txnDate >= previousMonthStart && txnDate <= previousMonthEnd
-        })
-
-        for (const invoice of previousMonthInvoices) {
-          const lines = invoice.Line || []
-          for (const line of lines) {
-            const accountRef = line.SalesItemLineDetail?.AccountRef || line.AccountBasedExpenseLineDetail?.AccountRef
-            const itemRef = line.SalesItemLineDetail?.ItemRef
-            const hasMonthly =
-              accountRef?.name?.toLowerCase().includes('monthly') ||
-              itemRef?.name?.toLowerCase().includes('monthly') ||
-              line.Description?.toLowerCase().includes('monthly')
-
-            if (hasMonthly) {
-              prevTotal += line.Amount || 0
-            }
-          }
-        }
-      }
-
-      // Check previous month journal entries
-      if (qboData && qboData.journalEntries) {
-        const previousMonthEntries = qboData.journalEntries.filter((entry) => {
-          const txnDate = new Date(entry.TxnDate)
-          return txnDate >= previousMonthStart && txnDate <= previousMonthEnd
-        })
-
-        for (const entry of previousMonthEntries) {
-          const lines = entry.Line || []
-          for (const line of lines) {
-            const accountRef = line.JournalEntryLineDetail?.AccountRef
-            if (
-              accountRef?.name?.match(/^4\d{3}|revenue|income/i) &&
-              accountRef?.name?.toLowerCase().includes('monthly') &&
-              !accountRef?.name?.toLowerCase().includes('unearned')
-            ) {
-              prevTotal += line.Amount || 0
-            }
-          }
-        }
-      }
-
-      console.log(
-        `[RevenueCalculator] Current month MRR was zero. Falling back to previous month (${previousMonthName}) for MRR baseline: $${prevTotal}`,
-      )
-      return { amount: prevTotal, monthName: previousMonthName }
     } catch (error) {
       console.error('Error calculating baseline monthly recurring amount:', error)
       return { amount: 0, monthName: 'Error' }
@@ -401,10 +280,9 @@ class RevenueCalculator {
   }
 
   async calculateMonthComponentsFromCache(monthDate, qboData, pipedriveData, baselineMonthlyRecurring = 0) {
-    const startDate = startOfMonth(monthDate)
-    const endDate = endOfMonth(monthDate)
-    const currentMonth = startOfMonth(new Date())
-    const isFutureMonth = monthDate > currentMonth
+    const startDate = format(startOfMonth(monthDate), 'yyyy-MM-dd')
+    const endDate = format(endOfMonth(monthDate), 'yyyy-MM-dd')
+    const isFutureMonth = monthDate > startOfMonth(new Date())
 
     const components = {
       invoiced: 0,
@@ -415,58 +293,21 @@ class RevenueCalculator {
       weightedSales: 0,
     }
 
-    // Process QBO data
     if (qboData) {
-      // Filter and sum invoices for this month
-      const monthInvoices = (qboData.invoices || []).filter((invoice) => {
-        const txnDateStr = invoice.TxnDate // Keep as string for comparison
-        return txnDateStr >= format(startDate, 'yyyy-MM-dd') && txnDateStr <= format(endDate, 'yyyy-MM-dd')
-      })
+      const monthInvoices = withinDates(qboData.invoices, startDate, endDate)
       components.invoiced = this.sumInvoices(monthInvoices)
+      components.journalEntries = this.sumRevenueJournalEntries(withinDates(qboData.journalEntries, startDate, endDate))
+      components.delayedCharges = this.sumDelayedCharges(withinDates(qboData.delayedCharges, startDate, endDate))
 
-      // Filter and sum journal entries for this month
-      const monthJournalEntries = (qboData.journalEntries || []).filter((entry) => {
-        const txnDateStr = entry.TxnDate // Keep as string for comparison
-        return txnDateStr >= format(startDate, 'yyyy-MM-dd') && txnDateStr <= format(endDate, 'yyyy-MM-dd')
-      })
-
-      components.journalEntries = this.sumRevenueJournalEntries(monthJournalEntries)
-
-      // Filter and sum delayed charges for this month
-      const monthDelayedCharges = (qboData.delayedCharges || []).filter((charge) => {
-        const txnDateStr = charge.TxnDate // Keep as string for comparison
-        return txnDateStr >= format(startDate, 'yyyy-MM-dd') && txnDateStr <= format(endDate, 'yyyy-MM-dd')
-      })
-      components.delayedCharges = this.sumDelayedCharges(monthDelayedCharges)
-
-      // Calculate monthly recurring ONLY for future months
+      // Recurring is projected only for future months: the baseline, plus any recurring already
+      // invoiced in the month itself.
       if (isFutureMonth) {
-        // Start with baseline monthly recurring (latest known month, calculated once)
-        components.monthlyRecurring = baselineMonthlyRecurring
-
-        // Add any additional monthly recurring found SPECIFICALLY in this target month's invoices
-        // (This handles the case where a future invoice already exists)
-        const additionalMonthlyRecurring = this.calculateMonthlyRecurring(monthInvoices)
-        components.monthlyRecurring += additionalMonthlyRecurring
-
-        // We REMOVED the redundant QBO P&L check here because the baseline already
-        // prioritizes the current month, which contains the latest P&L/Invoice totals.
-      }
-
-      // Debug logging for key months
-      const isCurrentMonth = format(monthDate, 'yyyy-MM') === format(new Date(), 'yyyy-MM')
-      const isRecentMonth = Math.abs(new Date().getTime() - monthDate.getTime()) < 90 * 24 * 60 * 60 * 1000 // 90 days
-
-      if (isCurrentMonth || (isRecentMonth && (components.invoiced > 0 || components.journalEntries > 0))) {
-        // Month has significant activity - log for debugging
-      }
-
-      // Set monthly recurring breakdown for future months
-      if (isFutureMonth) {
+        const additional = this.calculateMonthlyRecurring(monthInvoices)
+        components.monthlyRecurring = baselineMonthlyRecurring + additional
         components.monthlyRecurringBreakdown = {
           baseline: baselineMonthlyRecurring,
           baselineMonth: this.baselineMRRMonth,
-          additional: components.monthlyRecurring - baselineMonthlyRecurring,
+          additional,
           total: components.monthlyRecurring,
         }
       } else {
@@ -474,12 +315,8 @@ class RevenueCalculator {
       }
     }
 
-    // Process Pipedrive data
     if (pipedriveData) {
-      // Calculate won unscheduled for this month
       components.wonUnscheduled = this.calculateWonUnscheduledForMonth(monthDate, pipedriveData.wonUnscheduledDeals)
-
-      // Calculate weighted sales for this month
       components.weightedSales = this.calculateWeightedSalesForMonth(monthDate, pipedriveData.openDeals)
     }
 
@@ -587,93 +424,6 @@ class RevenueCalculator {
     return this.cachedPipedriveData
   }
 
-  async calculateMonthRevenueByClient(monthStr, includeWeightedSales = true) {
-    // Parse the month string (format: 'yyyy-MM-dd')
-    // Use explicit parsing to avoid timezone issues
-    const [year, month, day] = monthStr.split('-').map(Number)
-    const monthDate = new Date(year, month - 1, day || 1) // Default to 1st if day is missing
-
-    // Calculate date range needed for this month
-
-    // Load client aliases and known client names before processing
-    await Promise.all([this.loadClientAliases(), this.loadClientNames()])
-
-    // For calculating client breakdown, we need a wider date range:
-    // - Previous month for monthly recurring calculation
-    // - Wider range for delayed charges (they can be dated far in the future)
-    // Use the same range as the full calculation to ensure we get all data
-    const currentDate = new Date()
-    const fetchStartMonth = addMonths(startOfMonth(currentDate), -3)
-    const fetchEndMonth = addMonths(startOfMonth(currentDate), 12)
-
-    const [qboData, pipedriveData] = await Promise.all([
-      this.fetchAllQBOData(fetchStartMonth, fetchEndMonth),
-      this.fetchAllPipedriveData(),
-    ])
-
-    // Pick up any client names the customer list did not cover
-    this.registerClientNamesFromData(qboData, pipedriveData)
-
-    // Process data for the requested month
-    const clientBreakdown = this.calculateClientBreakdownForMonth(
-      monthDate,
-      qboData,
-      pipedriveData,
-      includeWeightedSales,
-    )
-
-    return {
-      month: monthStr,
-      clients: clientBreakdown,
-      dataSourceErrors: this.getDataSourceErrors(),
-    }
-  }
-
-  async calculateMonthlyRevenueByClient(months = 18, startOffset = -6, includeWeightedSales = true) {
-    const currentDate = new Date()
-    const startMonth = addMonths(startOfMonth(currentDate), startOffset)
-    const endMonth = addMonths(startOfMonth(currentDate), startOffset + months - 1)
-
-    // Load client aliases and known client names before processing
-    await Promise.all([this.loadClientAliases(), this.loadClientNames()])
-
-    // Fetch all data in parallel
-    const [qboData, pipedriveData] = await Promise.all([
-      this.fetchAllQBOData(startMonth, endMonth),
-      this.fetchAllPipedriveData(),
-    ])
-
-    // Pick up any client names the customer list did not cover
-    this.registerClientNamesFromData(qboData, pipedriveData)
-
-    // Process data into monthly buckets grouped by client
-    const result = []
-    for (let i = 0; i < months; i++) {
-      const monthDate = addMonths(startMonth, i)
-      const monthStr = format(monthDate, 'yyyy-MM-dd')
-
-      const clientBreakdown = this.calculateClientBreakdownForMonth(
-        monthDate,
-        qboData,
-        pipedriveData,
-        includeWeightedSales,
-      )
-
-      result.push({
-        month: monthStr,
-        clients: clientBreakdown,
-      })
-    }
-
-    return {
-      months: result,
-      dataSourceErrors: this.getDataSourceErrors(),
-    }
-  }
-
-  calculateClientBreakdownForMonth(monthDate, qboData, pipedriveData, includeWeightedSales = true) {
-    return calculateClientBreakdownForMonth(this, monthDate, qboData, pipedriveData, includeWeightedSales)
-  }
   async getBalances(monthsData = null, qboData = null) {
     return getBalances(this, monthsData, qboData)
   }

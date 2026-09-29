@@ -18,22 +18,12 @@ function detailUrls() {
     .filter((url) => url.startsWith('/.netlify/functions/transaction-details'))
 }
 
-function clientUrl() {
-  return global.fetch.mock.calls
-    .map(([url]) => url)
-    .find((url) => url.startsWith('/.netlify/functions/revenue-by-client'))
-}
-
 describe('useTransactionDetails', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     revenueStore.includeWeightedSales = true
     vi.useFakeTimers()
-    global.fetch = vi.fn(async (url) =>
-      url.includes('revenue-by-client')
-        ? jsonResponse({ clients: [{ client: 'Acme', total: 100 }], fromCache: false })
-        : jsonResponse({ transactions: [{ id: '1', amount: 10 }], fromCache: false }),
-    )
+    global.fetch = vi.fn(async () => jsonResponse({ transactions: [{ id: '1', amount: 10 }], fromCache: false }))
   })
 
   async function load(props, forceRefresh = false) {
@@ -44,7 +34,7 @@ describe('useTransactionDetails', () => {
     return details
   }
 
-  it('requests every component plus the client breakdown', async () => {
+  it('requests every component, and nothing else', async () => {
     await load({ month: '2026-09-01' })
 
     expect(detailUrls()).toHaveLength(6)
@@ -56,7 +46,7 @@ describe('useTransactionDetails', () => {
       'wonUnscheduled',
       'weightedSales',
     ])
-    expect(clientUrl()).toBeTruthy()
+    expect(global.fetch).toHaveBeenCalledTimes(6)
   })
 
   it('drops weighted sales when the dashboard toggle is off', async () => {
@@ -65,7 +55,6 @@ describe('useTransactionDetails', () => {
 
     expect(detailUrls()).toHaveLength(5)
     expect(detailUrls().join()).not.toContain('weightedSales')
-    expect(clientUrl()).toContain('includeWeightedSales=false')
   })
 
   it('sends a single month as `month`', async () => {
@@ -97,14 +86,12 @@ describe('useTransactionDetails', () => {
     await load({ month: '2026-09-01', asOf: '2026-08-15' })
 
     expect(detailUrls()[0]).toContain('as_of=2026-08-15')
-    expect(clientUrl()).toContain('as_of=2026-08-15')
   })
 
-  it('busts the cache on a forced refresh, but not for the client breakdown', async () => {
+  it('busts the cache on a forced refresh', async () => {
     await load({ month: '2026-09-01' }, true)
 
     expect(detailUrls()[0]).toContain('_refresh=')
-    expect(clientUrl()).not.toContain('_refresh=')
   })
 
   it('gathers every component’s transactions', async () => {
@@ -115,36 +102,10 @@ describe('useTransactionDetails', () => {
     expect(details.loadingProgress.value).toBe(100)
   })
 
-  it('sums a client that appears more than once', async () => {
-    global.fetch = vi.fn(async (url) =>
-      url.includes('revenue-by-client')
-        ? jsonResponse({
-            clients: [
-              { client: 'Acme', total: 100 },
-              { client: 'Acme', total: 50 },
-            ],
-          })
-        : jsonResponse({ transactions: [] }),
-    )
-    const details = await load({ month: '2026-09-01' })
-
-    expect(details.clientData.value.clients).toEqual([{ client: 'Acme', total: 150 }])
-  })
-
-  it('reports no client data rather than an empty breakdown', async () => {
-    global.fetch = vi.fn(async (url) =>
-      url.includes('revenue-by-client') ? jsonResponse({ clients: [] }) : jsonResponse({ transactions: [] }),
-    )
-    const details = await load({ month: '2026-09-01' })
-
-    expect(details.clientData.value).toBeNull()
-  })
-
   it('keeps going when one component fails', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     global.fetch = vi.fn(async (url) => {
       if (url.includes('component=journalEntries')) return { ok: false, status: 500 }
-      if (url.includes('revenue-by-client')) return jsonResponse({ clients: [] })
       return jsonResponse({ transactions: [{ id: 'x', amount: 1 }] })
     })
     const details = await load({ month: '2026-09-01' })
@@ -155,16 +116,13 @@ describe('useTransactionDetails', () => {
   })
 
   it('records where the data came from', async () => {
-    global.fetch = vi.fn(async (url) =>
-      url.includes('revenue-by-client')
-        ? jsonResponse({ clients: [{ client: 'Acme', total: 1 }], fromCache: true, cachedAt: '2026-09-16T10:00:00Z' })
-        : jsonResponse({ transactions: [], fromCache: true, cachedAt: '2026-09-16T12:00:00Z' }),
+    global.fetch = vi.fn(async () =>
+      jsonResponse({ transactions: [], fromCache: true, cachedAt: '2026-09-16T12:00:00Z' }),
     )
     const details = await load({ month: '2026-09-01' })
 
     expect(details.cacheMetadata.value.transactionsFromCache).toBe(true)
     expect(details.cacheMetadata.value.transactionsCachedAt).toBe('2026-09-16T12:00:00Z')
-    expect(details.cacheMetadata.value.clientsFromCache).toBe(true)
   })
 })
 

@@ -4,7 +4,9 @@
 // the same rule as services/qb-accounts.js, which tests the account ID. Do not merge the two
 // without checking real account data: they disagree on an account whose number and name differ.
 
-const { addMonths, format } = require('date-fns')
+const { format } = require('date-fns')
+const { monthlyInvoiceAmount, monthlyJournalAmount } = require('./qb-accounts.js')
+const { isInMonth } = require('../utils/dates.js')
 
 function sumInvoices(invoices) {
   return invoices.reduce((sum, invoice) => {
@@ -66,102 +68,68 @@ function sumDelayedCharges(charges) {
 }
 
 function calculateMonthlyRecurring(invoices) {
-  if (!invoices || invoices.length === 0) return 0
+  return (invoices || []).reduce((total, invoice) => total + monthlyInvoiceAmount(invoice), 0)
+}
 
-  let total = 0
-  for (const invoice of invoices) {
-    const lines = invoice.Line || []
-    for (const line of lines) {
-      const accountRef = line.SalesItemLineDetail?.AccountRef || line.AccountBasedExpenseLineDetail?.AccountRef
-      const itemRef = line.SalesItemLineDetail?.ItemRef
+/** Monthly recurring billed in one 'YYYY-MM' month, from invoices and journal entries alike. */
+function monthlyRecurringBilled(qboData, monthKey) {
+  const invoices = (qboData?.invoices || []).filter((invoice) => isInMonth(invoice.TxnDate, monthKey))
+  const entries = (qboData?.journalEntries || []).filter((entry) => isInMonth(entry.TxnDate, monthKey))
+  return calculateMonthlyRecurring(invoices) + entries.reduce((total, entry) => total + monthlyJournalAmount(entry), 0)
+}
 
-      // Check if account name or item name contains "monthly"
-      const hasMonthly =
-        accountRef?.name?.toLowerCase().includes('monthly') ||
-        itemRef?.name?.toLowerCase().includes('monthly') ||
-        line.Description?.toLowerCase().includes('monthly')
+const toCents = (value) => Math.round(value * 100) / 100
 
-      if (hasMonthly) {
-        total += line.Amount || 0
-      }
-    }
-  }
+/** Whole months from the month of a 'YYYY-MM-DD' date to a 'YYYY-MM' month key. */
+function monthsBetweenKeys(dateString, monthKey) {
+  const [startYear, startMonth] = dateString.slice(0, 7).split('-').map(Number)
+  const [year, month] = monthKey.split('-').map(Number)
+  return (year - startYear) * 12 + (month - startMonth)
+}
 
-  return total
+/**
+ * One month's share of an amount spread evenly from a start month, in cents, or null when the
+ * spread does not reach that month. The last month takes the rounding remainder, so the shares
+ * add back up to the whole amount.
+ */
+function spreadShare(amount, startDateString, duration, monthKey) {
+  if (!startDateString) return null
+
+  const months = Math.max(1, duration || 1)
+  const index = monthsBetweenKeys(startDateString, monthKey)
+  // A date that is not 'YYYY-MM…' gives NaN, which would pass both range checks below.
+  if (!Number.isInteger(index) || index < 0 || index >= months) return null
+
+  const share = toCents(amount / months)
+  return index === months - 1 ? toCents(amount - share * (months - 1)) : share
+}
+
+/** A won deal not yet invoiced, spread across its project from the start date. */
+function wonUnscheduledShare(deal, monthKey) {
+  const startDate = deal.projectStartDate || deal.wonTime || deal.expectedCloseDate
+  return spreadShare(deal.value || 0, startDate, deal.duration, monthKey)
+}
+
+function dealWeightedValue(deal) {
+  return deal.weightedValue || ((deal.value || 0) * (deal.probability || 0)) / 100
+}
+
+/** An open deal's weighted value, spread across its project from the expected close. */
+function weightedSalesShare(deal, monthKey) {
+  return spreadShare(dealWeightedValue(deal), deal.expectedCloseDate, deal.duration, monthKey)
+}
+
+function sumShares(deals, monthDate, share) {
+  const monthKey = format(monthDate, 'yyyy-MM')
+  return toCents((deals || []).reduce((total, deal) => total + (share(deal, monthKey) || 0), 0))
 }
 
 function calculateWonUnscheduledForMonth(monthDate, wonUnscheduledDeals) {
-  if (!wonUnscheduledDeals || wonUnscheduledDeals.length === 0) return 0
-
-  const monthStr = format(monthDate, 'yyyy-MM')
-  let total = 0
-
-  for (const deal of wonUnscheduledDeals) {
-    // Use string-based date parsing to avoid timezone issues
-    const startDateStr = deal.projectStartDate || deal.wonTime || deal.expectedCloseDate
-    if (!startDateStr) continue
-
-    // Parse date components to avoid timezone conversion
-    const [year, month, day] = startDateStr.split('T')[0].split('-').map(Number)
-    const startDate = new Date(year, month - 1, day) // Local time construction
-
-    const duration = Math.max(1, deal.duration || 1)
-    const monthlyAmount = (deal.value || 0) / duration
-
-    // Check if this month falls within the project duration
-    for (let i = 0; i < duration; i++) {
-      const projectMonth = addMonths(startDate, i)
-      if (format(projectMonth, 'yyyy-MM') === monthStr) {
-        total += monthlyAmount
-        break // Only count once per deal per month
-      }
-    }
-  }
-
-  return Math.round(total)
+  return sumShares(wonUnscheduledDeals, monthDate, wonUnscheduledShare)
 }
 
 function calculateWeightedSalesForMonth(monthDate, openDeals) {
-  if (!openDeals || openDeals.length === 0) return 0
-
-  const monthStr = format(monthDate, 'yyyy-MM')
-  let total = 0
-
-  for (const deal of openDeals) {
-    if (!deal.expectedCloseDate) continue
-
-    // Check if this deal should contribute to the current month
-    // For multi-month deals, distribute across all months starting from close month forward
-    const expectedCloseDate = new Date(deal.expectedCloseDate + 'T00:00:00')
-    const duration = Math.max(1, deal.duration || 1)
-
-    let shouldIncludeDeal = false
-
-    // Check if current month falls within the project duration
-    // Start from the close month and go forward for the duration
-    const closeMonthDate = new Date(expectedCloseDate.getFullYear(), expectedCloseDate.getMonth(), 1)
-
-    for (let i = 0; i < duration; i++) {
-      const projectMonth = new Date(closeMonthDate)
-      projectMonth.setMonth(projectMonth.getMonth() + i)
-      const projectMonthStr = format(projectMonth, 'yyyy-MM')
-
-      if (projectMonthStr === monthStr) {
-        shouldIncludeDeal = true
-        break
-      }
-    }
-
-    if (!shouldIncludeDeal) continue
-
-    // Calculate weighted value: total amount * probability / duration
-    const baseWeightedValue = deal.weightedValue || (deal.value * (deal.probability || 0)) / 100
-    const monthlyWeightedValue = baseWeightedValue / duration
-
-    total += monthlyWeightedValue
-  }
-
-  return Math.round(total)
+  return sumShares(openDeals, monthDate, weightedSalesShare)
 }
 
 module.exports = {
@@ -169,6 +137,11 @@ module.exports = {
   sumRevenueJournalEntries,
   sumDelayedCharges,
   calculateMonthlyRecurring,
+  monthlyRecurringBilled,
   calculateWonUnscheduledForMonth,
   calculateWeightedSalesForMonth,
+  monthsBetweenKeys,
+  wonUnscheduledShare,
+  weightedSalesShare,
+  dealWeightedValue,
 }

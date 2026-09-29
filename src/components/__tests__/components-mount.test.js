@@ -22,6 +22,7 @@ vi.mock('../../stores/revenue', () => ({
 }))
 
 import AsOfDateSelector from '../AsOfDateSelector.vue'
+import ClientTransactionRow from '../ClientTransactionRow.vue'
 import JournalEntryBulkEditModal from '../JournalEntryBulkEditModal.vue'
 import JournalEntryCreateModal from '../JournalEntryCreateModal.vue'
 import JournalEntryDetailModal from '../JournalEntryDetailModal.vue'
@@ -45,6 +46,11 @@ const entry = {
 
 const components = [
   ['AsOfDateSelector', AsOfDateSelector, { modelValue: '2026-09-01' }],
+  [
+    'ClientTransactionRow',
+    ClientTransactionRow,
+    { transaction: { id: '1', type: 'weightedSales', amount: 500, date: '2026-10-30', details: { totalValue: 4000 } } },
+  ],
   ['JournalEntryBulkEditModal', JournalEntryBulkEditModal, { isOpen: false, entryId: null }],
   ['JournalEntryCreateModal', JournalEntryCreateModal, { isOpen: false }],
   ['JournalEntryDetailModal', JournalEntryDetailModal, { isOpen: false, entry }],

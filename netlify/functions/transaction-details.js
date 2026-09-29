@@ -4,20 +4,16 @@
 const { createHandler, HttpError } = require('./utils/handler.js')
 const RevenueCalculator = require('./services/revenue-calculator.js')
 const { getCachedTransactionDetails, cacheTransactionDetails } = require('./services/transaction-details-cache.js')
-const { COMPONENT_FETCHERS, COMPONENT_NAMES } = require('./services/transaction-components/index.js')
-const { getOpenDealsForComparison } = require('./services/transaction-components/pipedrive.js')
-const { isDateOnly, startOfDay, todayDate, toMonthKey, shiftMonthKey } = require('./utils/dates.js')
+const {
+  COMPONENT_FETCHERS,
+  COMPONENT_NAMES,
+  fetchMonthTransactions,
+} = require('./services/transaction-components/index.js')
+const { loadOpenDeals } = require('./services/transaction-components/pipedrive.js')
+const { isDateOnly, startOfDay, todayDate, toMonthKey, shiftMonthKey, localMonthDate } = require('./utils/dates.js')
 const { startOfMonth, endOfMonth, format } = require('date-fns')
 
 const MONTH_PARAM = /^\d{4}-\d{2}(-\d{2})?$/
-
-/**
- * The first of a month as a local-time Date. The fetchers and the calculator both work in local
- * time, and date-fns startOfMonth would roll a UTC-midnight Date back a month west of Greenwich.
- */
-function localMonthDate(monthKey) {
-  return new Date(Number(monthKey.slice(0, 4)), Number(monthKey.slice(5, 7)) - 1, 1)
-}
 
 /** Newest first, then largest first within a day. */
 function byDateThenAmount(first, second) {
@@ -35,7 +31,7 @@ function sumAmounts(transactions) {
  */
 async function weightedSalesDiscrepancy(calculator, monthDate, totalAmount) {
   try {
-    const graphTotal = calculator.calculateWeightedSalesForMonth(monthDate, await getOpenDealsForComparison(calculator))
+    const graphTotal = calculator.calculateWeightedSalesForMonth(monthDate, await loadOpenDeals(calculator))
 
     if (Math.abs(graphTotal - totalAmount) <= 1) return null
 
@@ -67,8 +63,7 @@ exports.handler = createHandler({ errorMessage: 'Failed to get transaction detai
     throw new HttpError('Invalid date format for as_of. Use YYYY-MM-DD', 400)
   }
 
-  const fetchComponent = COMPONENT_FETCHERS[component]
-  if (!fetchComponent) throw new HttpError(`Invalid component: ${component}`, 400)
+  if (!COMPONENT_FETCHERS[component]) throw new HttpError(`Invalid component: ${component}`, 400)
 
   const isSingleMonth = monthStart === monthEnd
   const cacheRangeEnd = isSingleMonth ? null : monthEnd
@@ -87,7 +82,8 @@ exports.handler = createHandler({ errorMessage: 'Failed to get transaction detai
         totalAmount: sumAmounts(transactions),
         count: transactions.length,
         fromCache: true,
-        cachedAt: cached.cachedAt,
+        // Records cached before per-component times fall back to the record's last write.
+        cachedAt: cached.fetchedAt[component] || cached.cachedAt,
       }
     }
   }
@@ -106,17 +102,7 @@ exports.handler = createHandler({ errorMessage: 'Failed to get transaction detai
   const transactions = []
 
   for (let month = toMonthKey(monthStart); month <= toMonthKey(monthEnd); month = shiftMonthKey(month, 1)) {
-    const monthDate = localMonthDate(month)
-
-    transactions.push(
-      ...(await fetchComponent({
-        calculator,
-        startDate: format(startOfMonth(monthDate), 'yyyy-MM-dd'),
-        endDate: format(endOfMonth(monthDate), 'yyyy-MM-dd'),
-        monthDate,
-        asOf,
-      })),
-    )
+    transactions.push(...(await fetchMonthTransactions(calculator, component, month, asOf)))
   }
 
   transactions.sort(byDateThenAmount)
