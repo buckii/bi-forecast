@@ -1,8 +1,12 @@
 <template>
-  <div v-if="isOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-7xl mx-4 max-h-screen overflow-y-auto">
-      <div class="flex items-center justify-between mb-4">
-        <div class="flex-1">
+  <div v-if="isOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+    <div
+      class="bg-white dark:bg-gray-800 rounded-lg w-full max-w-7xl max-h-full flex flex-col overflow-hidden"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="flex items-center justify-between gap-3 px-3 pt-3 pb-3 sm:px-6 sm:pt-6 sm:pb-4 shrink-0">
+        <div class="flex-1 min-w-0">
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ modalTitle }}</h3>
           <!-- Cache/Fetch Info with Refresh Button -->
           <div
@@ -36,7 +40,7 @@
             </button>
           </div>
         </div>
-        <div class="flex items-center space-x-2">
+        <div class="flex items-center space-x-2 shrink-0">
           <button
             @click="exportToCSV"
             class="hidden sm:inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 disabled:opacity-50"
@@ -46,185 +50,162 @@
             <ArrowDownTrayIcon class="h-4 w-4 mr-1.5 text-gray-500 dark:text-gray-400" />
             Export
           </button>
-          <button @click="$emit('close')" class="text-gray-400 hover:text-gray-500 focus:outline-none">
+          <button @click="$emit('close')" class="p-1 text-gray-400 hover:text-gray-500 focus:outline-none">
             <span class="sr-only">Close</span>
             <XMarkIcon class="h-6 w-6" />
           </button>
         </div>
       </div>
 
-      <!-- Loading Progress -->
-      <!-- Loading Progress -->
-      <div v-if="loading" class="mb-4 bg-blue-50 dark:bg-blue-900/20 p-2 rounded-md">
-        <div class="flex justify-between items-center mb-1">
-          <span class="text-xs font-semibold text-blue-700 dark:text-blue-300">{{
-            loadingStatus || 'Loading...'
-          }}</span>
-          <span class="text-xs font-semibold text-blue-700 dark:text-blue-300">{{ loadingProgress }}%</span>
-        </div>
-        <div class="w-full bg-blue-200 dark:bg-blue-800/40 rounded-full h-1.5">
-          <div
-            class="bg-blue-600 dark:bg-blue-500 h-1.5 rounded-full transition-all duration-300 ease-out"
-            :style="{ width: loadingProgress + '%' }"
-          ></div>
-        </div>
-      </div>
-
-      <!-- Tab Navigation -->
-      <div class="border-b border-gray-200 dark:border-gray-700 mb-6">
-        <nav class="-mb-px flex space-x-8">
-          <button
-            @click="activeTab = 'transactions'"
-            :class="[
-              'py-2 px-1 border-b-2 font-medium text-sm',
-              activeTab === 'transactions'
-                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300',
-            ]"
-          >
-            Transactions
-          </button>
-          <button
-            @click="activeTab = 'clients'"
-            :class="[
-              'py-2 px-1 border-b-2 font-medium text-sm',
-              activeTab === 'clients'
-                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300',
-            ]"
-          >
-            Clients
-          </button>
-        </nav>
-      </div>
-
-      <!-- Loading State -->
-      <div v-if="loading" class="flex justify-center py-8">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-
-      <!-- Error State -->
-      <div v-else-if="error" class="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg p-4">
-        <p class="text-red-600 dark:text-red-400">{{ error }}</p>
-      </div>
-
-      <!-- Transactions Tab -->
-      <div v-else-if="activeTab === 'transactions' && allTransactions" class="space-y-6">
-        <!-- Summary -->
-        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="text-center">
-              <p class="text-sm text-gray-500 dark:text-gray-400">Total Amount</p>
-              <p class="text-2xl font-bold text-primary-600">{{ formatCurrency(filteredTotalAmount) }}</p>
-            </div>
-            <div class="text-center">
-              <p class="text-sm text-gray-500 dark:text-gray-400">Transaction Count</p>
-              <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ filteredTransactions.length }}</p>
-            </div>
+      <!-- Scrolling body: everything between the header and the footer -->
+      <div class="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6">
+        <!-- Loading Progress -->
+        <div v-if="loading" class="mb-4 bg-blue-50 dark:bg-blue-900/20 p-2 rounded-md">
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-xs font-semibold text-blue-700 dark:text-blue-300">{{
+              loadingStatus || 'Loading...'
+            }}</span>
+            <span class="text-xs font-semibold text-blue-700 dark:text-blue-300">{{ loadingProgress }}%</span>
+          </div>
+          <div class="w-full bg-blue-200 dark:bg-blue-800/40 rounded-full h-1.5">
+            <div
+              class="bg-blue-600 dark:bg-blue-500 h-1.5 rounded-full transition-all duration-300 ease-out"
+              :style="{ width: loadingProgress + '%' }"
+            ></div>
           </div>
         </div>
 
-        <!-- Filter Toggles -->
-        <div class="space-y-3">
-          <TypeFilterPills
-            :enabled-types="enabledTypes"
-            :all-enabled="allFiltersEnabled"
-            :counts="typeCounts"
-            @toggle="toggleType"
-            @toggle-all="toggleAllFilters"
-          />
-
-          <!-- Sort Options -->
-          <div class="flex items-center space-x-4 text-sm">
-            <span class="text-gray-500 dark:text-gray-400">Sort by:</span>
+        <!-- Tab Navigation -->
+        <div class="border-b border-gray-200 dark:border-gray-700 mb-6">
+          <nav class="-mb-px flex space-x-8">
             <button
-              @click="toggleSort('amount')"
+              @click="activeTab = 'transactions'"
               :class="[
-                'hover:underline font-medium',
-                sortBy === 'amount' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300',
+                'py-2 px-1 border-b-2 font-medium text-sm',
+                activeTab === 'transactions'
+                  ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300',
               ]"
             >
-              Amount {{ sortBy === 'amount' ? (sortDirection === 'desc' ? '↓' : '↑') : '' }}
+              Transactions
             </button>
             <button
-              @click="toggleSort('date')"
+              @click="activeTab = 'clients'"
               :class="[
-                'hover:underline font-medium',
-                sortBy === 'date' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300',
+                'py-2 px-1 border-b-2 font-medium text-sm',
+                activeTab === 'clients'
+                  ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300',
               ]"
             >
-              Date {{ sortBy === 'date' ? (sortDirection === 'desc' ? '↓' : '↑') : '' }}
+              Clients
             </button>
-          </div>
+          </nav>
         </div>
 
-        <!-- Transactions List (Table Format) -->
-        <div v-if="filteredTransactions.length > 0" class="overflow-x-auto">
-          <table class="w-full">
-            <thead class="bg-gray-50 dark:bg-gray-700 text-xs uppercase text-gray-700 dark:text-gray-300">
-              <tr>
-                <th class="px-3 py-3 text-left font-medium w-32">Type</th>
-                <th class="px-3 py-3 text-left font-medium w-28">Doc #</th>
-                <th class="px-3 py-3 text-left font-medium w-32">Date</th>
-                <th class="px-3 py-3 text-left font-medium">Client</th>
-                <th class="px-3 py-3 text-left font-medium">Description</th>
-                <th class="px-3 py-3 text-right font-medium w-32">Amount</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-              <template v-for="transaction in filteredTransactions" :key="transaction.id">
-                <tr
-                  @click="transaction.type !== 'delayedCharge' ? toggleDetails(transaction.id) : null"
-                  :class="[
-                    transaction.type !== 'delayedCharge'
-                      ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700'
-                      : '',
-                    'transition-colors',
-                    transaction.description?.toLowerCase().includes('annual') ? 'opacity-60' : '',
-                  ]"
-                >
-                  <td class="px-3 py-3">
-                    <div class="flex items-center">
-                      <svg
-                        v-if="transaction.type !== 'delayedCharge'"
-                        class="w-4 h-4 text-gray-400 mr-2 transform transition-transform duration-200"
-                        :class="{ 'rotate-90': expandedTransactions.has(transaction.id) }"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                      </svg>
-                      <span
-                        class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap"
-                        :class="[
-                          transactionTypeColor(transaction.type),
-                          transaction.type === 'delayedCharge' ? '' : 'ml-0',
-                        ]"
-                        :style="transaction.type === 'delayedCharge' ? 'margin-left: 24px' : ''"
-                      >
-                        {{ transactionTypeLabel(transaction.type) }}
-                      </span>
-                    </div>
-                  </td>
-                  <td class="px-3 py-3 font-medium text-gray-900 dark:text-gray-100 text-sm">
-                    {{ transaction.docNumber }}
-                  </td>
-                  <td class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                    {{ formatTransactionDate(transaction.date) }}
-                  </td>
-                  <td class="px-3 py-3 text-sm text-gray-900 dark:text-gray-100">
-                    {{ transaction.customer }}
-                  </td>
-                  <td class="px-3 py-3 text-sm text-gray-900 dark:text-gray-100">
-                    <div class="truncate max-w-md">{{ transaction.description }}</div>
-                  </td>
-                  <td class="px-3 py-3 text-right font-medium text-gray-900 dark:text-gray-100 relative">
-                    {{ formatCurrency(transaction.amount) }}
+        <!-- Loading State -->
+        <div v-if="loading" class="flex justify-center py-8">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        </div>
+
+        <!-- Error State -->
+        <div
+          v-else-if="error"
+          class="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg p-4"
+        >
+          <p class="text-red-600 dark:text-red-400">{{ error }}</p>
+        </div>
+
+        <!-- Transactions Tab -->
+        <div v-else-if="activeTab === 'transactions' && allTransactions" class="space-y-6">
+          <!-- Summary -->
+          <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="text-center">
+                <p class="text-sm text-gray-500 dark:text-gray-400">Total Amount</p>
+                <p class="text-2xl font-bold text-primary-600">{{ formatCurrency(filteredTotalAmount) }}</p>
+              </div>
+              <div class="text-center">
+                <p class="text-sm text-gray-500 dark:text-gray-400">Transaction Count</p>
+                <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ filteredTransactions.length }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filter Toggles -->
+          <div class="space-y-3">
+            <TypeFilterPills
+              :enabled-types="enabledTypes"
+              :all-enabled="allFiltersEnabled"
+              :counts="typeCounts"
+              @toggle="toggleType"
+              @toggle-all="toggleAllFilters"
+            />
+
+            <!-- Sort Options -->
+            <div class="flex items-center space-x-4 text-sm">
+              <span class="text-gray-500 dark:text-gray-400">Sort by:</span>
+              <button
+                @click="toggleSort('amount')"
+                :class="[
+                  'hover:underline font-medium',
+                  sortBy === 'amount' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300',
+                ]"
+              >
+                Amount {{ sortBy === 'amount' ? (sortDirection === 'desc' ? '↓' : '↑') : '' }}
+              </button>
+              <button
+                @click="toggleSort('date')"
+                :class="[
+                  'hover:underline font-medium',
+                  sortBy === 'date' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300',
+                ]"
+              >
+                Date {{ sortBy === 'date' ? (sortDirection === 'desc' ? '↓' : '↑') : '' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Transactions List (phone: one card per transaction, nothing scrolls sideways) -->
+          <div v-if="filteredTransactions.length > 0" class="sm:hidden space-y-2">
+            <div
+              v-for="transaction in filteredTransactions"
+              :key="transaction.id"
+              class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
+              :class="transaction.description?.toLowerCase().includes('annual') ? 'opacity-60' : ''"
+            >
+              <div
+                @click="transaction.type !== 'delayedCharge' ? toggleDetails(transaction.id) : null"
+                class="p-3 space-y-1.5"
+                :class="transaction.type !== 'delayedCharge' ? 'cursor-pointer' : ''"
+              >
+                <div class="flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <svg
+                      v-if="transaction.type !== 'delayedCharge'"
+                      class="w-4 h-4 shrink-0 text-gray-400 transform transition-transform duration-200"
+                      :class="{ 'rotate-90': expandedTransactions.has(transaction.id) }"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                    <span
+                      class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap"
+                      :class="transactionTypeColor(transaction.type)"
+                    >
+                      {{ transactionTypeLabel(transaction.type) }}
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-1 shrink-0">
+                    <span class="font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                      {{ formatCurrency(transaction.amount) }}
+                    </span>
                     <button
                       v-if="transaction.type === 'invoice' || transaction.type === 'delayedCharge'"
                       @click.stop="createJournalEntryFromTransaction(transaction)"
-                      class="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors"
+                      class="p-1 text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors"
                       title="Create Journal Entry"
                     >
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -234,7 +215,7 @@
                     <button
                       v-if="transaction.type === 'journalEntry'"
                       @click.stop="editJournalEntry(transaction)"
-                      class="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                      class="p-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
                       title="Edit Journal Entry"
                     >
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -246,263 +227,395 @@
                         />
                       </svg>
                     </button>
-                  </td>
-                </tr>
-                <tr
-                  v-if="transaction.type !== 'delayedCharge' && expandedTransactions.has(transaction.id)"
-                  class="bg-gray-50 dark:bg-gray-700"
-                >
-                  <td colspan="6" class="px-3 py-4">
-                    <div class="space-y-2">
-                      <h4 class="font-medium text-gray-900 dark:text-gray-100 text-sm mb-2">Transaction Details</h4>
-                      <div class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
-                        {{ JSON.stringify(transaction.details, null, 2) }}
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              </template>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- No Transactions -->
-        <div v-else class="text-center py-8">
-          <p class="text-gray-500 dark:text-gray-400">No transactions match the selected filters.</p>
-        </div>
-      </div>
-
-      <!-- Clients Tab -->
-      <div v-else-if="activeTab === 'clients'" class="space-y-6">
-        <!-- Summary -->
-        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="text-center">
-              <p class="text-sm text-gray-500 dark:text-gray-400">Total Amount</p>
-              <p class="text-2xl font-bold text-primary-600">{{ formatCurrency(clientTotalRevenue) }}</p>
-            </div>
-            <div class="text-center">
-              <p class="text-sm text-gray-500 dark:text-gray-400">Client Count</p>
-              <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ sortedClients.length }}</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Filter Toggles and Sorting -->
-        <div class="space-y-3">
-          <!-- Transaction Type Filters -->
-          <TypeFilterPills
-            :enabled-types="clientEnabledTypes"
-            :all-enabled="allClientFiltersEnabled"
-            @toggle="toggleClientType"
-            @toggle-all="toggleAllClientFilters"
-          />
-
-          <!-- Sort Options -->
-          <div class="flex items-center space-x-4 text-sm">
-            <span class="text-gray-500 dark:text-gray-400">Sort by:</span>
-            <button
-              @click="toggleClientSort('amount')"
-              :class="[
-                'hover:underline font-medium',
-                clientSortBy === 'amount'
-                  ? 'text-primary-600 dark:text-primary-400'
-                  : 'text-gray-600 dark:text-gray-300',
-              ]"
-            >
-              Amount {{ clientSortBy === 'amount' ? (clientSortDirection === 'desc' ? '↓' : '↑') : '' }}
-            </button>
-            <button
-              @click="toggleClientSort('client')"
-              :class="[
-                'hover:underline font-medium',
-                clientSortBy === 'client'
-                  ? 'text-primary-600 dark:text-primary-400'
-                  : 'text-gray-600 dark:text-gray-300',
-              ]"
-            >
-              Client (alpha) {{ clientSortBy === 'client' ? (clientSortDirection === 'desc' ? '↓' : '↑') : '' }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Pie Chart -->
-        <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-          <div class="flex items-start justify-between gap-3 mb-4">
-            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Revenue by Client</h4>
-            <div class="flex flex-col items-end gap-1">
-              <button
-                @click="shareClientsToSlack"
-                :disabled="sharingToSlack || !sortedClients.length"
-                class="btn-secondary inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  </div>
+                </div>
+                <div class="flex flex-wrap gap-x-3 text-xs text-gray-500 dark:text-gray-400">
+                  <span class="font-medium text-gray-900 dark:text-gray-100">{{ transaction.docNumber }}</span>
+                  <span>{{ formatTransactionDate(transaction.date) }}</span>
+                </div>
+                <div class="text-sm text-gray-900 dark:text-gray-100 break-words">{{ transaction.customer }}</div>
+                <div v-if="transaction.description" class="text-xs text-gray-600 dark:text-gray-300 break-words">
+                  {{ transaction.description }}
+                </div>
+              </div>
+              <div
+                v-if="transaction.type !== 'delayedCharge' && expandedTransactions.has(transaction.id)"
+                class="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 rounded-b-lg"
               >
-                <svg
-                  v-if="sharingToSlack"
-                  class="animate-spin -ml-1 mr-2 h-4 w-4"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path
-                    class="opacity-75"
-                    fill="currentColor"
-                    d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-                <svg v-else class="-ml-1 mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path
-                    d="M5.042 15.165a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 10.12h6.481v2.522H5.042a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 7.597h6.481V5.074c0-1.393 1.135-2.523 2.52-2.523a2.528 2.528 0 0 1 2.52 2.523v2.523h2.515c1.393 0 2.52 1.135 2.52 2.523a2.528 2.528 0 0 1-2.52 2.523h-2.515v2.522h2.515a2.528 2.528 0 0 1 2.52 2.523A2.528 2.528 0 0 1 16.558 18.88h-2.515v2.523c0 1.393-1.135 2.523-2.52 2.523a2.528 2.528 0 0 1-2.52-2.523V18.88H5.042a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 15.835h6.481v-2.522H5.042z"
-                  />
-                </svg>
-                {{ sharingToSlack ? 'Sending...' : 'Send to Slack' }}
-              </button>
-              <p class="text-xs text-gray-500 dark:text-gray-400">
-                {{ sharedClientCount }} {{ sharedClientCount === 1 ? 'client' : 'clients' }}
-                {{ formatCurrency(shareThreshold) }}+, rest rolled up
-              </p>
+                <h4 class="font-medium text-gray-900 dark:text-gray-100 text-sm mb-2">Transaction Details</h4>
+                <div class="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-words">
+                  {{ JSON.stringify(transaction.details, null, 2) }}
+                </div>
+              </div>
             </div>
           </div>
-          <div style="height: 300px">
-            <canvas ref="pieCanvas"></canvas>
-          </div>
-        </div>
 
-        <!-- Client Table -->
-        <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Client Breakdown</h4>
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead class="bg-gray-100 dark:bg-gray-800">
+          <!-- Transactions List (table, from tablet width up) -->
+          <div v-if="filteredTransactions.length > 0" class="hidden sm:block overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-gray-50 dark:bg-gray-700 text-xs uppercase text-gray-700 dark:text-gray-300">
                 <tr>
-                  <th
-                    scope="col"
-                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                  >
-                    Client Name
-                  </th>
-                  <th
-                    scope="col"
-                    class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                  >
-                    Revenue
-                  </th>
-                  <th
-                    scope="col"
-                    class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                  >
-                    Approx. Points
-                  </th>
-                  <th
-                    scope="col"
-                    class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                  >
-                    % of Total
-                  </th>
+                  <th class="px-3 py-3 text-left font-medium w-32">Type</th>
+                  <th class="px-3 py-3 text-left font-medium w-28">Doc #</th>
+                  <th class="px-3 py-3 text-left font-medium w-32">Date</th>
+                  <th class="px-3 py-3 text-left font-medium">Client</th>
+                  <th class="px-3 py-3 text-left font-medium">Description</th>
+                  <th class="px-3 py-3 text-right font-medium w-32">Amount</th>
                 </tr>
               </thead>
-              <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                <template v-for="client in sortedClients" :key="client.client">
+              <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                <template v-for="transaction in filteredTransactions" :key="transaction.id">
                   <tr
-                    @click="toggleClient(client.client)"
-                    class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    @click="transaction.type !== 'delayedCharge' ? toggleDetails(transaction.id) : null"
+                    :class="[
+                      transaction.type !== 'delayedCharge'
+                        ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700'
+                        : '',
+                      'transition-colors',
+                      transaction.description?.toLowerCase().includes('annual') ? 'opacity-60' : '',
+                    ]"
                   >
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+                    <td class="px-3 py-3">
                       <div class="flex items-center">
                         <svg
+                          v-if="transaction.type !== 'delayedCharge'"
                           class="w-4 h-4 text-gray-400 mr-2 transform transition-transform duration-200"
-                          :class="{ 'rotate-90': expandedClients.has(client.client) }"
+                          :class="{ 'rotate-90': expandedTransactions.has(transaction.id) }"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
                         >
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                         </svg>
-                        {{ client.client }}
+                        <span
+                          class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap"
+                          :class="[
+                            transactionTypeColor(transaction.type),
+                            transaction.type === 'delayedCharge' ? '' : 'ml-0',
+                          ]"
+                          :style="transaction.type === 'delayedCharge' ? 'margin-left: 24px' : ''"
+                        >
+                          {{ transactionTypeLabel(transaction.type) }}
+                        </span>
                       </div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-100">
-                      {{ formatCurrency(client.total) }}
+                    <td class="px-3 py-3 font-medium text-gray-900 dark:text-gray-100 text-sm">
+                      {{ transaction.docNumber }}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600 dark:text-gray-300">
-                      {{ formatPoints(client.total) }}
+                    <td class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                      {{ formatTransactionDate(transaction.date) }}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">
-                      {{ formatShare(client.total, clientTotalRevenue) }}
+                    <td class="px-3 py-3 text-sm text-gray-900 dark:text-gray-100">
+                      {{ transaction.customer }}
+                    </td>
+                    <td class="px-3 py-3 text-sm text-gray-900 dark:text-gray-100">
+                      <div class="truncate max-w-md">{{ transaction.description }}</div>
+                    </td>
+                    <td class="px-3 py-3 text-right font-medium text-gray-900 dark:text-gray-100 relative">
+                      {{ formatCurrency(transaction.amount) }}
+                      <button
+                        v-if="transaction.type === 'invoice' || transaction.type === 'delayedCharge'"
+                        @click.stop="createJournalEntryFromTransaction(transaction)"
+                        class="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors"
+                        title="Create Journal Entry"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                      </button>
+                      <button
+                        v-if="transaction.type === 'journalEntry'"
+                        @click.stop="editJournalEntry(transaction)"
+                        class="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                        title="Edit Journal Entry"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
+                        </svg>
+                      </button>
                     </td>
                   </tr>
-
-                  <!-- Expanded Transactions for Client -->
-                  <tr v-if="expandedClients.has(client.client)" class="bg-gray-50 dark:bg-gray-800">
-                    <td colspan="4" class="px-6 py-4">
+                  <tr
+                    v-if="transaction.type !== 'delayedCharge' && expandedTransactions.has(transaction.id)"
+                    class="bg-gray-50 dark:bg-gray-700"
+                  >
+                    <td colspan="6" class="px-3 py-4">
                       <div class="space-y-2">
-                        <div
-                          v-if="getClientTransactions(client.client).length === 0"
-                          class="text-sm text-gray-500 dark:text-gray-400"
-                        >
-                          No transactions found
-                        </div>
-                        <div v-else class="space-y-1">
-                          <ClientTransactionRow
-                            v-for="transaction in getClientTransactions(client.client)"
-                            :key="transaction.id"
-                            :transaction="transaction"
-                          >
-                            <template #actions>
-                              <button
-                                v-if="transaction.type === 'invoice' || transaction.type === 'delayedCharge'"
-                                @click.stop="createJournalEntryFromTransaction(transaction)"
-                                class="inline-flex ml-1 p-1 text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors align-middle"
-                                title="Create Journal Entry"
-                              >
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M12 4v16m8-8H4"
-                                  />
-                                </svg>
-                              </button>
-                              <button
-                                v-if="transaction.type === 'journalEntry'"
-                                @click.stop="editJournalEntry(transaction)"
-                                class="inline-flex ml-1 p-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors align-middle"
-                                title="Edit Journal Entry"
-                              >
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                  />
-                                </svg>
-                              </button>
-                            </template>
-                          </ClientTransactionRow>
+                        <h4 class="font-medium text-gray-900 dark:text-gray-100 text-sm mb-2">Transaction Details</h4>
+                        <div class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                          {{ JSON.stringify(transaction.details, null, 2) }}
                         </div>
                       </div>
                     </td>
                   </tr>
                 </template>
-                <tr class="bg-gray-50 dark:bg-gray-800 font-semibold">
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">Total</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-100">
-                    {{ formatCurrency(clientTotalRevenue) }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600 dark:text-gray-300">
-                    {{ formatPoints(clientTotalRevenue) }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">100%</td>
-                </tr>
               </tbody>
             </table>
+          </div>
+
+          <!-- No Transactions -->
+          <div v-else class="text-center py-8">
+            <p class="text-gray-500 dark:text-gray-400">No transactions match the selected filters.</p>
+          </div>
+        </div>
+
+        <!-- Clients Tab -->
+        <div v-else-if="activeTab === 'clients'" class="space-y-6">
+          <!-- Summary -->
+          <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="text-center">
+                <p class="text-sm text-gray-500 dark:text-gray-400">Total Amount</p>
+                <p class="text-2xl font-bold text-primary-600">{{ formatCurrency(clientTotalRevenue) }}</p>
+              </div>
+              <div class="text-center">
+                <p class="text-sm text-gray-500 dark:text-gray-400">Client Count</p>
+                <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ sortedClients.length }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filter Toggles and Sorting -->
+          <div class="space-y-3">
+            <!-- Transaction Type Filters -->
+            <TypeFilterPills
+              :enabled-types="clientEnabledTypes"
+              :all-enabled="allClientFiltersEnabled"
+              @toggle="toggleClientType"
+              @toggle-all="toggleAllClientFilters"
+            />
+
+            <!-- Sort Options -->
+            <div class="flex items-center space-x-4 text-sm">
+              <span class="text-gray-500 dark:text-gray-400">Sort by:</span>
+              <button
+                @click="toggleClientSort('amount')"
+                :class="[
+                  'hover:underline font-medium',
+                  clientSortBy === 'amount'
+                    ? 'text-primary-600 dark:text-primary-400'
+                    : 'text-gray-600 dark:text-gray-300',
+                ]"
+              >
+                Amount {{ clientSortBy === 'amount' ? (clientSortDirection === 'desc' ? '↓' : '↑') : '' }}
+              </button>
+              <button
+                @click="toggleClientSort('client')"
+                :class="[
+                  'hover:underline font-medium',
+                  clientSortBy === 'client'
+                    ? 'text-primary-600 dark:text-primary-400'
+                    : 'text-gray-600 dark:text-gray-300',
+                ]"
+              >
+                Client (alpha) {{ clientSortBy === 'client' ? (clientSortDirection === 'desc' ? '↓' : '↑') : '' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Pie Chart -->
+          <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+            <div class="flex items-start justify-between gap-3 mb-4">
+              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Revenue by Client</h4>
+              <div class="flex flex-col items-end gap-1">
+                <button
+                  @click="shareClientsToSlack"
+                  :disabled="sharingToSlack || !sortedClients.length"
+                  class="btn-secondary inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg
+                    v-if="sharingToSlack"
+                    class="animate-spin -ml-1 mr-2 h-4 w-4"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path
+                      class="opacity-75"
+                      fill="currentColor"
+                      d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  <svg v-else class="-ml-1 mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path
+                      d="M5.042 15.165a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 10.12h6.481v2.522H5.042a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 7.597h6.481V5.074c0-1.393 1.135-2.523 2.52-2.523a2.528 2.528 0 0 1 2.52 2.523v2.523h2.515c1.393 0 2.52 1.135 2.52 2.523a2.528 2.528 0 0 1-2.52 2.523h-2.515v2.522h2.515a2.528 2.528 0 0 1 2.52 2.523A2.528 2.528 0 0 1 16.558 18.88h-2.515v2.523c0 1.393-1.135 2.523-2.52 2.523a2.528 2.528 0 0 1-2.52-2.523V18.88H5.042a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 15.835h6.481v-2.522H5.042z"
+                    />
+                  </svg>
+                  {{ sharingToSlack ? 'Sending...' : 'Send to Slack' }}
+                </button>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  {{ sharedClientCount }} {{ sharedClientCount === 1 ? 'client' : 'clients' }}
+                  {{ formatCurrency(shareThreshold) }}+, rest rolled up
+                </p>
+              </div>
+            </div>
+            <div style="height: 300px">
+              <canvas ref="pieCanvas"></canvas>
+            </div>
+          </div>
+
+          <!-- Client Table -->
+          <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-2 sm:p-4">
+            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 sm:mb-4 px-1 sm:px-0">
+              Client Breakdown
+            </h4>
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-100 dark:bg-gray-800">
+                  <tr>
+                    <th
+                      scope="col"
+                      class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                    >
+                      Client Name
+                    </th>
+                    <th
+                      scope="col"
+                      class="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                    >
+                      Revenue
+                    </th>
+                    <th
+                      scope="col"
+                      class="hidden sm:table-cell px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                    >
+                      Approx. Points
+                    </th>
+                    <th
+                      scope="col"
+                      class="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                    >
+                      % of Total
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                  <template v-for="client in sortedClients" :key="client.client">
+                    <tr
+                      @click="toggleClient(client.client)"
+                      class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      <td class="px-3 sm:px-6 py-3 sm:py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
+                        <div class="flex items-start sm:items-center">
+                          <svg
+                            class="w-4 h-4 mt-0.5 sm:mt-0 shrink-0 text-gray-400 mr-2 transform transition-transform duration-200"
+                            :class="{ 'rotate-90': expandedClients.has(client.client) }"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                          </svg>
+                          {{ client.client }}
+                        </div>
+                      </td>
+                      <td
+                        class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-100"
+                      >
+                        {{ formatCurrency(client.total) }}
+                      </td>
+                      <td
+                        class="hidden sm:table-cell px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-right text-gray-600 dark:text-gray-300"
+                      >
+                        {{ formatPoints(client.total) }}
+                      </td>
+                      <td
+                        class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400"
+                      >
+                        {{ formatShare(client.total, clientTotalRevenue) }}
+                      </td>
+                    </tr>
+
+                    <!-- Expanded Transactions for Client -->
+                    <tr v-if="expandedClients.has(client.client)" class="bg-gray-50 dark:bg-gray-800">
+                      <td colspan="4" class="px-2 sm:px-6 py-3 sm:py-4">
+                        <div class="space-y-2">
+                          <div
+                            v-if="getClientTransactions(client.client).length === 0"
+                            class="text-sm text-gray-500 dark:text-gray-400"
+                          >
+                            No transactions found
+                          </div>
+                          <div v-else class="space-y-1">
+                            <ClientTransactionRow
+                              v-for="transaction in getClientTransactions(client.client)"
+                              :key="transaction.id"
+                              :transaction="transaction"
+                            >
+                              <template #actions>
+                                <button
+                                  v-if="transaction.type === 'invoice' || transaction.type === 'delayedCharge'"
+                                  @click.stop="createJournalEntryFromTransaction(transaction)"
+                                  class="inline-flex ml-1 p-1 text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors align-middle"
+                                  title="Create Journal Entry"
+                                >
+                                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                      stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                      stroke-width="2"
+                                      d="M12 4v16m8-8H4"
+                                    />
+                                  </svg>
+                                </button>
+                                <button
+                                  v-if="transaction.type === 'journalEntry'"
+                                  @click.stop="editJournalEntry(transaction)"
+                                  class="inline-flex ml-1 p-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors align-middle"
+                                  title="Edit Journal Entry"
+                                >
+                                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                      stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                      stroke-width="2"
+                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                    />
+                                  </svg>
+                                </button>
+                              </template>
+                            </ClientTransactionRow>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                  <tr class="bg-gray-50 dark:bg-gray-800 font-semibold">
+                    <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                      Total
+                    </td>
+                    <td
+                      class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-100"
+                    >
+                      {{ formatCurrency(clientTotalRevenue) }}
+                    </td>
+                    <td
+                      class="hidden sm:table-cell px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-right text-gray-600 dark:text-gray-300"
+                    >
+                      {{ formatPoints(clientTotalRevenue) }}
+                    </td>
+                    <td
+                      class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400"
+                    >
+                      100%
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="flex justify-end space-x-3 mt-6 pt-4 border-t">
+      <div
+        class="flex justify-end space-x-3 px-3 py-3 sm:px-6 sm:py-4 border-t border-gray-200 dark:border-gray-700 shrink-0"
+      >
         <button
           @click="exportToCSV"
           class="hidden sm:inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800"
