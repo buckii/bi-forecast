@@ -1,17 +1,17 @@
 <template>
   <div
     v-if="isOpen"
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 print:hidden"
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4 print:hidden"
     @click.self="emit('close')"
   >
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="client-drilldown-title"
-      class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-7xl mx-4 max-h-screen overflow-y-auto space-y-6"
+      class="bg-white dark:bg-gray-800 rounded-lg w-full max-w-7xl max-h-full flex flex-col overflow-hidden"
     >
-      <div class="flex items-start justify-between gap-4">
-        <div>
+      <div class="flex items-start justify-between gap-4 px-3 pt-3 pb-3 sm:px-6 sm:pt-6 sm:pb-4 shrink-0">
+        <div class="min-w-0">
           <h3 id="client-drilldown-title" class="text-lg font-semibold text-gray-900 dark:text-gray-100">
             {{ client }}
           </h3>
@@ -19,7 +19,7 @@
         </div>
         <button
           ref="closeButton"
-          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          class="p-1 shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
           aria-label="Close"
           @click="emit('close')"
         >
@@ -27,73 +27,75 @@
         </button>
       </div>
 
-      <TypeFilterPills
-        :enabled-types="enabledTypes"
-        :all-enabled="allEnabled"
-        :counts="typeCounts"
-        @toggle="toggleType"
-        @toggle-all="toggleAll"
-      />
+      <div class="flex-1 min-h-0 overflow-y-auto px-3 pb-3 sm:px-6 sm:pb-6 space-y-4 sm:space-y-6">
+        <TypeFilterPills
+          :enabled-types="enabledTypes"
+          :all-enabled="allEnabled"
+          :counts="typeCounts"
+          @toggle="toggleType"
+          @toggle-all="toggleAll"
+        />
 
-      <div class="overflow-x-auto">
-        <table class="min-w-full text-sm">
-          <thead>
-            <tr class="border-b border-gray-200 dark:border-gray-600">
-              <th scope="col" class="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-300">Client</th>
-              <th
-                v-for="monthKey in monthKeys"
-                :key="monthKey"
-                scope="col"
-                class="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap"
-              >
-                {{ formatMonth(monthKey) }}
-              </th>
-              <th scope="col" class="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <th
-                scope="row"
-                class="px-3 py-2 text-left font-normal text-gray-900 dark:text-gray-100 whitespace-nowrap"
-              >
-                {{ client }}
-              </th>
-              <td
-                v-for="monthKey in monthKeys"
-                :key="monthKey"
-                class="px-3 py-2 text-right tabular-nums whitespace-nowrap"
-                :class="amountClass(summary.months[monthKey])"
-              >
-                <span v-if="pendingMonths.includes(monthKey)" class="text-gray-300 dark:text-gray-600">…</span>
-                <template v-else>{{ formatCell(summary.months[monthKey]) }}</template>
-              </td>
-              <td
-                class="px-3 py-2 text-right tabular-nums whitespace-nowrap font-medium"
-                :class="amountClass(summary.total)"
-              >
-                {{ formatValue(summary.total) }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead>
+              <tr class="border-b border-gray-200 dark:border-gray-600">
+                <th scope="col" class="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-300">Client</th>
+                <th
+                  v-for="monthKey in monthKeys"
+                  :key="monthKey"
+                  scope="col"
+                  class="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap"
+                >
+                  {{ formatMonth(monthKey) }}
+                </th>
+                <th scope="col" class="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-300">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th
+                  scope="row"
+                  class="px-3 py-2 text-left font-normal text-gray-900 dark:text-gray-100 whitespace-nowrap"
+                >
+                  {{ client }}
+                </th>
+                <td
+                  v-for="monthKey in monthKeys"
+                  :key="monthKey"
+                  class="px-3 py-2 text-right tabular-nums whitespace-nowrap"
+                  :class="amountClass(summary.months[monthKey])"
+                >
+                  <span v-if="pendingMonths.includes(monthKey)" class="text-gray-300 dark:text-gray-600">…</span>
+                  <template v-else>{{ formatCell(summary.months[monthKey]) }}</template>
+                </td>
+                <td
+                  class="px-3 py-2 text-right tabular-nums whitespace-nowrap font-medium"
+                  :class="amountClass(summary.total)"
+                >
+                  {{ formatValue(summary.total) }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-      <div class="space-y-4">
-        <p v-if="!monthSections.length" class="text-sm text-gray-500 dark:text-gray-400">
-          No transactions with the selected types.
-        </p>
-        <section v-for="section in monthSections" :key="section.monthKey" class="space-y-1">
-          <h4 class="flex justify-between text-sm font-medium text-gray-700 dark:text-gray-300">
-            <span>{{ formatMonth(section.monthKey) }}</span>
-            <span class="tabular-nums">{{ formatValue(section.total) }}</span>
-          </h4>
-          <ClientTransactionRow
-            v-for="transaction in section.transactions"
-            :key="transaction.id"
-            :transaction="transaction"
-          />
-        </section>
+        <div class="space-y-4">
+          <p v-if="!monthSections.length" class="text-sm text-gray-500 dark:text-gray-400">
+            No transactions with the selected types.
+          </p>
+          <section v-for="section in monthSections" :key="section.monthKey" class="space-y-1">
+            <h4 class="flex justify-between text-sm font-medium text-gray-700 dark:text-gray-300">
+              <span>{{ formatMonth(section.monthKey) }}</span>
+              <span class="tabular-nums">{{ formatValue(section.total) }}</span>
+            </h4>
+            <ClientTransactionRow
+              v-for="transaction in section.transactions"
+              :key="transaction.id"
+              :transaction="transaction"
+            />
+          </section>
+        </div>
       </div>
     </div>
   </div>
