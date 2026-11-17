@@ -6,10 +6,17 @@
       :key="monthKey"
       :class="[cellClass, 'px-3 text-right tabular-nums whitespace-nowrap']"
     >
-      {{ formatCell(monthTotals[monthKey]) }}
+      <SkeletonBar v-if="pendingMonths.includes(monthKey)" class="w-16" />
+      <template v-else>{{ formatCell(monthTotals[monthKey]) }}</template>
     </td>
-    <td :class="[STICKY_TOTAL, cellClass]">{{ formatValue(grandTotal) }}</td>
-    <td :class="[cellClass, 'px-3 text-right tabular-nums whitespace-nowrap']">{{ grandTotal ? '100%' : '' }}</td>
+    <td :class="[STICKY_TOTAL, cellClass]">
+      <SkeletonBar v-if="pendingMonths.length" class="w-20" />
+      <template v-else>{{ formatValue(grandTotal) }}</template>
+    </td>
+    <td :class="[cellClass, 'px-3 text-right tabular-nums whitespace-nowrap']">
+      <SkeletonBar v-if="pendingMonths.length" class="w-10" />
+      <template v-else>{{ grandTotal ? '100%' : '' }}</template>
+    </td>
   </tr>
 </template>
 
@@ -23,12 +30,14 @@ export const STICKY_TOTAL =
 
 <script setup>
 import { computed } from 'vue'
+import SkeletonBar from './SkeletonBar.vue'
 
 const props = defineProps({
   // Which side of the client rows this copy sits on, so its rule faces them.
   edge: { type: String, required: true, validator: (value) => ['top', 'bottom'].includes(value) },
   monthKeys: { type: Array, required: true },
   monthTotals: { type: Object, required: true },
+  pendingMonths: { type: Array, default: () => [] },
   grandTotal: { type: Number, required: true },
   formatCell: { type: Function, required: true },
   formatValue: { type: Function, required: true },

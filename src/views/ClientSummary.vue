@@ -116,9 +116,14 @@
 
             <tbody v-if="!rows.length && loading" aria-busy="true">
               <tr v-for="placeholder in SKELETON_ROWS" :key="placeholder">
-                <td :colspan="monthKeys.length + 3" class="px-3 py-2">
-                  <div class="h-4 rounded bg-gray-200 dark:bg-gray-700 motion-safe:animate-pulse"></div>
+                <th scope="row" :class="[STICKY_CLIENT, 'bg-white dark:bg-gray-800 py-1.5']">
+                  <SkeletonBar class="w-28" />
+                </th>
+                <td v-for="monthKey in monthKeys" :key="monthKey" class="px-3 py-1.5 text-right">
+                  <SkeletonBar class="w-14" />
                 </td>
+                <td :class="[STICKY_TOTAL, 'bg-white dark:bg-gray-800 py-1.5']"><SkeletonBar class="w-16" /></td>
+                <td class="px-3 py-1.5 text-right"><SkeletonBar class="w-8" /></td>
               </tr>
             </tbody>
 
@@ -146,14 +151,16 @@
                   class="px-3 py-1.5 text-right tabular-nums whitespace-nowrap"
                   :class="amountClass(row.months[monthKey])"
                 >
-                  <span v-if="pendingMonths.includes(monthKey)" class="text-gray-300 dark:text-gray-600">…</span>
+                  <SkeletonBar v-if="pendingMonths.includes(monthKey)" class="w-14" />
                   <template v-else>{{ formatCell(row.months[monthKey]) }}</template>
                 </td>
                 <td :class="[STICKY_TOTAL, 'bg-inherit py-1.5 font-medium', amountClass(row.total)]">
-                  {{ formatValue(row.total) }}
+                  <SkeletonBar v-if="pendingMonths.length" class="w-16" />
+                  <template v-else>{{ formatValue(row.total) }}</template>
                 </td>
                 <td class="px-3 py-1.5 text-right tabular-nums whitespace-nowrap text-gray-500 dark:text-gray-400">
-                  {{ formatShare(row.total, grandTotal) }}
+                  <SkeletonBar v-if="pendingMonths.length" class="w-8" />
+                  <template v-else>{{ formatShare(row.total, grandTotal) }}</template>
                 </td>
               </tr>
             </tbody>
@@ -189,6 +196,7 @@ import AppLayout from '../components/AppLayout.vue'
 import ClientDrilldownModal from '../components/ClientDrilldownModal.vue'
 import ExportMenu from '../components/ExportMenu.vue'
 import MonthRangePicker from '../components/MonthRangePicker.vue'
+import SkeletonBar from '../components/SkeletonBar.vue'
 import SummaryTotalsRow, { STICKY_CLIENT, STICKY_TOTAL } from '../components/SummaryTotalsRow.vue'
 import ToastContainer from '../components/ToastContainer.vue'
 import TypeFilterPills from '../components/TypeFilterPills.vue'
@@ -270,6 +278,7 @@ const grandTotal = computed(() => rows.value.reduce((sum, row) => sum + row.tota
 const totalsRowProps = computed(() => ({
   monthKeys: monthKeys.value,
   monthTotals: monthTotals.value,
+  pendingMonths: pendingMonths.value,
   grandTotal: grandTotal.value,
   formatCell,
   formatValue,
