@@ -230,6 +230,12 @@ class QuickBooksService {
     return this.parseReportData(data)
   }
 
+  async getVendorExpenses(startDate, endDate) {
+    const { accessToken, realmId } = await this.getAccessToken()
+    const endpoint = `reports/VendorExpenses?start_date=${startDate}&end_date=${endDate}&summarize_column_by=Month`
+    return this.makeRequest(endpoint, realmId, accessToken)
+  }
+
   async getMonthlyExpenses(year, month) {
     const startDate = `${year}-${month.toString().padStart(2, '0')}-01`
     const lastDay = new Date(year, month, 0).getDate()

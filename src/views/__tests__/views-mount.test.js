@@ -52,6 +52,7 @@ import AccountsReceivable from '../AccountsReceivable.vue'
 import Balances from '../Balances.vue'
 import ClientSummary from '../ClientSummary.vue'
 import Exceptions from '../Exceptions.vue'
+import ExpensesByVendor from '../ExpensesByVendor.vue'
 import JournalEntries from '../JournalEntries.vue'
 import Login from '../Login.vue'
 import Settings from '../Settings.vue'
@@ -77,6 +78,7 @@ const views = [
   ['Balances', Balances],
   ['ClientSummary', ClientSummary],
   ['Exceptions', Exceptions],
+  ['ExpensesByVendor', ExpensesByVendor],
   ['JournalEntries', JournalEntries],
   ['Login', Login],
   ['Settings', Settings],

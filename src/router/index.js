@@ -21,6 +21,12 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/expenses-by-vendor',
+    name: 'ExpensesByVendor',
+    component: () => import('../views/ExpensesByVendor.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/exceptions',
     name: 'Exceptions',
     component: () => import('../views/Exceptions.vue'),

@@ -104,6 +104,35 @@
         </RouterLink>
 
         <RouterLink
+          to="/expenses-by-vendor"
+          class="flex items-center py-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-300"
+          :class="[
+            $route.name === 'ExpensesByVendor'
+              ? 'bg-gray-100 dark:bg-gray-700 border-l-4 border-primary-600'
+              : 'border-l-4 border-transparent',
+            sidebarCollapsed ? 'justify-center px-2' : 'px-6',
+          ]"
+          :title="sidebarCollapsed ? 'Expenses by Vendor' : ''"
+        >
+          <svg
+            class="w-5 h-5"
+            :class="!sidebarCollapsed ? 'mr-3' : ''"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+            />
+          </svg>
+          <span v-if="!sidebarCollapsed" class="truncate">Expenses by Vendor</span>
+        </RouterLink>
+
+        <RouterLink
           to="/exceptions"
           class="flex items-center py-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-300"
           :class="[
