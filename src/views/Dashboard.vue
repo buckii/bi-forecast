@@ -559,7 +559,7 @@ const startDateChangeTimeout = ref(null)
 const endDateChangeTimeout = ref(null)
 
 const showTransactionModal = ref(false)
-const selectedTransaction = ref({ month: '', startDate: '', endDate: '', component: '' })
+const selectedTransaction = ref({ month: '', startDate: '', endDate: '' })
 const chartContainer = ref(null)
 const revenueChart = ref(null)
 
@@ -958,7 +958,6 @@ function handleBarClick(data) {
     month: data.month,
     startDate: '', // Clear range when selecting single month
     endDate: '',
-    component: data.component,
   }
   showTransactionModal.value = true
 
@@ -973,7 +972,7 @@ function handleBarClick(data) {
 
 function closeTransactionModal() {
   showTransactionModal.value = false
-  selectedTransaction.value = { month: '', startDate: '', endDate: '', component: '' }
+  selectedTransaction.value = { month: '', startDate: '', endDate: '' }
 
   // Remove modal params from URL when closing
   const query = { ...route.query }
@@ -987,7 +986,6 @@ function showDetail() {
     month: '', // Clear specific month to indicate range mode
     startDate: chartStartDateStr.value,
     endDate: chartEndDateStr.value,
-    component: '', // All components
   }
   showTransactionModal.value = true
 }
@@ -1093,7 +1091,6 @@ onMounted(async () => {
     if (route.query.modalMonth) {
       selectedTransaction.value = {
         month: route.query.modalMonth,
-        component: '',
       }
       showTransactionModal.value = true
     } else if (route.query.modalStart && route.query.modalEnd) {
@@ -1102,7 +1099,6 @@ onMounted(async () => {
         month: '',
         startDate: route.query.modalStart,
         endDate: route.query.modalEnd,
-        component: '',
       }
       showTransactionModal.value = true
     } else if (route.query.exportStart && route.query.exportEnd) {
