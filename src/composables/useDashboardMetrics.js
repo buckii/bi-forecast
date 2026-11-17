@@ -23,6 +23,8 @@ export function useDashboardMetrics(selectedDateStr) {
     return settings?.monthlyExpensesOverride || revenueStore.balances?.monthlyExpenses || 0
   })
 
+  const daysCashOffset = computed(() => authStore.company?.settings?.daysCashOffset || 0)
+
   const targetNetMargin = computed(() => authStore.company?.settings?.targetNetMargin || DEFAULT_TARGET_NET_MARGIN)
 
   const thisMonthProfit = computed(() => revenueStore.currentMonthRevenue - effectiveMonthlyExpenses.value)
@@ -46,13 +48,16 @@ export function useDashboardMetrics(selectedDateStr) {
   // forecast excludes), so starting "this month" would only capture 11 months of recurring.
   const forecastStartMonthKey = computed(() => formulas.monthKeyFromOffset(selectedMonthKey.value, 1))
 
-  const daysCash = computed(() => formulas.daysCash(revenueStore.totalCashOnHand, effectiveMonthlyExpenses.value))
+  const daysCash = computed(() =>
+    formulas.daysCash(revenueStore.totalCashOnHand, effectiveMonthlyExpenses.value, daysCashOffset.value),
+  )
 
   const daysCashPlusAR = computed(() =>
     formulas.daysCashPlusAR(
       revenueStore.totalCashOnHand,
       revenueStore.totalReceivables,
       effectiveMonthlyExpenses.value,
+      daysCashOffset.value,
     ),
   )
 
@@ -93,6 +98,7 @@ export function useDashboardMetrics(selectedDateStr) {
 
   return {
     effectiveMonthlyExpenses,
+    daysCashOffset,
     targetNetMargin,
     thisMonthProfit,
     thisMonthMargin,

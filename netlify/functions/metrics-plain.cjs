@@ -89,10 +89,12 @@ function effectiveMonthlyExpenses(companySettings, balances) {
   return balances?.monthlyExpenses || 0
 }
 
-function daysCash(cashOnHand, monthlyExpenses) {
+// The offset is money already spoken for (a debt balance), so it comes off before dividing.
+function daysCash(cashOnHand, monthlyExpenses, offset = 0) {
   const dailyExpenses = monthlyExpenses / 30
-  if (dailyExpenses === 0 || cashOnHand === 0) return 0
-  return Math.round(cashOnHand / dailyExpenses)
+  const netCash = cashOnHand - offset
+  if (dailyExpenses === 0 || netCash <= 0) return 0
+  return Math.round(netCash / dailyExpenses)
 }
 
 const DAYS_PER_MONTH = 30
@@ -268,7 +270,7 @@ exports.handler = async function (event) {
       Math.round(threeMonthRevenue(months, currentMonthKey, true)),
       Math.round(threeMonthRevenue(months, currentMonthKey, false)),
       Math.round(receivables),
-      daysCash(cash, monthlyExpenses),
+      daysCash(cash, monthlyExpenses, company.settings?.daysCashOffset || 0),
       dowLine(dow.targetWon),
       dowLine(dow.targetForecasted),
       dowLine(dow.breakEvenWon),

@@ -98,17 +98,19 @@ function effectiveMonthlyExpenses(companySettings, balances) {
   return balances?.monthlyExpenses || 0
 }
 
-function daysCash(cashOnHand, monthlyExpenses) {
+// The offset is money already spoken for (a debt balance), so it comes off before dividing.
+function daysCash(cashOnHand, monthlyExpenses, offset = 0) {
   const dailyExpenses = monthlyExpenses / 30
-  if (dailyExpenses === 0 || cashOnHand === 0) return 0
-  return Math.round(cashOnHand / dailyExpenses)
+  const netCash = cashOnHand - offset
+  if (dailyExpenses === 0 || netCash <= 0) return 0
+  return Math.round(netCash / dailyExpenses)
 }
 
-function daysCashPlusAR(cashOnHand, receivables, monthlyExpenses) {
+function daysCashPlusAR(cashOnHand, receivables, monthlyExpenses, offset = 0) {
   const dailyExpenses = monthlyExpenses / 30
   if (dailyExpenses === 0) return 0
-  const totalLiquid = cashOnHand + receivables
-  if (totalLiquid === 0) return 0
+  const totalLiquid = cashOnHand + receivables - offset
+  if (totalLiquid <= 0) return 0
   return Math.round(totalLiquid / dailyExpenses)
 }
 

@@ -228,7 +228,7 @@
         </div>
 
         <div v-if="!editingFinancials" class="space-y-4">
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Target Net Margin</label>
               <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ targetNetMargin }}%</p>
@@ -249,6 +249,13 @@
               </p>
             </div>
             <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Days of Cash Offset</label>
+              <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+                {{ daysCashOffset ? formatCurrency(daysCashOffset) : 'None' }}
+              </p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Subtracted from cash before figuring Days Cash</p>
+            </div>
+            <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Price Per Point</label>
               <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ formatCurrency(pricePerPoint) }}</p>
               <p class="text-xs text-gray-500 dark:text-gray-400">
@@ -259,7 +266,7 @@
         </div>
 
         <div v-else class="space-y-4">
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Target Net Margin (%)</label>
               <input
@@ -303,6 +310,21 @@
                 step="10"
               />
               <p class="text-xs text-gray-500 mt-1">Dollar amount per point (e.g., 550)</p>
+            </div>
+            <div>
+              <label for="days-cash-offset" class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >Days of Cash Offset ($)</label
+              >
+              <input
+                id="days-cash-offset"
+                type="number"
+                v-model.number="editableDaysCashOffset"
+                class="input mt-1"
+                placeholder="Leave blank for none"
+                min="0"
+                step="1000"
+              />
+              <p class="text-xs text-gray-500 mt-1">A debt balance to subtract from cash, e.g. 145000</p>
             </div>
           </div>
           <div class="flex justify-end space-x-3">
@@ -532,9 +554,11 @@ const {
   editingFinancials,
   targetNetMargin,
   monthlyExpensesOverride,
+  daysCashOffset,
   pricePerPoint,
   editableTargetNetMargin,
   editableMonthlyExpensesOverride,
+  editableDaysCashOffset,
   editablePricePerPoint,
   qboConnected,
   pipedriveConnected,
@@ -600,6 +624,7 @@ watch(
     if (isEditing) {
       editableTargetNetMargin.value = targetNetMargin.value
       editableMonthlyExpensesOverride.value = monthlyExpensesOverride.value
+      editableDaysCashOffset.value = daysCashOffset.value
       editablePricePerPoint.value = pricePerPoint.value
     }
   },
@@ -622,6 +647,7 @@ watch(
     if (newCompany && newCompany.settings) {
       targetNetMargin.value = newCompany.settings.targetNetMargin || 20
       monthlyExpensesOverride.value = newCompany.settings.monthlyExpensesOverride || null
+      daysCashOffset.value = newCompany.settings.daysCashOffset || null
       pricePerPoint.value = newCompany.settings.pricePerPoint || 550
     }
   },
@@ -636,6 +662,7 @@ onMounted(async () => {
   if (company.value?.settings) {
     targetNetMargin.value = company.value.settings.targetNetMargin || 20
     monthlyExpensesOverride.value = company.value.settings.monthlyExpensesOverride || null
+    daysCashOffset.value = company.value.settings.daysCashOffset || null
     pricePerPoint.value = company.value.settings.pricePerPoint || 550
   }
 

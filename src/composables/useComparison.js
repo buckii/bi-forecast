@@ -17,6 +17,7 @@ export function useComparison({
   selectedMonthKey,
   forecastStartMonthKey,
   effectiveMonthlyExpenses,
+  daysCashOffset,
   onLoadError,
 }) {
   const revenueStore = useRevenueStore()
@@ -67,7 +68,7 @@ export function useComparison({
   const comparisonTotalReceivables = comparisonValue((data) => formulas.totalReceivables(data.balances?.receivables))
 
   const comparisonDaysCash = comparisonValue(() =>
-    formulas.daysCash(comparisonTotalCashOnHand.value, effectiveMonthlyExpenses.value),
+    formulas.daysCash(comparisonTotalCashOnHand.value, effectiveMonthlyExpenses.value, daysCashOffset?.value || 0),
   )
 
   const comparisonDaysCashPlusAR = comparisonValue(() =>
@@ -75,6 +76,7 @@ export function useComparison({
       comparisonTotalCashOnHand.value,
       comparisonTotalReceivables.value,
       effectiveMonthlyExpenses.value,
+      daysCashOffset?.value || 0,
     ),
   )
 

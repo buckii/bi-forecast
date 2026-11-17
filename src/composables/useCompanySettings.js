@@ -15,9 +15,11 @@ export function useCompanySettings(onError) {
   const editingFinancials = ref(false)
   const targetNetMargin = ref(DEFAULT_TARGET_NET_MARGIN)
   const monthlyExpensesOverride = ref(null)
+  const daysCashOffset = ref(null)
   const pricePerPoint = ref(DEFAULT_PRICE_PER_POINT)
   const editableTargetNetMargin = ref(DEFAULT_TARGET_NET_MARGIN)
   const editableMonthlyExpensesOverride = ref(null)
+  const editableDaysCashOffset = ref(null)
   const editablePricePerPoint = ref(DEFAULT_PRICE_PER_POINT)
 
   const qboConnected = ref(false)
@@ -47,12 +49,14 @@ export function useCompanySettings(onError) {
         body: {
           targetNetMargin: editableTargetNetMargin.value,
           monthlyExpensesOverride: editableMonthlyExpensesOverride.value || null,
+          daysCashOffset: editableDaysCashOffset.value || null,
           pricePerPoint: editablePricePerPoint.value,
         },
       })
 
       targetNetMargin.value = editableTargetNetMargin.value
       monthlyExpensesOverride.value = editableMonthlyExpensesOverride.value || null
+      daysCashOffset.value = editableDaysCashOffset.value || null
       pricePerPoint.value = editablePricePerPoint.value
       editingFinancials.value = false
 
@@ -101,9 +105,11 @@ export function useCompanySettings(onError) {
     editingFinancials,
     targetNetMargin,
     monthlyExpensesOverride,
+    daysCashOffset,
     pricePerPoint,
     editableTargetNetMargin,
     editableMonthlyExpensesOverride,
+    editableDaysCashOffset,
     editablePricePerPoint,
     qboConnected,
     pipedriveConnected,

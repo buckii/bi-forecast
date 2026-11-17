@@ -188,14 +188,14 @@
               label="Cash only"
               :value="daysCash"
               :loading="chartRefreshing"
-              :amount="revenueStore.totalCashOnHand || 0"
+              :amount="(revenueStore.totalCashOnHand || 0) - daysCashOffset"
               :comparison="comparisonDaysCash"
             />
             <DaysStat
               label="Cash + AR"
               :value="daysCashPlusAR"
               :loading="chartRefreshing"
-              :amount="(revenueStore.totalCashOnHand || 0) + (revenueStore.totalReceivables || 0)"
+              :amount="(revenueStore.totalCashOnHand || 0) + (revenueStore.totalReceivables || 0) - daysCashOffset"
               :comparison="comparisonDaysCashPlusAR"
             />
           </div>
@@ -211,6 +211,23 @@
               AR: {{ formatCurrency(revenueStore.totalReceivables || 0) }} · Expenses:
               {{ formatCurrency(effectiveMonthlyExpenses) }}/mo
               <span v-if="authStore.company?.settings?.monthlyExpensesOverride" class="text-blue-500">(override)</span>
+              <span v-if="daysCashOffset" class="group relative inline-flex align-middle ml-1">
+                <button
+                  type="button"
+                  class="cursor-help rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                  aria-describedby="days-cash-offset-tip"
+                  aria-label="Days cash offset"
+                >
+                  <InformationCircleIcon class="h-4 w-4" aria-hidden="true" />
+                </button>
+                <span
+                  id="days-cash-offset-tip"
+                  role="tooltip"
+                  class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 w-max max-w-[14rem] -translate-x-1/2 rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 dark:bg-gray-700"
+                >
+                  Excludes a {{ formatCurrency(daysCashOffset) }} offset
+                </span>
+              </span>
             </p>
           </template>
         </MetricCard>
@@ -422,7 +439,7 @@
 </template>
 
 <script setup>
-import { ArrowDownTrayIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
+import { ArrowDownTrayIcon, ChevronDownIcon, InformationCircleIcon } from '@heroicons/vue/24/outline'
 import {
   addMonths,
   endOfMonth,
@@ -483,6 +500,7 @@ const compareAsOfDate = ref(getInitialCompareDate())
 
 const {
   effectiveMonthlyExpenses,
+  daysCashOffset,
   targetNetMargin,
   thisMonthProfit,
   thisMonthMargin,
@@ -523,6 +541,7 @@ const {
   selectedMonthKey,
   forecastStartMonthKey,
   effectiveMonthlyExpenses,
+  daysCashOffset,
   onLoadError: (date) => showMissingArchiveModal(date),
 })
 

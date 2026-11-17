@@ -13,6 +13,11 @@ const SETTING_VALIDATORS = {
       throw new HttpError('Monthly expenses override must be a positive number or null', 400)
     }
   },
+  daysCashOffset: (value) => {
+    if (value !== null && (typeof value !== 'number' || !Number.isFinite(value) || value < 0)) {
+      throw new HttpError('Days of cash offset must be a positive number or null', 400)
+    }
+  },
   pricePerPoint: (value) => {
     if (typeof value !== 'number' || value <= 0) {
       throw new HttpError('Price per point must be a positive number', 400)

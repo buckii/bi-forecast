@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { daysOfWork, allDaysOfWork, monthKeyFromOffset } from '../metrics-formulas'
+import { daysOfWork, allDaysOfWork, monthKeyFromOffset, daysCash, daysCashPlusAR } from '../metrics-formulas'
 
 const START = '2026-01-01'
 
@@ -105,5 +105,21 @@ describe('allDaysOfWork', () => {
     expect(r.targetForecasted).toBeLessThan(r.breakEvenForecasted)
     expect(r.targetForecasted).toBeGreaterThanOrEqual(r.targetWon)
     expect(r.breakEvenForecasted).toBeGreaterThanOrEqual(r.breakEvenWon)
+  })
+})
+
+describe('days cash offset', () => {
+  it('subtracts the offset from cash before dividing by daily expenses', () => {
+    expect(daysCash(445000, 300000)).toBe(45)
+    expect(daysCash(445000, 300000, 145000)).toBe(30)
+  })
+
+  it('subtracts the offset from cash plus receivables', () => {
+    expect(daysCashPlusAR(345000, 100000, 300000, 145000)).toBe(30)
+  })
+
+  it('floors at zero when the offset exceeds what is on hand', () => {
+    expect(daysCash(100000, 300000, 145000)).toBe(0)
+    expect(daysCashPlusAR(20000, 100000, 300000, 145000)).toBe(0)
   })
 })
