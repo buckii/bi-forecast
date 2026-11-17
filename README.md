@@ -14,6 +14,8 @@ A multi-tenant Progressive Web Application for revenue forecasting that integrat
 - **Client Detail Modal**: Click any month to see revenue breakdown by client
 - **Exception Tracking**: Monitor overdue deals, past charges, and unscheduled items
 - **Balance Monitoring**: Asset accounts and aged A/R reporting with payment recording
+- **Receive Payment**: Find a client's open invoices by name and record one QuickBooks payment across several of them
+- **Expenses by Vendor**: Month × vendor table from the QuickBooks Expenses by Vendor Summary, with CSV, PDF and Google Sheets export
 - **Mobile Responsive**: Optimized for mobile and desktop with touch interactions
 - **Automated Refresh**: Scheduled daily data refresh at 3am ET via Netlify functions
 - **Real-time Timestamps**: Live refresh status with tooltips showing exact refresh times
@@ -293,6 +295,7 @@ This allows secure HTTPS access to your local development server for webhook tes
 - Asset account balances from QuickBooks
 - Aged A/R reporting with configurable buckets
 - Real-time balance updates with sync timestamps
+- Receive Payment: search open invoices by client, oldest checked automatically; one payment marks every checked invoice paid
 
 #### Progressive Web App
 
@@ -344,6 +347,9 @@ This allows secure HTTPS access to your local development server for webhook tes
 - `revenue-refresh-qbo.js` - Manual QuickBooks data refresh with optimized API calls and background transaction caching
 - `revenue-refresh-pipedrive.js` - Manual Pipedrive data refresh reusing existing QB data to minimize API calls
 - `transaction-details.js` - Drill-down transaction data with cache-first retrieval
+- `expenses-by-vendor.js` - Monthly vendor expenses for `?start=YYYY-MM&end=YYYY-MM` (up to 24 months) from the QuickBooks `VendorExpenses` report
+- `invoices-list.js` - Open invoices, every page, live or as of an archived date
+- `payment-record.js` - One QuickBooks payment applied across one or more invoices of the same customer
 - `metrics-plain.cjs` - **Unauthenticated** plain-text endpoint returning 10 key metrics, one rounded integer per line for spreadsheet paste: 30d unbilled, 1-year forecast, 3-month forecast, 3-month won, AR, days cash, then days of work — won @ target margin, forecasted @ target margin, won @ break-even, forecasted @ break-even. Accepts optional `?as_of=YYYY-MM-DD` for historical snapshots. Selects the archive stamped during the as-of day (matching the dashboard's data) rather than a stale prior archive
 - `services/transaction-details-cache.js` - Transaction details prefetching and caching service (6-month window)
 - `services/revenue-calculator.js` - Core revenue calculation engine with data caching and API call optimization

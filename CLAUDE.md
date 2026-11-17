@@ -55,6 +55,7 @@ npm run deploy          # Build and deploy to Netlify production
   - `client-totals.js` - the one client grouping (`clientNormalized`, falling back to `customer`),
     shared by the modal's Clients tab and the Revenue by Client page so a client lands on one row
   - `month-keys.js` - `YYYY-MM` arithmetic: `shiftMonth`, `monthSpan`, `monthsBetween`
+  - `monthly-rows.js` - sorting and totals for month × name tables (`sortMonthlyRows`, `monthlyTotals`)
   - `google-sheets.js` - creates a Sheet in the user's Drive (GIS token client, `drive.file`
     scope, token held in memory only). Needs the Sheets API enabled on the Google Cloud project.
   - `api-fetch.js` - `requestJson`, the hand-rolled fetch path (attach token, unwrap `data`, throw
@@ -280,6 +281,14 @@ browser with `client-totals.js`, so its numbers match the Clients tab and Show D
 year is 72 calls and takes about three minutes; the same day it comes from the cache.
 It opens on two quarters from `twoQuarterPeriod()` (`month-keys.js`), which keeps at least a
 month and a half either side of today and moves forward on Feb 15, May 15, Aug 15 and Nov 15.
+
+### Expenses by Vendor (`/expenses-by-vendor`)
+
+The same month × name table as Revenue by Client (`MonthlySummaryTable.vue`, `useMonthlySummaryExport`),
+filled by one call: `expenses-by-vendor` runs QuickBooks' `VendorExpenses` report with
+`summarize_column_by=Month` and `services/vendor-expenses.js` turns it into rows. Month columns are
+found by their `StartDate` metadata. Vendor rows carry no `type`; only the grand total section does.
+The report uses the company's QuickBooks basis (cash today), which the page shows. No caching.
 
 ### Transaction Caching Strategy
 
