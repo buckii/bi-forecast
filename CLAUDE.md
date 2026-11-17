@@ -62,6 +62,7 @@ npm run deploy          # Build and deploy to Netlify production
     the server's message). Calls through `services/api.js` (axios) additionally redirect to login
     on a 401; these do not.
   - `csv.js` - CSV writing that quotes only the fields that need it
+  - `revenue-stack.js` - `stackRevenue`, the chart's bar stacking: negatives lower the base so the top is the net
 - **Composables**: a view keeps its wiring; the work lives in `src/composables/`. Dashboard uses
   `useDashboardMetrics`, `useComparison`, `useChartSharing`; the transaction modal uses
   `useTransactionDetails`, `useTypeFilter`, `useClientPieChart`, `useClientRevenueShare`,
@@ -358,16 +359,19 @@ Required for local development (see `.env.example`):
 
 6. **Journal entry dates**: All auto-generated journal entries MUST be on the 1st of the month. Build them with `monthStartString` from `utils/dates.js`. See the Date Handling section.
 
-7. **Points divisor**: Use `company.settings.pricePerPoint` (default 550), never a hardcoded divisor, so point counts agree across the modals and the Slack share.
+7. **Days of cash offset**: `company.settings.daysCashOffset` comes off cash before `daysCash` / `daysCashPlusAR`
+   divide. Pass it on every call, including `metrics-plain.cjs`, or the numbers disagree.
 
-8. **Fallback mode**: If revenue calculator is in fallback mode (archive exists but has no QB data), Pipedrive refresh will NOT update the archive to preserve QB data integrity. Run QB Refresh first to get fresh QuickBooks data.
+8. **Points divisor**: Use `company.settings.pricePerPoint` (default 550), never a hardcoded divisor, so point counts agree across the modals and the Slack share.
 
-9. **Spread recognition must reconcile**: the recognition entries have to total the deferral
-   exactly. The final month absorbs the rounding remainder
-   (`deferralAmount - monthlyAmount * (monthsToDefer - 1)`); computing it from the invoice total
-   instead leaves cents stranded in unearned revenue on every uneven division.
+9. **Fallback mode**: If revenue calculator is in fallback mode (archive exists but has no QB data), Pipedrive refresh will NOT update the archive to preserve QB data integrity. Run QB Refresh first to get fresh QuickBooks data.
 
-10. **Month parameters accept two shapes**: `transaction-details` takes
+10. **Spread recognition must reconcile**: the recognition entries have to total the deferral
+    exactly. The final month absorbs the rounding remainder
+    (`deferralAmount - monthlyAmount * (monthsToDefer - 1)`); computing it from the invoice total
+    instead leaves cents stranded in unearned revenue on every uneven division.
+
+11. **Month parameters accept two shapes**: `transaction-details` takes
     either `YYYY-MM` or `YYYY-MM-DD`. The single-month path passes the caller's value straight
     through, because the prefetch cache keys single months as `YYYY-MM-01` and normalizing to a
     month key would miss every cached entry.

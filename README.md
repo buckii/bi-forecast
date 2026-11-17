@@ -247,18 +247,19 @@ This allows secure HTTPS access to your local development server for webhook tes
 #### Dashboard
 
 - Interactive 24-month revenue chart with Chart.js and horizontal reference lines
+- Negative revenue (e.g. a reversing journal entry) lowers the bar's base and is drawn hatched, so the top of each bar lands on the month's net total
 - Chart totals strip: per-revenue-type and grand totals (plus per-month average) for the months currently plotted; clicking a type or its legend entry hides it and drops it from the total
 - Quick Ranges menu including a "Next 3 Months" range (first of next month through +3)
 - Historical date selector for viewing past forecasts
 - Key metrics cards (current month, 3-month, 1-year totals, 30-day unbilled, days cash, days of work)
 - Days of Work card: horizon (in days) until booked revenue can no longer sustain the target margin / break-even, shown won vs forecasted — "how long until we run out of work if we win nothing more?". Later months' revenue is spread back over leaner ones (the horizon is the last point cumulative revenue still clears the bar), so an under-target current month does not zero the card
-- Days Cash card combines cash-only and cash + AR runway side by side
+- Days Cash card combines cash-only and cash + AR runway side by side; a Days of Cash Offset (e.g. a debt balance) comes off both the days and the dollar amounts, and an info icon says how much
 - 1-Year Forecast spans the first of next month through +12 months (e.g. Jul 1 – Jun 30), so monthly recurring is counted for a full 12 months rather than 11 (the current month's recurring is already billed as invoiced)
 - Weighted sales toggle with real-time recalculation
 - Transaction details modal with drill-down functionality and discrepancy detection
 - Real-time refresh timestamps with loading indicators and tooltips
 - Mobile-responsive design with touch interactions
-- Company financial settings (target net margin, monthly expenses override)
+- Company financial settings (target net margin, monthly expenses override, days of cash offset)
 
 #### Revenue Calculation Engine
 
@@ -462,6 +463,7 @@ This allows secure HTTPS access to your local development server for webhook tes
 
 - **Target Net Margin**: Configurable company-wide target net margin percentage (1-50%)
 - **Monthly Expenses Override**: Optional override for monthly expenses used in cash flow calculations
+- **Days of Cash Offset**: Optional dollar amount (e.g. a debt balance) subtracted from cash before dividing by monthly expenses. Applies to Days Cash, Days Cash + AR, the comparison column and `metrics-plain`
 - **Reference Line Integration**: Chart reference lines automatically update based on company settings
 
 ### User Experience Enhancements
