@@ -4,13 +4,9 @@ const { getCollection } = require('./utils/database.js')
 const QuickBooksService = require('./services/quickbooks.js')
 const { isDateOnly, startOfDay } = require('./utils/dates.js')
 
-const OPEN_INVOICE_QUERY = "SELECT * FROM Invoice WHERE Balance != '0.00' ORDER BY TxnDate ASC MAXRESULTS 100"
-
 async function fetchOpenInvoices(companyId) {
   const qbo = new QuickBooksService(companyId)
-  const { accessToken, realmId } = await qbo.getAccessToken()
-  const data = await qbo.makeRequest(`query?query=${encodeURIComponent(OPEN_INVOICE_QUERY)}`, realmId, accessToken)
-  return data.QueryResponse?.Invoice || []
+  return qbo.queryAllPages('Invoice', "WHERE Balance != '0.00' ORDER BY TxnDate ASC")
 }
 
 /**

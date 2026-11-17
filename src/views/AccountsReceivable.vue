@@ -10,7 +10,17 @@
 
       <!-- Aged Accounts Receivable -->
       <div class="card">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Aged Accounts Receivable</h2>
+        <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Aged Accounts Receivable</h2>
+          <div class="flex gap-2">
+            <button @click="refreshInvoices" :disabled="loadingInvoices" class="btn-secondary">
+              {{ loadingInvoices ? 'Refreshing...' : 'Refresh' }}
+            </button>
+            <button @click="openPaymentModal(null)" :disabled="!invoices.length" class="btn-primary">
+              Receive Payment
+            </button>
+          </div>
+        </div>
         <div v-if="revenueStore.loading" class="flex items-center justify-center py-8">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           <span class="ml-3 text-gray-600 dark:text-gray-400">Loading aged receivables...</span>
@@ -166,12 +176,7 @@
 
       <!-- Outstanding Invoices -->
       <div class="card">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Outstanding Invoices</h2>
-          <button @click="refreshInvoices" :disabled="loadingInvoices" class="btn-secondary">
-            {{ loadingInvoices ? 'Refreshing...' : 'Refresh' }}
-          </button>
-        </div>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Outstanding Invoices</h2>
 
         <div v-if="loadingInvoices" class="flex items-center justify-center py-8">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
@@ -273,6 +278,8 @@
     <PaymentModal
       :is-open="showPaymentModal"
       :invoice="selectedInvoice"
+      :open-invoices="sortedInvoices"
+      :processing="recordingPayment"
       @close="closePaymentModal"
       @confirm="recordPayment"
     />
@@ -281,6 +288,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { requestJson } from '../lib/api-fetch.js'
 import { formatCurrency } from '../lib/format.js'
 import { useRevenueStore } from '../stores/revenue'
 import { useAuthStore } from '../stores/auth'
@@ -297,6 +305,7 @@ const invoices = ref([])
 const loadingInvoices = ref(false)
 const showPaymentModal = ref(false)
 const selectedInvoice = ref(null)
+const recordingPayment = ref(false)
 const asOfDate = ref('')
 
 // Watch for date changes and reload invoices
@@ -388,26 +397,15 @@ function closePaymentModal() {
   selectedInvoice.value = null
 }
 
-async function recordPayment(paymentData) {
+async function recordPayment(payment) {
+  recordingPayment.value = true
   try {
-    const response = await fetch('/.netlify/functions/payment-record', {
+    await requestJson('payment-record', {
+      token: authStore.token,
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${authStore.token}`,
-      },
-      body: JSON.stringify({
-        invoiceId: paymentData.invoiceId,
-        customerId: paymentData.customerId,
-        amount: paymentData.amount,
-        paymentMethod: paymentData.paymentMethod,
-        paymentDate: paymentData.paymentDate,
-      }),
+      body: payment,
+      fallbackError: 'Failed to record payment',
     })
-
-    if (!response.ok) {
-      throw new Error(`Failed to record payment: ${response.statusText}`)
-    }
 
     // Refresh invoices and balances (including A/R aging)
     // No need to refresh all QuickBooks data - just reload what changed
@@ -417,6 +415,8 @@ async function recordPayment(paymentData) {
   } catch (error) {
     console.error('Error recording payment:', error)
     alert(`Failed to record payment: ${error.message}`)
+  } finally {
+    recordingPayment.value = false
   }
 }
 

@@ -1,15 +1,6 @@
 const { createHandler, HttpError } = require('./utils/handler.js')
 const QuickBooksService = require('./services/quickbooks.js')
-
-const PAYMENT_METHOD_MAP = {
-  check: 'Check',
-  ach: 'Electronic Payment',
-  credit_card: 'Credit Card',
-  cash: 'Cash',
-  other: 'Other',
-}
-
-const REQUIRED_FIELDS = ['invoiceId', 'customerId', 'amount', 'paymentMethod', 'paymentDate']
+const { QB_PAYMENT_METHODS, validatePayment } = require('./services/payment-validation.js')
 
 const UNDEPOSITED_FUNDS_QUERY =
   "SELECT * FROM Account WHERE AccountType = 'Other Current Asset' AND AccountSubType = 'UndepositedFunds' MAXRESULTS 1"
@@ -17,12 +8,10 @@ const UNDEPOSITED_FUNDS_QUERY =
 exports.handler = createHandler(
   { methods: 'POST', errorMessage: 'Failed to record payment' },
   async ({ user, company, body }) => {
-    const missing = REQUIRED_FIELDS.filter((field) => !body[field])
-    if (missing.length > 0) {
-      throw new HttpError(`Missing required fields: ${missing.join(', ')}`, 400)
-    }
+    const problem = validatePayment(body)
+    if (problem) throw new HttpError(problem, 400)
 
-    const { invoiceId, customerId, amount, paymentMethod, paymentDate } = body
+    const { customerId, amount, paymentMethod, paymentDate, lines } = body
 
     const qbo = new QuickBooksService(company._id)
     const { accessToken, realmId } = await qbo.getAccessToken()
@@ -43,9 +32,12 @@ exports.handler = createHandler(
       TotalAmt: amount,
       TxnDate: paymentDate,
       PrivateNote: `Payment recorded via BI Forecast by ${user.email}`,
-      PaymentMethodRef: { name: PAYMENT_METHOD_MAP[paymentMethod] || 'Other' },
+      PaymentMethodRef: { name: QB_PAYMENT_METHODS[paymentMethod] },
       DepositToAccountRef: { value: depositAccount.Id, name: depositAccount.Name },
-      Line: [{ Amount: amount, LinkedTxn: [{ TxnId: invoiceId, TxnType: 'Invoice' }] }],
+      Line: lines.map((line) => ({
+        Amount: line.amount,
+        LinkedTxn: [{ TxnId: line.invoiceId, TxnType: 'Invoice' }],
+      })),
     }
 
     // Routed through makeRequest so it gets the shared token refresh and retry.
