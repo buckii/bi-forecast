@@ -45,3 +45,44 @@
     color-scheme: light dark;
   }
 }
+
+@page monthly-summary {
+  size: letter landscape;
+  margin: 0.4in;
+}
+
+@media print {
+  .monthly-summary-report {
+    page: monthly-summary;
+    font-size: 7pt;
+  }
+
+  .monthly-summary-report,
+  .monthly-summary-report * {
+    color: #111 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .monthly-summary-report .card {
+    padding: 0;
+    border: 0;
+  }
+
+  .monthly-summary-report thead,
+  .monthly-summary-report tfoot,
+  .monthly-summary-report th,
+  .monthly-summary-report td {
+    padding: 1px 4px !important;
+    position: static !important;
+    max-width: none !important;
+  }
+
+  .monthly-summary-report tr {
+    break-inside: avoid;
+  }
+
+  .monthly-summary-report thead {
+    display: table-header-group;
+  }
+}

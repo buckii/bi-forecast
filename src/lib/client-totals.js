@@ -48,19 +48,3 @@ export function monthlyClientRows(transactionsByMonth, monthKeys, enabledTypes) 
     Object.values(row.months).some((amount) => Math.abs(amount) >= ZERO_TOLERANCE),
   )
 }
-
-const MONTH_KEY = /^\d{4}-\d{2}$/
-
-/**
- * Sort monthly rows by 'client', 'amount' (the row total) or a month key. Ties fall back to the
- * client name, so rows with the same amount stay in a predictable order.
- */
-export function sortClientRows(rows, sortBy, direction) {
-  const sign = direction === 'desc' ? -1 : 1
-  const value = (row) => (MONTH_KEY.test(sortBy) ? row.months[sortBy] || 0 : row.total)
-
-  return [...rows].sort((first, second) => {
-    if (sortBy === 'client') return sign * first.client.localeCompare(second.client)
-    return sign * (value(first) - value(second)) || first.client.localeCompare(second.client)
-  })
-}

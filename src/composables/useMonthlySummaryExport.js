@@ -6,14 +6,23 @@ import { createSpreadsheet } from '../lib/google-sheets.js'
 import { useToast } from './useToast.js'
 
 /** "Revenue by Client 2026-01 to 2026-12 as of 2026-09-29", dated in local time. */
-export function clientSummaryExportName(startMonth, endMonth, today = new Date()) {
-  return `Revenue by Client ${startMonth} to ${endMonth} as of ${format(today, 'yyyy-MM-dd')}`
+export function monthlySummaryExportName(title, startMonth, endMonth, today = new Date()) {
+  return `${title} ${startMonth} to ${endMonth} as of ${format(today, 'yyyy-MM-dd')}`
 }
 
 const roundTo = (value, places) => Math.round(value * 10 ** places) / 10 ** places
 
-/** The client summary as numbers in the selected units, so a spreadsheet can sum it. */
-export function clientSummaryTable({ rows, monthKeys, monthTotals, grandTotal, isPoints, pricePerPoint }) {
+/** The summary as numbers in the selected units, so a spreadsheet can sum it. */
+export function monthlySummaryTable({
+  rows,
+  labelField,
+  labelHeader,
+  monthKeys,
+  monthTotals,
+  grandTotal,
+  isPoints,
+  pricePerPoint,
+}) {
   const toUnits = (amount) => {
     if (!amount) return ''
     return isPoints ? roundTo(amount / pricePerPoint, 1) : roundTo(amount, 2)
@@ -21,9 +30,9 @@ export function clientSummaryTable({ rows, monthKeys, monthTotals, grandTotal, i
   const share = (amount) => (grandTotal ? roundTo((amount / grandTotal) * 100, 1) : '')
   const monthValues = (months) => monthKeys.map((key) => toUnits(months[key]))
 
-  const headers = ['Client', ...monthKeys.map(formatMonth), isPoints ? 'Total (points)' : 'Total', '% of Total']
+  const headers = [labelHeader, ...monthKeys.map(formatMonth), isPoints ? 'Total (points)' : 'Total', '% of Total']
   const tableRows = [
-    ...rows.map((row) => [row.client, ...monthValues(row.months), toUnits(row.total), share(row.total)]),
+    ...rows.map((row) => [row[labelField], ...monthValues(row.months), toUnits(row.total), share(row.total)]),
     ['TOTAL', ...monthValues(monthTotals), toUnits(grandTotal), share(grandTotal)],
   ]
   const valuePattern = isPoints ? '#,##0.0' : '#,##0.00'
@@ -32,8 +41,14 @@ export function clientSummaryTable({ rows, monthKeys, monthTotals, grandTotal, i
   return { headers, tableRows, columnPatterns }
 }
 
-/** CSV, PDF and Google Sheets exports of the client summary. Every argument is a ref or computed. */
-export function useClientSummaryExport({
+/**
+ * CSV, PDF and Google Sheets exports of a monthly summary. `title`, `labelField` and `labelHeader`
+ * are plain strings; every other argument is a ref or computed.
+ */
+export function useMonthlySummaryExport({
+  title,
+  labelField,
+  labelHeader,
   rows,
   monthKeys,
   monthTotals,
@@ -47,11 +62,13 @@ export function useClientSummaryExport({
   const creatingSheet = ref(false)
   const sheetUrl = ref('')
 
-  const exportName = () => clientSummaryExportName(startMonth.value, endMonth.value)
+  const exportName = () => monthlySummaryExportName(title, startMonth.value, endMonth.value)
 
   const table = () =>
-    clientSummaryTable({
+    monthlySummaryTable({
       rows: rows.value,
+      labelField,
+      labelHeader,
       monthKeys: monthKeys.value,
       monthTotals: monthTotals.value,
       grandTotal: grandTotal.value,

@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="client-summary-report space-y-6">
+    <div class="monthly-summary-report space-y-6">
       <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
           <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -80,96 +80,23 @@
           they load. Refresh to retry.
         </p>
 
-        <div
-          ref="tableBox"
-          class="overflow-auto print:!max-h-none print:overflow-visible"
-          :style="{ maxHeight: tableMaxHeight }"
-        >
-          <table class="min-w-full text-sm border-separate border-spacing-0">
-            <thead class="sticky top-0 z-20">
-              <tr>
-                <th scope="col" :class="[STICKY_CLIENT, HEADER_CELL]" :aria-sort="ariaSort('client')">
-                  <button class="hover:underline" @click="toggleSort('client')">
-                    Client {{ sortIndicator('client') }}
-                  </button>
-                </th>
-                <th
-                  v-for="monthKey in monthKeys"
-                  :key="monthKey"
-                  scope="col"
-                  :class="[HEADER_CELL, 'px-3 text-right whitespace-nowrap']"
-                  :aria-sort="ariaSort(monthKey)"
-                >
-                  <button class="hover:underline" @click="toggleSort(monthKey)">
-                    {{ formatMonth(monthKey) }} {{ sortIndicator(monthKey) }}
-                  </button>
-                </th>
-                <th scope="col" :class="[STICKY_TOTAL, HEADER_CELL]" :aria-sort="ariaSort('amount')">
-                  <button class="hover:underline" @click="toggleSort('amount')">
-                    Total {{ sortIndicator('amount') }}
-                  </button>
-                </th>
-                <th scope="col" :class="[HEADER_CELL, 'px-3 text-right']">%</th>
-              </tr>
-              <SummaryTotalsRow v-if="rows.length" edge="top" v-bind="totalsRowProps" />
-            </thead>
-
-            <tbody v-if="!rows.length && loading" aria-busy="true">
-              <tr v-for="placeholder in SKELETON_ROWS" :key="placeholder">
-                <th scope="row" :class="[STICKY_CLIENT, 'bg-white dark:bg-gray-800 py-1.5']">
-                  <SkeletonBar class="w-28" />
-                </th>
-                <td v-for="monthKey in monthKeys" :key="monthKey" class="px-3 py-1.5 text-right">
-                  <SkeletonBar class="w-14" />
-                </td>
-                <td :class="[STICKY_TOTAL, 'bg-white dark:bg-gray-800 py-1.5']"><SkeletonBar class="w-16" /></td>
-                <td class="px-3 py-1.5 text-right"><SkeletonBar class="w-8" /></td>
-              </tr>
-            </tbody>
-
-            <tbody v-else-if="!rows.length">
-              <tr>
-                <td :colspan="monthKeys.length + 3" class="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
-                  No revenue for {{ periodLabel }} with the selected types.
-                </td>
-              </tr>
-            </tbody>
-
-            <tbody v-else>
-              <tr v-for="row in rows" :key="row.client">
-                <th scope="row" :class="[STICKY_CLIENT, 'bg-inherit py-1.5 font-normal']" :title="row.client">
-                  <button
-                    class="block w-full truncate text-left text-gray-900 dark:text-gray-100 underline decoration-gray-300 dark:decoration-gray-600 underline-offset-4 hover:decoration-current"
-                    @click="selectedClient = row.client"
-                  >
-                    {{ row.client }}
-                  </button>
-                </th>
-                <td
-                  v-for="monthKey in monthKeys"
-                  :key="monthKey"
-                  class="px-3 py-1.5 text-right tabular-nums whitespace-nowrap"
-                  :class="amountClass(row.months[monthKey])"
-                >
-                  <SkeletonBar v-if="pendingMonths.includes(monthKey)" class="w-14" />
-                  <template v-else>{{ formatCell(row.months[monthKey]) }}</template>
-                </td>
-                <td :class="[STICKY_TOTAL, 'bg-inherit py-1.5 font-medium', amountClass(row.total)]">
-                  <SkeletonBar v-if="pendingMonths.length" class="w-16" />
-                  <template v-else>{{ formatValue(row.total) }}</template>
-                </td>
-                <td class="px-3 py-1.5 text-right tabular-nums whitespace-nowrap text-gray-500 dark:text-gray-400">
-                  <SkeletonBar v-if="pendingMonths.length" class="w-8" />
-                  <template v-else>{{ formatShare(row.total, grandTotal) }}</template>
-                </td>
-              </tr>
-            </tbody>
-
-            <tfoot v-if="rows.length" class="sticky bottom-0 z-20">
-              <SummaryTotalsRow edge="bottom" v-bind="totalsRowProps" />
-            </tfoot>
-          </table>
-        </div>
+        <MonthlySummaryTable
+          ref="table"
+          :rows="rows"
+          label-field="client"
+          label-header="Client"
+          :month-keys="monthKeys"
+          :pending-months="pendingMonths"
+          :loading="loading"
+          :sort-by="sortBy"
+          :sort-direction="sortDirection"
+          :format-cell="formatCell"
+          :format-value="formatValue"
+          :empty-message="`No revenue for ${periodLabel} with the selected types.`"
+          selectable
+          @sort="toggleSort"
+          @select="selectedClient = $event"
+        />
       </div>
     </div>
 
@@ -190,33 +117,26 @@
 </template>
 
 <script setup>
-import { useWindowSize } from '@vueuse/core'
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import AppLayout from '../components/AppLayout.vue'
 import ClientDrilldownModal from '../components/ClientDrilldownModal.vue'
 import ExportMenu from '../components/ExportMenu.vue'
+import MonthlySummaryTable from '../components/MonthlySummaryTable.vue'
 import MonthRangePicker from '../components/MonthRangePicker.vue'
-import SkeletonBar from '../components/SkeletonBar.vue'
-import SummaryTotalsRow, { STICKY_CLIENT, STICKY_TOTAL } from '../components/SummaryTotalsRow.vue'
 import ToastContainer from '../components/ToastContainer.vue'
 import TypeFilterPills from '../components/TypeFilterPills.vue'
-import { monthlyClientRows, sortClientRows } from '../lib/client-totals.js'
-import { formatDateTime, formatMonth, formatPoints, formatShare, formatWholeDollars } from '../lib/format.js'
+import { monthlyClientRows } from '../lib/client-totals.js'
+import { formatDateTime, formatMonth, formatPoints, formatWholeDollars } from '../lib/format.js'
 import { preloadGoogleSheets } from '../lib/google-sheets.js'
+import { isMonthKey, monthlyTotals, sortMonthlyRows } from '../lib/monthly-rows.js'
 import { monthsBetween, twoQuarterPeriod } from '../lib/month-keys.js'
 import { TRANSACTION_TYPES } from '../lib/transaction-types.js'
 import { useClientSummary } from '../composables/useClientSummary.js'
-import { useClientSummaryExport } from '../composables/useClientSummaryExport.js'
+import { useMonthlySummaryExport } from '../composables/useMonthlySummaryExport.js'
 import { useTypeFilter } from '../composables/useTypeFilter.js'
 import { useAuthStore } from '../stores/auth'
 import { useRevenueStore } from '../stores/revenue'
 
-const SKELETON_ROWS = 8
-// Room under the table for the card's padding, so the footer row ends on screen.
-const TABLE_BOTTOM_GAP_PX = 48
-const TABLE_MIN_HEIGHT_PX = 320
-const HEADER_CELL =
-  'bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-600 py-2 font-semibold text-gray-700 dark:text-gray-300'
 const DEFAULT_PRICE_PER_POINT = 550
 const UNIT_OPTIONS = [
   { value: 'dollars', label: '$' },
@@ -232,18 +152,7 @@ const endMonth = ref(defaultPeriod.end)
 const monthKeys = computed(() => monthsBetween(startMonth.value, endMonth.value))
 const periodLabel = computed(() => `${formatMonth(startMonth.value)} – ${formatMonth(endMonth.value)}`)
 
-// Sized so the table ends at the bottom of the window, keeping both total rows in view.
-const tableBox = ref(null)
-const tableTop = ref(0)
-const { height: windowHeight } = useWindowSize()
-const tableMaxHeight = computed(
-  () => `${Math.max(TABLE_MIN_HEIGHT_PX, windowHeight.value - tableTop.value - TABLE_BOTTOM_GAP_PX)}px`,
-)
-
-function measureTableTop() {
-  if (tableBox.value) tableTop.value = tableBox.value.getBoundingClientRect().top + window.scrollY
-}
-watch(windowHeight, measureTableTop)
+const table = ref(null)
 
 const units = ref('dollars')
 const pricePerPoint = computed(() => authStore.company?.settings?.pricePerPoint || DEFAULT_PRICE_PER_POINT)
@@ -257,32 +166,15 @@ const { enabledTypes, sortBy, sortDirection, allEnabled, toggleAll, toggleType, 
 )
 
 const rows = computed(() =>
-  sortClientRows(
+  sortMonthlyRows(
     monthlyClientRows(transactionsByMonth.value, monthKeys.value, enabledTypes.value),
     sortBy.value,
     sortDirection.value,
+    'client',
   ),
 )
 
-const monthTotals = computed(() =>
-  Object.fromEntries(
-    monthKeys.value.map((monthKey) => [
-      monthKey,
-      rows.value.reduce((sum, row) => sum + (row.months[monthKey] || 0), 0),
-    ]),
-  ),
-)
-
-const grandTotal = computed(() => rows.value.reduce((sum, row) => sum + row.total, 0))
-
-const totalsRowProps = computed(() => ({
-  monthKeys: monthKeys.value,
-  monthTotals: monthTotals.value,
-  pendingMonths: pendingMonths.value,
-  grandTotal: grandTotal.value,
-  formatCell,
-  formatValue,
-}))
+const totals = computed(() => monthlyTotals(rows.value, monthKeys.value))
 
 // Months pulled within a minute of each other count as one refresh.
 const SAME_REFRESH_MS = 60 * 1000
@@ -315,25 +207,14 @@ function formatCell(amount) {
   return Math.abs(amount || 0) < 0.5 ? '' : formatValue(amount)
 }
 
-function amountClass(amount) {
-  return amount < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'
-}
-
-function sortIndicator(field) {
-  if (sortBy.value !== field) return ''
-  return sortDirection.value === 'desc' ? '↓' : '↑'
-}
-
-function ariaSort(field) {
-  if (sortBy.value !== field) return 'none'
-  return sortDirection.value === 'desc' ? 'descending' : 'ascending'
-}
-
-const { exportOptions, creatingSheet, sheetUrl } = useClientSummaryExport({
+const { exportOptions, creatingSheet, sheetUrl } = useMonthlySummaryExport({
+  title: 'Revenue by Client',
+  labelField: 'client',
+  labelHeader: 'Client',
   rows,
   monthKeys,
-  monthTotals,
-  grandTotal,
+  monthTotals: computed(() => totals.value.monthTotals),
+  grandTotal: computed(() => totals.value.grandTotal),
   units,
   pricePerPoint,
   startMonth,
@@ -341,62 +222,17 @@ const { exportOptions, creatingSheet, sheetUrl } = useClientSummaryExport({
 })
 
 // Status lines above the table move it, so its height follows them.
-watch([loading, () => failedMonths.value.length, sheetUrl], () => nextTick(measureTableTop))
+watch([loading, () => failedMonths.value.length, sheetUrl], () => table.value?.measure())
 
 watch(monthKeys, (keys) => {
-  if (/^\d{4}-\d{2}$/.test(sortBy.value) && !keys.includes(sortBy.value)) {
+  if (isMonthKey(sortBy.value) && !keys.includes(sortBy.value)) {
     sortBy.value = 'amount'
     sortDirection.value = 'desc'
   }
   load(keys)
 })
-onMounted(async () => {
-  await nextTick()
-  measureTableTop()
+onMounted(() => {
   load(monthKeys.value)
   preloadGoogleSheets()
 })
 </script>
-
-<style>
-@page client-summary {
-  size: letter landscape;
-  margin: 0.4in;
-}
-
-@media print {
-  .client-summary-report {
-    page: client-summary;
-    font-size: 7pt;
-  }
-
-  .client-summary-report,
-  .client-summary-report * {
-    color: #111 !important;
-    background: transparent !important;
-    box-shadow: none !important;
-  }
-
-  .client-summary-report .card {
-    padding: 0;
-    border: 0;
-  }
-
-  .client-summary-report thead,
-  .client-summary-report tfoot,
-  .client-summary-report th,
-  .client-summary-report td {
-    padding: 1px 4px !important;
-    position: static !important;
-    max-width: none !important;
-  }
-
-  .client-summary-report tr {
-    break-inside: avoid;
-  }
-
-  .client-summary-report thead {
-    display: table-header-group;
-  }
-}
-</style>

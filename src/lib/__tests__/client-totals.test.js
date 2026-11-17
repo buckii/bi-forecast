@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clientName, monthlyClientRows, sortClientRows, totalsByClient } from '../client-totals.js'
+import { clientName, monthlyClientRows, totalsByClient } from '../client-totals.js'
 
 const ALL_TYPES = { invoice: true, journalEntry: true, weightedSales: true }
 
@@ -75,27 +75,5 @@ describe('monthlyClientRows', () => {
   it('ignores months outside the requested keys and months not loaded yet', () => {
     const rows = monthlyClientRows({ '2025-12': [invoice('Acme', 500)] }, months, ALL_TYPES)
     expect(rows).toEqual([])
-  })
-})
-
-describe('sortClientRows', () => {
-  const rows = [
-    { client: 'Beta', months: { '2026-01': 500 }, total: 900 },
-    { client: 'Acme', months: { '2026-01': 100, '2026-02': 800 }, total: 900 },
-    { client: 'Cobalt', months: { '2026-02': 50 }, total: 50 },
-  ]
-  const order = (sorted) => sorted.map((row) => row.client)
-
-  it('sorts by one month, counting a missing month as zero', () => {
-    expect(order(sortClientRows(rows, '2026-01', 'desc'))).toEqual(['Beta', 'Acme', 'Cobalt'])
-    expect(order(sortClientRows(rows, '2026-02', 'desc'))).toEqual(['Acme', 'Cobalt', 'Beta'])
-  })
-
-  it('breaks a tie on the total by client name', () => {
-    expect(order(sortClientRows(rows, 'amount', 'desc'))).toEqual(['Acme', 'Beta', 'Cobalt'])
-  })
-
-  it('sorts by name', () => {
-    expect(order(sortClientRows(rows, 'client', 'asc'))).toEqual(['Acme', 'Beta', 'Cobalt'])
   })
 })

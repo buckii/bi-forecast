@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 import { defaultTypeFilters } from '../lib/transaction-types.js'
+import { useTableSort } from './useTableSort.js'
 
 /** Newest first, or oldest first when ascending. */
 export function sortTransactions(transactions, sortBy, direction) {
@@ -26,8 +27,7 @@ export function sortClients(clients, sortBy, direction) {
  */
 export function useTypeFilter(includeWeightedSales) {
   const enabledTypes = ref(defaultTypeFilters(includeWeightedSales))
-  const sortBy = ref('amount')
-  const sortDirection = ref('desc')
+  const { sortBy, sortDirection, toggleSort } = useTableSort()
 
   const allEnabled = computed(() => Object.values(enabledTypes.value).every(Boolean))
 
@@ -40,17 +40,6 @@ export function useTypeFilter(includeWeightedSales) {
 
   function toggleType(type) {
     enabledTypes.value[type] = !enabledTypes.value[type]
-  }
-
-  /** Re-sorting by the active field flips direction; a new field starts descending. */
-  function toggleSort(field) {
-    if (sortBy.value === field) {
-      sortDirection.value = sortDirection.value === 'desc' ? 'asc' : 'desc'
-      return
-    }
-
-    sortBy.value = field
-    sortDirection.value = 'desc'
   }
 
   return { enabledTypes, sortBy, sortDirection, allEnabled, toggleAll, toggleType, toggleSort }
